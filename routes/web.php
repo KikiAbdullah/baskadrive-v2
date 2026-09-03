@@ -83,4 +83,10 @@ Route::group(['middleware' => ['auth']], function () {
         });
         Route::get('get-button-option', [AjaxController::class, 'getButtonOption'])->name('get.button-option');
     });
+
+    // ===========================================
+    // RENTAL ERP — 8 MODUL (Dashboard, Master, Sewa,
+    // Fleet, Keuangan, Akuntansi, Laporan, Sistem)
+    // ===========================================
+    require __DIR__.'/rental.php';
 });

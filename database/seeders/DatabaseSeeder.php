@@ -9,27 +9,33 @@ class DatabaseSeeder extends Seeder
     /**
      * Seed the application's database.
      *
-     * Urutan eksekusi:
-     * 1. PermissionSeeder — buat permission yang diperlukan
-     * 2. RoleSeeder — buat role dan assign permissions
-     * 3. UserSeeder — buat user dan assign role
-     * 4. UserLogSeeder — generate log aktivitas sampel
-     * 5. SanctumTokenSeeder — generate API token
-     * 6. RentalErpMasterSeeder — brand, model, vehicle, location, maintenance type
-     * 7. RentalErpEmployeeSeeder — karyawan default (admin/password)
-     * 8. RentalErpCoaSeeder — chart of accounts
+     * Urutan:
+     * 1. Admin (users, roles, permissions, logs, tokens)
+     * 2. Rental ERP Master (brand, model, vehicle, customer, driver, location, workshop, maintenance_type, promo, coa, employee)
+     * 3. Rental ERP Transaksi (rental, detail, extension, return, damage, photo, claim, maintenance, fine)
+     * 4. Rental ERP Finance (invoice, payment, refund, journal, journal_detail)
      */
     public function run(): void
     {
         $this->call([
+            // Admin
             PermissionSeeder::class,
             RoleSeeder::class,
             UserSeeder::class,
             UserLogSeeder::class,
             SanctumTokenSeeder::class,
+
+            // Rental ERP Master
             RentalErpMasterSeeder::class,
             RentalErpEmployeeSeeder::class,
             RentalErpCoaSeeder::class,
+
+            // Rental ERP Transaksi
+            RentalErpRentalSeeder::class,
+            RentalErpOperationalSeeder::class,
+
+            // Rental ERP Keuangan
+            RentalErpFinanceSeeder::class,
         ]);
     }
 }

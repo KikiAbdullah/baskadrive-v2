@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Helpers\LogHelper;
-use DB;
 use Exception;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
@@ -11,6 +9,8 @@ use Spatie\Permission\Models\Role;
 
 class RoleController extends Controller
 {
+    protected $roleData;
+
     public function __construct(Role $model)
     {
         $this->title = 'Role';
@@ -31,7 +31,6 @@ class RoleController extends Controller
         ];
     }
 
-    //ADD
     public function create()
     {
         $view = [
@@ -53,110 +52,52 @@ class RoleController extends Controller
         return response()->json($response);
     }
 
-    public function store(Request $request)
+    public function customRequest($request)
     {
-        try {
-            DB::beginTransaction();
+        $data = $request->all();
 
-            $data = $this->getRequest();
+        unset($data['_token'], $data['_method']);
 
-            if (Role::where('name', strtoupper($data['name']))->count() <= 0) {
-                $model = Role::create(['name' => strtoupper($data['name'])]);
+        if ($request->method() === 'POST' && isset($data['name'])) {
+            $data['name'] = strtoupper($data['name']);
 
-                if (! empty($data['permission']) && is_array($data['permission'])) {
-                    $permissions = Permission::whereIn('id', array_keys($data['permission']))->pluck('name');
-                    foreach ($permissions as $permission) {
-                        $model->givePermissionTo($permission);
-                    }
-                }
-            } else {
-                return $this->redirectBackWithError('Role '.strtoupper($data['name']).' already exists');
+            if (Role::where('name', $data['name'])->count() > 0) {
+                throw new Exception('Role '.$data['name'].' already exists');
             }
+        } elseif ($request->method() !== 'POST') {
+            unset($data['name']);
+        }
 
-            $log_helper = new LogHelper;
+        $this->roleData = $data;
 
-            $log_helper->storeLog('add', $model->no ?? $model->id, $this->subtitle);
+        unset($data['permission']);
 
-            DB::commit();
-            if ($request->ajax()) {
-                $response = [
-                    'status' => true,
-                    'msg' => 'Data Saved.',
-                ];
+        return $data;
+    }
 
-                return response()->json($response);
-            } else {
-                return $this->redirectSuccess(__FUNCTION__, false);
-            }
-        } catch (Exception $e) {
-            DB::rollback();
-            if ($request->ajax()) {
-                $response = [
-                    'status' => false,
-                    'msg' => $e->getMessage(),
-                ];
+    public function customStore($data, $model)
+    {
+        if (! empty($this->roleData['permission']) && is_array($this->roleData['permission'])) {
+            $permissions = Permission::whereIn('id', array_keys($this->roleData['permission']))->pluck('name');
 
-                return response()->json($response);
-            } else {
-                return $this->redirectBackWithError($e->getMessage());
+            foreach ($permissions as $permission) {
+                $model->givePermissionTo($permission);
             }
         }
     }
-    //ADD
 
-    //UPDATE
-    public function update(Request $request, $id)
+    public function customUpdate($data, $model)
     {
-        try {
-            DB::beginTransaction();
+        foreach ($model->permissions as $permission) {
+            $model->revokePermissionTo($permission->name);
+        }
 
-            $data = $this->getRequest();
+        if (! empty($this->roleData['permission']) && is_array($this->roleData['permission'])) {
+            $permissions = Permission::whereIn('id', array_keys($this->roleData['permission']))->pluck('name');
 
-            if ($this->withTrashed) {
-                $model = $this->model->with($this->relation)->withTrashed()->findOrFail($id);
-            } else {
-                $model = $this->model->with($this->relation)->findOrFail($id);
-            }
-
-            foreach ($model->permissions as $key => $permission) {
-                $model->revokePermissionTo($permission->name);
-            }
-
-            if (! empty($data['permission']) && is_array($data['permission'])) {
-                $permissions = Permission::whereIn('id', array_keys($data['permission']))->pluck('name');
-                foreach ($permissions as $permission) {
-                    $model->givePermissionTo($permission);
-                }
-            }
-
-            $log_helper = new LogHelper;
-
-            $log_helper->storeLog('edit', $model->no ?? $model->id, $this->subtitle);
-
-            DB::commit();
-            if ($request->ajax()) {
-                $response = [
-                    'status' => true,
-                    'msg' => 'Data Saved.',
-                ];
-
-                return response()->json($response);
-            } else {
-                return $this->redirectSuccess(__FUNCTION__, false);
-            }
-        } catch (Exception $e) {
-            DB::rollback();
-            if ($request->ajax()) {
-                $response = [
-                    'status' => false,
-                    'msg' => $e->getMessage(),
-                ];
-
-                return response()->json($response);
-            } else {
-                return $this->redirectBackWithError($e->getMessage());
+            foreach ($permissions as $permission) {
+                $model->givePermissionTo($permission);
             }
         }
     }
-    //UPDATE
 }

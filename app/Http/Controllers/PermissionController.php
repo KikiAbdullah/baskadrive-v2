@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Helpers\LogHelper;
-use DB;
 use Exception;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
@@ -33,46 +31,16 @@ class PermissionController extends Controller
             ->toJson();
     }
 
-    public function store(Request $request)
+    public function customRequest($request)
     {
-        try {
-            DB::beginTransaction();
+        $data = $request->all();
 
-            $data = $this->getRequest();
+        unset($data['_token'], $data['_method']);
 
-            if (Permission::where('name', $data['name'])->count() <= 0) {
-                $model = Permission::create(['name' => $data['name']]);
-
-                $log_helper = new LogHelper;
-
-                $log_helper->storeLog('add', $model->no ?? $model->id, $this->subtitle);
-            } else {
-                return $this->redirectBackWithError('Permission already exists');
-            }
-
-            DB::commit();
-            if ($request->ajax()) {
-                $response = [
-                    'status' => true,
-                    'msg' => 'Data Saved.',
-                ];
-
-                return response()->json($response);
-            } else {
-                return $this->redirectSuccess(__FUNCTION__, false);
-            }
-        } catch (Exception $e) {
-            DB::rollback();
-            if ($request->ajax()) {
-                $response = [
-                    'status' => false,
-                    'msg' => $e->getMessage(),
-                ];
-
-                return response()->json($response);
-            } else {
-                return $this->redirectBackWithError($e->getMessage());
-            }
+        if ($request->method() === 'POST' && isset($data['name']) && Permission::where('name', $data['name'])->count() > 0) {
+            throw new Exception('Permission already exists');
         }
+
+        return $data;
     }
 }
