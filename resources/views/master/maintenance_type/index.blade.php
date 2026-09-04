@@ -90,7 +90,6 @@
                         data: 'is_active'
                     }
                 ],
-,
                 "order": [
                     [0, "desc"]
                 ],

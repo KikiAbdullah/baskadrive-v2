@@ -169,40 +169,36 @@ Route::group(['prefix' => 'master', 'as' => 'master.'], function () {
 // ===========================================
 Route::group(['prefix' => 'rental', 'as' => 'rental.'], function () {
 
+    // Daftar Sewa (satu menu, filter via tab status)
+    Route::get('/', [RentalController::class, 'index'])->name('index');
+    Route::get('/get-data', [RentalController::class, 'data'])->name('data');
+    Route::get('/export', [RentalController::class, 'export'])->name('export');
+
     // Buat Sewa Baru (Wizard)
-    Route::group(['prefix' => 'create', 'as' => 'create.'], function () {
-        Route::get('/', [RentalController::class, 'createWizard'])->name('wizard');
-        Route::get('/step/{step}', [RentalController::class, 'createStep'])->name('step');
-        Route::post('/store', [RentalController::class, 'store'])->name('store');
-        Route::get('/search-customer', [RentalController::class, 'searchCustomer'])->name('search-customer');
-        Route::get('/available-vehicles', [RentalController::class, 'availableVehicles'])->name('available-vehicles');
-        Route::post('/calculate-total', [RentalController::class, 'calculateTotal'])->name('calculate-total');
-    });
+    Route::get('/create', [RentalController::class, 'create'])->name('create');
+    Route::post('/create', [RentalController::class, 'saveStep'])->name('create.save');
+    Route::get('/create/step/{step}', [RentalController::class, 'createStep'])->name('create.step');
+    Route::post('/create/store', [RentalController::class, 'store'])->name('create.store');
+    Route::get('/create/search-customer', [RentalController::class, 'searchCustomer'])->name('create.search-customer');
+    Route::get('/create/available-vehicles', [RentalController::class, 'availableVehicles'])->name('create.available-vehicles');
+    Route::post('/create/calculate-total', [RentalController::class, 'calculateTotal'])->name('create.calculate-total');
 
-    // Daftar Sewa Aktif
-    Route::get('/active', [RentalController::class, 'activeList'])->name('active');
-    Route::get('/active/get-data', [RentalController::class, 'activeData'])->name('active.data');
-
-    // Reservasi (Booking)
-    Route::get('/reserved', [RentalController::class, 'reservedList'])->name('reserved');
-    Route::get('/reserved/get-data', [RentalController::class, 'reservedData'])->name('reserved.data');
+    // Aksi cepat
     Route::put('{id}/confirm', [RentalController::class, 'confirmPickup'])->name('confirm');
     Route::put('{id}/cancel', [RentalController::class, 'cancelReservation'])->name('cancel');
 
-    // Arsip Transaksi
-    Route::get('/archive', [RentalController::class, 'archiveList'])->name('archive');
-    Route::get('/archive/get-data', [RentalController::class, 'archiveData'])->name('archive.data');
-    Route::get('/export', [RentalController::class, 'export'])->name('export');
-
     // Detail Transaksi (Command Center per rental)
-    Route::group(['prefix' => '{rental}', 'as' => 'detail.'], function () {
-        Route::get('/', [RentalController::class, 'detail'])->name('show');
-        Route::get('/print', [RentalController::class, 'printContract'])->name('print');
+    Route::get('{rental}', [RentalController::class, 'show'])->name('show');
+    Route::get('{rental}/edit', [RentalController::class, 'edit'])->name('edit');
+    Route::put('{rental}', [RentalController::class, 'update'])->name('update');
+    Route::get('{rental}/print', [RentalController::class, 'printContract'])->name('print');
 
+    // Sub-aksi detail
+    Route::group(['prefix' => '{rental}', 'as' => 'detail.'], function () {
         // Extension
         Route::post('/extension', [RentalController::class, 'extensionStore'])->name('extension.store');
-        Route::put('extension/{extensionId}/approve', [RentalController::class, 'extensionApprove'])->name('extension.approve');
-        Route::put('extension/{extensionId}/reject', [RentalController::class, 'extensionReject'])->name('extension.reject');
+        Route::put('/extension/{extensionId}/approve', [RentalController::class, 'extensionApprove'])->name('extension.approve');
+        Route::put('/extension/{extensionId}/reject', [RentalController::class, 'extensionReject'])->name('extension.reject');
 
         // Return
         Route::get('/return', [RentalController::class, 'returnForm'])->name('return.form');
@@ -210,8 +206,8 @@ Route::group(['prefix' => 'rental', 'as' => 'rental.'], function () {
 
         // Fine
         Route::post('/fine', [RentalController::class, 'fineStore'])->name('fine.store');
-        Route::put('fine/{fineId}/pay', [RentalController::class, 'finePay'])->name('fine.pay');
-        Route::put('fine/{fineId}/waive', [RentalController::class, 'fineWaive'])->name('fine.waive');
+        Route::put('/fine/{fineId}/pay', [RentalController::class, 'finePay'])->name('fine.pay');
+        Route::put('/fine/{fineId}/waive', [RentalController::class, 'fineWaive'])->name('fine.waive');
 
         // Invoice
         Route::get('/invoice', [RentalController::class, 'invoiceGenerate'])->name('invoice.generate');

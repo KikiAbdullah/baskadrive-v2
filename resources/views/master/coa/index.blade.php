@@ -90,7 +90,6 @@
                         data: 'parent'
                     }
                 ],
-,
                 "order": [
                     [0, "desc"]
                 ],

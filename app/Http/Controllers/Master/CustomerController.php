@@ -43,6 +43,6 @@ class CustomerController extends Controller
 
     public function rentalNow($id)
     {
-        return redirect()->route('rental.create.wizard', ['customer' => $id]);
+        return redirect()->route('rental.create', ['customer' => $id]);
     }
 }

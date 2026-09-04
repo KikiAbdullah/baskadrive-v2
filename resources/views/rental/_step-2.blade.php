@@ -1,0 +1,133 @@
+<form id="wizardForm">
+    @csrf
+    <input type="hidden" name="vehicle_id" id="vehicle_id" value="{{ $data['vehicle_id'] ?? '' }}">
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5 class="mb-1">Pilih Kendaraan</h5>
+            <p class="text-muted small">Tentukan periode sewa lalu pilih kendaraan yang tersedia</p>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <label class="form-label">Tanggal Mulai <span class="text-danger">*</span></label>
+            <input type="text" class="form-control datepicker" name="rental_start_date" id="filterStartDate" value="{{ $data['rental_start_date'] ?? '' }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Tanggal Selesai <span class="text-danger">*</span></label>
+            <input type="text" class="form-control datepicker" name="rental_end_date" id="filterEndDate" value="{{ $data['rental_end_date'] ?? '' }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">&nbsp;</label>
+            <button type="button" class="btn btn-primary d-block" id="checkAvailability">
+                <i class="ri-search-line"></i> Cek Ketersediaan
+            </button>
+        </div>
+    </div>
+
+    <div id="vehicleList">
+        <div class="text-center py-4 text-muted">
+            <i class="ri-car-line ri-3x mb-2 d-block"></i>
+            Pilih tanggal untuk melihat kendaraan tersedia
+        </div>
+    </div>
+
+    <div class="text-end mt-4">
+        <button type="button" class="btn btn-outline-secondary btn-prev-step" data-step="1">
+            <i class="ri-arrow-left-s-line"></i> Sebelumnya
+        </button>
+        <button type="button" class="btn btn-primary btn-next-step" data-step="2">
+            Selanjutnya <i class="ri-arrow-right-s-line"></i>
+        </button>
+    </div>
+</form>
+
+<script>
+    function renderVehicles(response, selectedVehicle) {
+        let html = '';
+
+        if (!response.length) {
+            html = '<div class="text-center py-4 text-muted"><i class="ri-close-circle-line ri-3x mb-2 d-block"></i>Tidak ada kendaraan tersedia untuk tanggal tersebut.</div>';
+        } else {
+            html = '<div class="row">';
+            $.each(response, function(i, v) {
+                const isSelected = String(selectedVehicle) === String(v.id);
+                html += '<div class="col-md-6 mb-3">';
+                html += '<div class="card vehicle-card h-100 ' + (isSelected ? 'selected' : '') + '" data-id="' + v.id + '" data-price="' + (v.base_price_per_day || 0) + '">';
+                html += '<div class="card-body">';
+                html += '<div class="d-flex justify-content-between">';
+                html += '<div class="flex-grow-1 me-2">';
+                html += '<div class="d-flex justify-content-between align-items-start mb-1">';
+                html += '<h6 class="mb-0">' + (v.license_plate || '-') + '</h6>';
+                html += '<div class="form-check ms-2">';
+                html += '<input class="form-check-input vehicle-radio" type="radio" name="_vehicle_radio" value="' + v.id + '" ' + (isSelected ? 'checked' : '') + '>';
+                html += '</div>';
+                html += '</div>';
+                html += '<p class="text-muted small mb-2">' + (v.brand_name || '') + ' ' + (v.model_name || '') + ' (' + (v.year || '-') + ')</p>';
+                html += '<div class="d-flex flex-wrap gap-1 mb-2">';
+                html += '<span class="badge bg-label-info"><i class="ri-palette-line"></i> ' + (v.color || '-') + '</span>';
+                html += '<span class="badge bg-label-secondary"><i class="ri-steering-2-line"></i> ' + (v.transmission || '-') + '</span>';
+                html += '<span class="badge bg-label-warning"><i class="ri-group-line"></i> ' + (v.seat_capacity || '-') + ' kursi</span>';
+                html += '</div>';
+                html += '<table class="table table-sm table-borderless mb-0">';
+                html += '<tr><td class="ps-0 text-muted small">Harga/hari</td><td class="pe-0 text-end"><strong>Rp ' + (v.base_price_per_day ? formatNumber(v.base_price_per_day) : '0') + '</strong></td></tr>';
+                html += '<tr><td class="ps-0 text-muted small">Deposit</td><td class="pe-0 text-end"><strong>Rp ' + (v.deposit_amount ? formatNumber(v.deposit_amount) : '0') + '</strong></td></tr>';
+                html += '</table>';
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+            });
+            html += '</div>';
+        }
+
+        $('#vehicleList').html(html);
+
+        $('.vehicle-card').off('click').on('click', function() {
+            $('.vehicle-card').removeClass('selected');
+            $('.vehicle-radio').prop('checked', false);
+            $(this).addClass('selected');
+            $(this).find('.vehicle-radio').prop('checked', true);
+            $('#vehicle_id').val($(this).data('id'));
+        });
+    }
+
+    $('#checkAvailability').on('click', function() {
+        const startDate = $('#filterStartDate').val();
+        const endDate = $('#filterEndDate').val();
+        const selectedVehicle = $('#vehicle_id').val();
+
+        if (!startDate || !endDate) {
+            Swal.fire({ icon: 'warning', title: 'Peringatan', text: 'Pilih tanggal mulai dan selesai.' });
+            return;
+        }
+
+        if (startDate >= endDate) {
+            Swal.fire({ icon: 'warning', title: 'Peringatan', text: 'Tanggal selesai harus setelah tanggal mulai.' });
+            return;
+        }
+
+        Swal.fire({ text: 'Memeriksa ketersediaan...', showConfirmButton: false, allowOutsideClick: false });
+
+        $.ajax({
+            url: '{{ route("rental.create.available-vehicles") }}',
+            type: 'GET',
+            data: { start_date: startDate, end_date: endDate },
+            dataType: 'JSON',
+            success: function(response) {
+                Swal.close();
+                renderVehicles(response, selectedVehicle);
+            },
+            error: function() {
+                Swal.close();
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal memeriksa ketersediaan.' });
+            }
+        });
+    });
+
+    if ($('#filterStartDate').val() && $('#filterEndDate').val()) {
+        $('#checkAvailability').trigger('click');
+    }
+</script>
