@@ -38,6 +38,10 @@ class LoginController extends Controller
         $this->validateLogin($request);
 
         Cookie::queue(Cookie::forget(config('2fa.cookie_name')));
+        // S-07: rotasi — hapus hash lama agar login baru wajib verifikasi ulang
+        if ($user = User::where('username', $request->username)->first()) {
+            $user->forceFill(['two_factor_cookie_hash' => null, 'two_factor_cookie_expires_at' => null])->saveQuietly();
+        }
 
         if ($this->attemptLogin($request)) {
             return $this->sendLoginResponse($request);
@@ -88,6 +92,11 @@ class LoginController extends Controller
 
     public function logout(Request $request)
     {
+        $user = Auth::user();
+        if ($user) {
+            $user->forceFill(['two_factor_cookie_hash' => null, 'two_factor_cookie_expires_at' => null])->saveQuietly();
+        }
+
         $this->guard()->logout();
 
         Cookie::queue(Cookie::forget(config('2fa.cookie_name')));

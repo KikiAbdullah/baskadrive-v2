@@ -28,7 +28,7 @@ class RoleSeeder extends Seeder
             'dashboard_view',
             'users_view', 'users_add', 'users_edit', 'users_delete', 'users_export',
             'roles_view', 'roles_add', 'roles_edit', 'roles_delete',
-            'permissions_view',
+            'permissions_view', 'permissions_add', 'permissions_edit', 'permissions_delete',
             'logs_view', 'logs_export',
             'settings_view', 'settings_edit',
             'report_view', 'report_export', 'report_download',

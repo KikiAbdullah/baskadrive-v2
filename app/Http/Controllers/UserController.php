@@ -79,19 +79,21 @@ class UserController extends Controller
                 $model = $this->model->findOrFail($id);
             }
 
+            $emailChanged = isset($data['email']) && $data['email'] !== $model->email;
+            $updateData = [
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'nowa' => $data['nowa'] ?? null,
+            ];
+            // S-09: reset verifikasi bila email diganti (MustVerifyEmail)
+            if ($emailChanged) {
+                $updateData['email_verified_at'] = null;
+            }
             if (($data['password'] ?? '') == '') {
-                $model->update([
-                    'name' => $data['name'],
-                    'email' => $data['email'],
-                    'nowa' => $data['nowa'] ?? null,
-                ]);
+                $model->update($updateData);
             } else {
-                $model->update([
-                    'name' => $data['name'],
-                    'email' => $data['email'],
-                    'nowa' => $data['nowa'] ?? null,
-                    'password' => $data['password'],
-                ]);
+                $updateData['password'] = $data['password'];
+                $model->update($updateData);
             }
 
             // S-03: bandingkan sebagai int (role dari form = ID string), lalu resolve ke model
@@ -137,6 +139,9 @@ class UserController extends Controller
             } else {
                 return $this->redirectSuccess(__FUNCTION__, false);
             }
+        } catch (ValidationException $e) {
+            DB::rollback();
+            throw $e;
         } catch (Exception $e) {
             DB::rollback();
             if ($request->ajax()) {
@@ -182,6 +187,9 @@ class UserController extends Controller
             DB::commit();
 
             return $this->redirectSuccess(__FUNCTION__, false);
+        } catch (ValidationException $e) {
+            DB::rollback();
+            throw $e;
         } catch (Exception $e) {
             DB::rollback();
 

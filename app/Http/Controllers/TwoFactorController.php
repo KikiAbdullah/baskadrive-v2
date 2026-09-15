@@ -26,8 +26,15 @@ class TwoFactorController extends Controller
         if ($stillValid && \Hash::check((string) $request->input('otp'), (string) $user->token_2fa)) {
             $user->forceFill(['token_2fa' => null, 'token_2fa_expires_at' => null])->save();
 
-            $lifetime = time() + 60 * 60 * 24 * 365;
-            Cookie::queue(config('2fa.cookie_name'), $user->id, $lifetime);
+            // S-07: simpan token acak hash di DB, cookie hanya berisi token polos (bukan ID)
+            $plainToken = \Illuminate\Support\Str::random(64);
+            $user->forceFill([
+                'two_factor_cookie_hash' => \Hash::make($plainToken),
+                'two_factor_cookie_expires_at' => now()->addHours(8),
+            ])->save();
+
+            $lifetime = 8 * 60; // 8 jam dalam menit, selaras dengan expiry DB
+            Cookie::queue(config('2fa.cookie_name'), $plainToken, $lifetime);
 
             return redirect($request->redirect ?? '/');
         } else {

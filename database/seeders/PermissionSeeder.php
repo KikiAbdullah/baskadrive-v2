@@ -70,6 +70,9 @@ class PermissionSeeder extends Seeder
         // ===========================================
         'permissions' => [
             'permissions_view',
+            'permissions_add',
+            'permissions_edit',
+            'permissions_delete',
         ],
 
         // ===========================================

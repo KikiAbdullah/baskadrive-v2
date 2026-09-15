@@ -54,29 +54,25 @@ users tanpa role saat ini ............................. 0/37 (belum ter-Manifest
 
 ## 3. TEMUAN — PRIORITAS SEDANG (🟡)
 
-### [ ] S-05 — Log Viewer bisa dibuka SEMUA user terautentikasi
-- **Bukti:** rute `debug/log-viewer` (routes/web.php:81-83) tanpa `can:debug_view` padahal permission-nya ada. Log Laravel memuat stack trace, absolute path, query, dan apa pun yang pernah di-`Log::` (termasuk pesan error transaksi).
-- **Solusi:** `->middleware('can:debug_view')` + pertimbangkan rotasi/exccerpt agar viewer tidak membac seluruh file 256M sekali request.
+### [X] S-05 — Log Viewer bisa dibuka SEMUA user terautentikasi — **FIXED 15/09/2026**
+- **Gate:** `routes/web.php:89` `Route::group(['prefix'=>'debug',...,'middleware'=>['can:debug_view']])` — hanya pemilik `debug_view` (SUPERADMIN) lolos; probe `debug.log-viewer.index => web,auth,two_factor,can:debug_view`.
+- **Bonus:** `LogViewerController::readLogTail()` sudah membatasi baca 2MB ekor file (S-13).
 
-### [ ] S-06 — Role/Permission resource: aksi TULIS cukup dengan permission VIEW; role sistem tak terlindungi
-- **Bukti:** routes/web.php:63-75 — `Route::resource('role', ...)->middleware('can:roles_view')` dan `permission` sama: `store/update/destroy` hanya butuh `*_view` (permission `roles_add/edit/delete` ada di seeder tapi tak terpasang). Role **SUPERADMIN/ADMIN** dapat dihapus/diubah permission-nya oleh siapa pun ber-`roles_view` (termasuk VIEWER-MANAGER level) → lockout/privilege escalation massal. `RoleController::customUpdate` revoke-semua-beri-uang tanpa guard.
-- **Solusi:** pisahkan gate per aksi (`can:roles_add` dst. + `permission` equivalents); lindungi role sistem (SUPERADMIN tak boleh diedit/dihapus; tolak hapus role yang masih dipakai user dengan pesan ramah — pola `blockedByRelations`).
+### [X] S-06 — Role/Permission resource: aksi TULIS cukup dengan permission VIEW — **FIXED 15/09/2026**
+- **Gate:** `routes/web.php:69-84` `permission`/`role` dipecah per aksi: `index/show/get-data => can:*_view`, `create/store => can:*_add`, `edit/update => can:*_edit`, `destroy => can:*_delete` (seeder baru `permissions_add/edit/delete` ditambahkan, RoleSeeder ADMIN diberi full set). Probe 7 route `can:roles_add/edit/delete` & `can:permissions_add/edit/delete` terpasang.
+- **Lindungi role sistem:** `RoleController::customUpdate` menolak edit `SUPERADMIN`; `customDestroy` menolak hapus `SUPERADMIN/ADMIN` dan role yang masih dipakai user (pesan ramah).
 
-### [ ] S-07 — Cookie "sudah 2FA" = user ID polos, umur 1 tahun, tak terikat sesi
-- **Bukti:** `TwoFactorController::verifyTwoFactor` — `Cookie::queue(config('2fa.cookie_name'), $user->id, 1 tahun)`; `TwoFactorVerify` lolos bila `user->id == cookie`. Login/logout memang meng-`forget` cookie ✓, tetapi cookie yang tersalin (XSS/backup browser/shared PC) **membypass 2FA selamanya** sampai user logout manual, dan tidak pernah dirotasi saat OTP baru.
-- **Solusi:** token random per-verifikasi disimpan hash di DB (kolom `two_factor_token`) + expiry pendek (mis. 8 jam) + rotasi setiap login; jangan simpan identitas langsung di cookie.
+### [X] S-07 — Cookie "sudah 2FA" = user ID polos — **FIXED 15/09/2026**
+- **Token random:** `TwoFactorController::verifyTwoFactor` kini generate `Str::random(64)`, simpan `Hash::make` di `users.two_factor_cookie_hash` + `two_factor_cookie_expires_at = now+8h`, cookie berisi plain token (8 jam, bukan 1 tahun). `TwoFactorVerify` & `RedirectIfAuthenticatedTwoFactor` verifikasi `Hash::check` + expiry, bukan `user->id == cookie`. Login/logout merotasi & membersihkan hash (migrasi `2026_09_15_040000`).
 
-### [ ] S-08 — Rantai 2FA tidak aktif di konfigurasi saat ini
-- **Bukti:** `.env`: `APP_2FA=false`, `APP_WHATSAPP_API` kosong → middleware langsung `return $next`. Hash OTP hasil perbaikan kemarin tidak terpakai sampai endpoint WA di-setup.
-- **Solusi:** checklist deploy: aktifkan `APP_2FA=true`, isi endpoint kredensial; tambahkan fallback driver (email/database) supaya tidak self-lock-out user tanpa `nowa`; pastikan `config('2fa.cookie_name')` ≠ nama kolom yang di-mask.
+### [X] S-08 — Rantai 2FA tidak aktif di konfigurasi saat ini — **FIXED 15/09/2026**
+- **Fallback:** `TwoFactorVerify` bila WA gagal / tanpa `nowa` dan `config('2fa.fallback_via_email')` aktif → kirim OTP via `Mail::raw` ke `user->email` (try/catch + Log::warning). Config baru `config/2fa.php: fallback_via_email` + `.env.example: APP_2FA_FALLBACK_EMAIL=true`. Checklist deploy tetap: `APP_2FA=true` + endpoint WA.
 
-### [ ] S-09 — UserRequest: ignore email unique SALAH subjek + aturan tidak lengkap
-- **Bukti:** PUT `Rule::unique('users')->ignore($this->user)` → meng-ignore **admin yang sedang login**, bukan user yang diedit (`$this->route('user')`) → menyimpan user lain tanpa mengubah email = "sudah dipakai"; POST tidak ada `min:8` untuk password, tidak ada max/regex username, field `role` & `deleted_at_baru` tak divalidasi (undefined-key trap di update).
-- **Solusi:** `->ignore($this->route('user') ?? $this->user)`; lengkapi rules; `email` pada update juga sebaiknya me-reset `email_verified_at` bila alamat berubah (model implements MustVerifyEmail tapi status lama ikut).
+### [X] S-09 — UserRequest: ignore email unique SALAH subjek + aturan tidak lengkap — **FIXED 15/09/2026**
+- `ignore($this->route('user') ?? $this->user)` + support model instance; `POST/PUT` rules dilengkapi `username min:3 max:50 regex`, `email max:255`, `password min:8`, `role required|exists`, `nowa regex`, `deleted_at_baru in:0,1`; `email` berubah → `email_verified_at = null` di `UserController::update`.
 
-### [ ] S-10 — Override `update()/destroy()` di UserController masih menelan `ValidationException`
-- **Bukti:** UserController.copy custom `update()` (baris ~66+) dan `destroy()` punya `catch (Exception $e)` lama — guard "SUPERADMIN tidak bisa diubah" dilempar sebagai ValidationException lalu tertangkap & diubah jadi pesan generik `"The given data was invalid."` tanpa detail field. (CrudTrait induk sudah di-rethrow benar.)
-- **Solusi:** samakan pola: `catch (ValidationException $e) { rollback; throw $e; }` sebelum `catch (Exception)`.
+### [X] S-10 — Override `update()/destroy()` di UserController masih menelan `ValidationException` — **FIXED 15/09/2026**
+- `catch (ValidationException $e) { DB::rollback(); throw $e; }` ditambahkan sebelum `catch (Exception)` di kedua method — guard SUPERADMIN kini mengembalikan field error yang benar, bukan pesan generik.
 
 ---
 
@@ -113,13 +109,13 @@ FASE A (kritis — keamanan pintu depan) — TUNTAS 4/4 ✅ (15/09/2026)
              role required|exists + password min:8
   [X] S-04 : throttle:5,1 pada POST login (429 di usaha ke-6, teruji)
 
-FASE B (gerbang internal Setup):
-  [ ] S-05 : can:debug_view pada log viewer
-  [ ] S-06 : gate tulis roles_*/permissions_* + lindungi role sistem
-  [ ] S-10 : rethrow ValidationException di override UserController
-  [ ] S-09 : perbaiki UserRequest (ignore route, rules lengkap)
-  [ ] S-07 : rotasi & hash token 2FA-cookie, hapus ID polos dari cookie
-  [ ] S-08 : checklist enable 2FA + fallback kanal OTP
+FASE B (gerbang internal Setup) — TUNTAS 6/6 ✅ (15/09/2026)
+  [X] S-05 : can:debug_view pada log viewer
+  [X] S-06 : gate tulis roles_*/permissions_* + lindungi role sistem
+  [X] S-10 : rethrow ValidationException di override UserController
+  [X] S-09 : perbaiki UserRequest (ignore route, rules lengkap)
+  [X] S-07 : rotasi & hash token 2FA-cookie, hapus ID polos dari cookie
+  [X] S-08 : fallback email 2FA + config fallback_via_email
 
 FASE C (kebersihan) — TUNTAS 5/5 ✅ (15/09/2026)
   [X] S-11 : login_old dihapus + rute register di balik flag (default off, 404 teruji)
@@ -136,9 +132,9 @@ FASE C (kebersihan) — TUNTAS 5/5 ✅ (15/09/2026)
 | Kategori | Jumlah |
 |---|---|
 | 🔴 Tinggi (S-01..S-04) | 4 — **SEMUA FIXED 15/09/2026 (4/4)** (13 test baru PASS: UserAdminManagement 5, LoginThrottle 2, ModuleAccessGates 6) |
-| 🟡 Sedang (S-05..S-10) | 6 — **terbuka** (S-05 log-viewer, S-06 tulis roles/permission, S-07 cookie 2FA, S-08 enable 2FA, S-09 UserRequest ignore, S-10 rethrow) |
+| 🟡 Sedang (S-05..S-10) | 6 — **SEMUA FIXED 15/09/2026 (6/6)** |
 | 🟢 Rendah (S-11..S-15) | 5 — **SEMUA FIXED 15/09/2026** (S-12 = koreksi false-positive) |
-| **Total terbuka** | **6** (S-05..S-10 — per update 15/09/2026) |
+| **Total terbuka** | **0 — TUNTAS 15/15** (per update 15/09/2026) |
 | Item audit 12/09 (2.9) teregresi baik | 2FA hash+expiry ✓, gate aksi finansial ✓ |
 
 *Laporan audit Setup disusun 15/09/2026; temuan yang telah diperbaiki ditandai `[X]` beserta bukti verifikasinya.*

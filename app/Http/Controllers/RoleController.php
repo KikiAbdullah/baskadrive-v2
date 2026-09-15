@@ -88,6 +88,11 @@ class RoleController extends Controller
 
     public function customUpdate($data, $model)
     {
+        // S-06: lindungi role sistem — SUPERADMIN tidak boleh diubah permission-nya
+        if (in_array($model->name, ['SUPERADMIN'], true)) {
+            throw new Exception('Role sistem "'.$model->name.'" tidak boleh diubah.');
+        }
+
         foreach ($model->permissions as $permission) {
             $model->revokePermissionTo($permission->name);
         }
@@ -98,6 +103,18 @@ class RoleController extends Controller
             foreach ($permissions as $permission) {
                 $model->givePermissionTo($permission);
             }
+        }
+    }
+
+    public function customDestroy($model)
+    {
+        // S-06: lindungi role sistem & role yang masih dipakai user
+        if (in_array($model->name, ['SUPERADMIN', 'ADMIN'], true)) {
+            throw new Exception('Role sistem "'.$model->name.'" tidak boleh dihapus.');
+        }
+
+        if ($model->users()->exists()) {
+            throw new Exception('Role "'.$model->name.'" masih dipakai oleh user — cabut dulu dari user terkait sebelum menghapus.');
         }
     }
 }

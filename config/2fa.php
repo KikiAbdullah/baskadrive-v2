@@ -16,4 +16,7 @@ return [
 
     'cookie_name' => env('APP_2FA_NAME', 'token_2fa'),
 
+    // S-08: fallback bila WA tidak tersedia — OTP tetap terkirim lewat email
+    'fallback_via_email' => env('APP_2FA_FALLBACK_EMAIL', true),
+
 ];

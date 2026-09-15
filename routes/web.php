@@ -67,14 +67,29 @@ Route::group(['middleware' => ['auth']], function () {
         // USER SETUP (existing)
         // ===========================================
         Route::group(['prefix' => 'user-setup', 'as' => 'user-setup.'], function () {
-            // PERMISSIONS
+            // PERMISSIONS — S-06: gate tulis terpisah, view tetap
             Route::group(['prefix' => 'permission', 'as' => 'permission.', 'middleware' => 'can:permissions_view'], function () {
                 Route::get('get-data', [PermissionController::class, 'ajaxData'])->name('get-data');
             });
-            Route::resource('permission', PermissionController::class)->middleware('can:permissions_view');
+            Route::get('permission', [PermissionController::class, 'index'])->name('permission.index')->middleware('can:permissions_view');
+            Route::get('permission/create', [PermissionController::class, 'create'])->name('permission.create')->middleware('can:permissions_add');
+            Route::post('permission', [PermissionController::class, 'store'])->name('permission.store')->middleware('can:permissions_add');
+            Route::get('permission/{permission}', [PermissionController::class, 'show'])->name('permission.show')->middleware('can:permissions_view');
+            Route::get('permission/{permission}/edit', [PermissionController::class, 'edit'])->name('permission.edit')->middleware('can:permissions_edit');
+            Route::put('permission/{permission}', [PermissionController::class, 'update'])->name('permission.update')->middleware('can:permissions_edit');
+            Route::patch('permission/{permission}', [PermissionController::class, 'update'])->middleware('can:permissions_edit');
+            Route::delete('permission/{permission}', [PermissionController::class, 'destroy'])->name('permission.destroy')->middleware('can:permissions_delete');
 
-            // ROLES
-            Route::resource('role', RoleController::class)->middleware('can:roles_view');
+            // ROLES — S-06: gate per aksi + lindungi role sistem via controller
+            Route::get('role/get-data', [RoleController::class, 'ajaxData'])->name('role.get-data')->middleware('can:roles_view');
+            Route::get('role', [RoleController::class, 'index'])->name('role.index')->middleware('can:roles_view');
+            Route::get('role/create', [RoleController::class, 'create'])->name('role.create')->middleware('can:roles_add');
+            Route::post('role', [RoleController::class, 'store'])->name('role.store')->middleware('can:roles_add');
+            Route::get('role/{role}', [RoleController::class, 'show'])->name('role.show')->middleware('can:roles_view');
+            Route::get('role/{role}/edit', [RoleController::class, 'edit'])->name('role.edit')->middleware('can:roles_edit');
+            Route::put('role/{role}', [RoleController::class, 'update'])->name('role.update')->middleware('can:roles_edit');
+            Route::patch('role/{role}', [RoleController::class, 'update'])->middleware('can:roles_edit');
+            Route::delete('role/{role}', [RoleController::class, 'destroy'])->name('role.destroy')->middleware('can:roles_delete');
 
             // USERS
             Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => 'can:users_view'], function () {
@@ -84,9 +99,9 @@ Route::group(['middleware' => ['auth']], function () {
         });
 
         // ===========================================
-        // DEBUG / UTILITIES
+        // DEBUG / UTILITIES — S-05: hanya pemilik debug_view
         // ===========================================
-        Route::group(['prefix' => 'debug', 'as' => 'debug.'], function () {
+        Route::group(['prefix' => 'debug', 'as' => 'debug.', 'middleware' => ['can:debug_view']], function () {
             Route::get('log-viewer', [LogViewerController::class, 'index'])->name('log-viewer.index');
         });
         Route::get('get-button-option', [AjaxController::class, 'getButtonOption'])->name('get.button-option');

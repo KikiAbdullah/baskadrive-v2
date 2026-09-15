@@ -26,13 +26,13 @@ class User extends Authenticatable implements MustVerifyEmail
      * @var array
      */
     protected $fillable = [
-        'name', 'email', 'password', 'username', 'nowa', 'token_2fa', 'token_last_request', 'token_2fa_expires_at', 'employee_id',
+        'name', 'email', 'password', 'username', 'nowa', 'token_2fa', 'token_last_request', 'token_2fa_expires_at', 'two_factor_cookie_hash', 'two_factor_cookie_expires_at', 'employee_id',
     ];
 
     protected $appends = ['deleted_at_baru'];
 
     protected $hidden = [
-        'password', 'remember_token', 'token_2fa',
+        'password', 'remember_token', 'token_2fa', 'two_factor_cookie_hash',
     ];
 
     /**
@@ -46,6 +46,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'token_last_request' => 'datetime',
             'token_2fa_expires_at' => 'datetime',
+            'two_factor_cookie_expires_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

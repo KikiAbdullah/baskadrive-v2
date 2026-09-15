@@ -24,7 +24,12 @@ class RedirectIfAuthenticatedTwoFactor
         $token2fa = Cookie::get(config('2fa.cookie_name'));
         $user = Auth::user();
 
-        if (! empty($token2fa) && $user->id == $token2fa) {
+        // S-07: verifikasi hash, bukan ID polos
+        if (! empty($token2fa)
+            && ! empty($user->two_factor_cookie_hash)
+            && $user->two_factor_cookie_expires_at
+            && $user->two_factor_cookie_expires_at->isFuture()
+            && \Hash::check((string) $token2fa, (string) $user->two_factor_cookie_hash)) {
             return redirect('/');
         }
 
