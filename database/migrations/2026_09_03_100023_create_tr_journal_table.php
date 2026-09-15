@@ -13,7 +13,7 @@ return new class extends Migration
             $table->dateTime('transaction_date')->useCurrent();
             $table->string('reference_number', 50)->unique()->nullable();
             $table->text('description')->nullable();
-            $table->enum('journal_type', ['rental', 'payment', 'refund', 'maintenance', 'fine', 'adjustment']);
+            $table->enum('journal_type', ['rental', 'payment', 'refund', 'maintenance', 'fine', 'adjustment', 'manual', 'insurance']);
             $table->unsignedBigInteger('created_by')->nullable();
             $table->timestamp('created_at')->useCurrent();
 

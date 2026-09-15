@@ -33,6 +33,7 @@ return new class extends Migration
             $table->decimal('young_driver_fee', 10, 2)->default(0);
             $table->decimal('discount_amount', 10, 2)->default(0);
             $table->decimal('tax_amount', 10, 2)->default(0);
+            $table->decimal('tax_percent', 5, 2)->nullable()->comment('PPN kustom per sewa; null = ikut pengaturan global');
             $table->decimal('deposit_amount', 10, 2)->nullable();
             $table->decimal('total_amount', 12, 2)->nullable();
 

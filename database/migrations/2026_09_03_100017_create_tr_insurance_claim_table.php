@@ -21,6 +21,7 @@ return new class extends Migration
             $table->enum('status', ['draft', 'submitted', 'under_review', 'approved', 'rejected', 'paid'])
                 ->default('draft');
             $table->dateTime('approved_date')->nullable();
+            $table->date('paid_date')->nullable();
             $table->text('notes')->nullable();
             $table->timestamp('created_at')->useCurrent();
 

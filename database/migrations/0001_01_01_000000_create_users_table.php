@@ -21,6 +21,10 @@ return new class extends Migration
             $table->string('nowa')->nullable();
             $table->string('token_2fa')->nullable();
             $table->dateTime('token_last_request')->nullable();
+            $table->timestamp('token_2fa_expires_at')->nullable();
+            $table->string('two_factor_cookie_hash', 255)->nullable();
+            $table->timestamp('two_factor_cookie_expires_at')->nullable();
+            $table->unsignedBigInteger('employee_id')->nullable()->unique();
             $table->rememberToken();
             $table->timestamps();
             $table->softDeletes();

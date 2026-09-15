@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('model_name', 100)->comment('Nama model (Avanza, Xenia, dll.)');
             $table->string('category', 50)->nullable()->comment('Kategori: SUV, MPV, Sedan, Hatchback');
             $table->enum('fuel_type', ['Petrol', 'Diesel', 'Electric', 'Hybrid']);
-            $table->enum('transmission', ['Manual', 'Automatic'])->nullable();
+            $table->enum('transmission', ['Manual', 'Automatic', 'CVT'])->nullable();
             $table->tinyInteger('seat_capacity')->nullable()->comment('Kapasitas penumpang');
             $table->decimal('base_price_per_day', 10, 2)->comment('Harga sewa per hari');
             $table->decimal('base_price_per_km', 10, 2)->nullable()->comment('Harga sewa per km (opsional)');

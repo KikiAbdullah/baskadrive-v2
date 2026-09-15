@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('province', 50)->nullable();
             $table->string('postal_code', 10)->nullable();
             $table->string('country', 50)->default('Indonesia');
-            $table->string('driver_license_number', 30)->unique();
+            $table->string('driver_license_number', 30)->nullable()->unique();
             $table->date('driver_license_expiry')->nullable();
             $table->string('driver_license_photo', 255)->nullable();
             $table->string('id_card_number', 20)->unique()->nullable();
