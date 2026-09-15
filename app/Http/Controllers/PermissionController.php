@@ -43,4 +43,30 @@ class PermissionController extends Controller
 
         return $data;
     }
+
+    /**
+     * Tolak hapus permission yang masih dipakai role/user (audit Setup S-14):
+     * tanpa ini Spatie diam-diam mencabut izin dari role terkait lewat cascade pivot.
+     */
+    public function customDestroy($model)
+    {
+        $tables = config('permission.table_names', []);
+
+        $inRoles = \DB::table($tables['role_has_permissions'] ?? 'role_has_permissions')
+            ->where('permission_id', $model->id)
+            ->exists();
+
+        $inUsers = \DB::table($tables['model_has_permissions'] ?? 'model_has_permissions')
+            ->where('permission_id', $model->id)
+            ->where('model_type', 'App\\Models\\User')
+            ->exists();
+
+        if ($inRoles || $inUsers) {
+            throw new Exception(
+                'Permission "'.$model->name.'" masih melekat pada '.($inRoles ? 'satu/lebih role' : '').
+                ($inRoles && $inUsers ? ' dan ' : '').($inUsers ? 'user langsung' : '').
+                '. Cabut dulu dari role/user terkait sebelum menghapus.'
+            );
+        }
+    }
 }

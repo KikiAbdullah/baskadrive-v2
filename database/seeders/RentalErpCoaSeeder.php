@@ -38,6 +38,7 @@ class RentalErpCoaSeeder extends Seeder
         ['4-1100', 'Pendapatan Sewa Dasar', 'income', '4-1000'],
         ['4-1200', 'Pendapatan Sewa Tambahan', 'income', '4-1000'],
         ['4-2000', 'Pendapatan Denda', 'income', null],
+        ['4-3000', 'Pendapatan Klaim Asuransi', 'income', null],
 
         // BEBAN
         ['5-1000', 'Beban Operasional', 'expense', null],
@@ -53,8 +54,18 @@ class RentalErpCoaSeeder extends Seeder
     public function run(): void
     {
         $ids = [];
+        $created = 0;
 
         foreach ($this->coa as [$code, $name, $type, $parent]) {
+            // Idempoten: lewati akun yang sudah ada (misal dibuat oleh migration) agar seed
+            // tidak menabrak unique account_code saat dijalankan setelah migrasi (audit M-04).
+            $existing = DB::table('m_coa')->where('account_code', $code)->first();
+            if ($existing) {
+                $ids[$code] = $existing->account_id;
+
+                continue;
+            }
+
             $id = DB::table('m_coa')->insertGetId([
                 'account_code' => $code,
                 'account_name' => $name,
@@ -64,8 +75,9 @@ class RentalErpCoaSeeder extends Seeder
             ]);
 
             $ids[$code] = $id;
+            $created++;
         }
 
-        $this->command->info('RentalErpCoaSeeder selesai: '.count($this->coa).' akun COA.');
+        $this->command->info('RentalErpCoaSeeder selesai: '.$created.' akun baru dari '.count($this->coa).' total.');
     }
 }

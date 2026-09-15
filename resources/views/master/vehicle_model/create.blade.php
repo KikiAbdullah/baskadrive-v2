@@ -4,7 +4,7 @@
     </div>
 
     <div class="card-body  mt-3">
-        <form method="POST" action="{{ route($url['store']) }}" id="dform">
+        <form method="POST" action="{{ route($url['store']) }}" class="js-crud-create" enctype="multipart/form-data">
             @csrf
             @include($form)
             <div class="d-flex justify-content-end align-items-center">

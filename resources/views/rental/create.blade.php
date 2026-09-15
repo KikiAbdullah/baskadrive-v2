@@ -172,6 +172,9 @@
         const withDriver = $('#is_with_driver').is(':checked');
         const driverId = $('#driver_id').val();
         const promoId = $('#promo_id').val();
+        const depositAmount = $('#deposit_amount').val();
+        const taxEnabled = $('#tax_enabled').length ? $('#tax_enabled').is(':checked') : true;
+        const taxPercent = taxEnabled ? ($('#tax_percent_input').val() ?? null) : 0;
 
         if (!vehicleId || !startDate || !endDate) return;
 
@@ -186,6 +189,8 @@
                 is_with_driver: withDriver,
                 driver_id: driverId,
                 promo_id: promoId,
+                deposit_amount: depositAmount,
+                tax_percent: taxPercent,
             },
             dataType: 'JSON',
             success: function(response) {
@@ -197,9 +202,12 @@
                     $('#priceRowInsurance').text('Rp ' + formatNumber(d.insurance_fee));
                     $('#priceRowDriver').text('Rp ' + formatNumber(d.driver_fee));
                     $('#priceRowDiscount').text('Rp -' + formatNumber(d.discount_amount));
+                    $('#priceRowTaxPercent').text(d.tax_percent);
                     $('#priceRowTax').text('Rp ' + formatNumber(d.tax_amount));
                     $('#priceRowDeposit').text('Rp ' + formatNumber(d.deposit_amount));
                     $('#priceRowTotal').text('Rp ' + formatNumber(d.total_amount));
+                    $('#taxPriceRow').toggle(parseFloat(d.tax_percent) > 0);
+                    $('#depositPriceRow').toggle(parseFloat(d.deposit_amount) > 0);
                     $('#priceSummary').slideDown();
                 }
             }

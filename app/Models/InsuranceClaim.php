@@ -15,12 +15,13 @@ class InsuranceClaim extends Model
     protected $fillable = [
         'rental_id', 'damage_id', 'claim_number', 'insurance_provider',
         'policy_number', 'claim_date', 'claim_amount', 'approved_amount',
-        'status', 'approved_date', 'notes',
+        'status', 'approved_date', 'paid_date', 'notes',
     ];
 
     protected $casts = [
         'claim_date' => 'datetime',
         'approved_date' => 'datetime',
+        'paid_date' => 'date',
         'claim_amount' => 'decimal:2',
         'approved_amount' => 'decimal:2',
         'created_at' => 'datetime',

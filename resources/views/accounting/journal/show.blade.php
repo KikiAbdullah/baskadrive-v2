@@ -35,12 +35,14 @@
                 <h4 class="mb-1">{{ $item->reference_number ?? 'Jurnal' }}</h4>
                 <p class="mb-6">{{ $subtitle }}</p>
             </div>
-            <div class="d-flex align-content-center flex-wrap gap-2">
-                <a href="{{ route('accounting.journal.index') }}" class="btn btn-outline-secondary">
-                    <i class="ri-arrow-left-line me-1"></i> Kembali
+            <div class="d-flex align-content-center flex-wrap gap-4">
+                <a href="{{ route('accounting.journal.index') }}" class="action-link-icon-text">
+                    <i class="ri-arrow-left-line"></i>
+                    <span class="fw-semibold text-uppercase">Kembali</span>
                 </a>
-                <a href="{{ route('accounting.journal.export', $item->journal_id) }}" class="btn btn-primary">
-                    <i class="ri-download-line me-1"></i> Export CSV
+                <a href="{{ route('accounting.journal.export', $item->journal_id) }}" class="action-link-icon-text">
+                    <i class="ri-download-line"></i>
+                    <span class="fw-semibold text-uppercase">Export CSV</span>
                 </a>
             </div>
         </div>

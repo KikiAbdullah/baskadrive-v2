@@ -19,16 +19,21 @@ class TwoFactorController extends Controller
             'otp' => 'required',
         ]);
 
-        if ($request->input('otp') == Auth::user()->token_2fa) {
-            $user = Auth::user();
+        $user = Auth::user();
+        $stillValid = $user->token_2fa_expires_at && $user->token_2fa_expires_at->isFuture();
+
+        // Perbandingan strict terhadap hash + cek masa berlaku 5 menit (audit 2.9)
+        if ($stillValid && \Hash::check((string) $request->input('otp'), (string) $user->token_2fa)) {
+            $user->forceFill(['token_2fa' => null, 'token_2fa_expires_at' => null])->save();
+
             $lifetime = time() + 60 * 60 * 24 * 365;
             Cookie::queue(config('2fa.cookie_name'), $user->id, $lifetime);
 
-            $user->save();
-
             return redirect($request->redirect ?? '/');
         } else {
-            return redirect()->back()->withErrors('Your OTP Code is invalid.');
+            $user->forceFill(['token_2fa' => null, 'token_2fa_expires_at' => null, 'token_last_request' => null])->save();
+
+            return redirect()->back()->withErrors('Your OTP Code is invalid or expired.');
         }
     }
 

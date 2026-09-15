@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Route;
 // ===========================================
 // MODUL 1: DASHBOARD & MONITORING
 // ===========================================
-Route::group(['prefix' => 'dashboard', 'as' => 'dashboard.'], function () {
+Route::group(['prefix' => 'dashboard', 'as' => 'dashboard.', 'middleware' => ['can:dashboard_view']], function () {
     Route::get('/', [DashboardController::class, 'index'])->name('index');
     Route::get('/calendar', [DashboardController::class, 'calendar'])->name('calendar');
     Route::get('/fleet-map', [DashboardController::class, 'fleetMap'])->name('fleet-map');
@@ -34,78 +34,80 @@ Route::group(['prefix' => 'dashboard', 'as' => 'dashboard.'], function () {
 // ===========================================
 // MODUL 2: MASTER DATA
 // ===========================================
-Route::group(['prefix' => 'master', 'as' => 'master.'], function () {
+Route::group(['prefix' => 'master', 'as' => 'master.', 'middleware' => ['can:master_view']], function () {
 
     // Brand
     Route::group(['prefix' => 'brand', 'as' => 'brand.'], function () {
         Route::get('/', [BrandController::class, 'index'])->name('index');
         Route::get('/get-data', [BrandController::class, 'ajaxData'])->name('data');
-        Route::get('/create', [BrandController::class, 'create'])->name('create');
-        Route::post('/store', [BrandController::class, 'store'])->name('store');
-        Route::get('/{id}/edit', [BrandController::class, 'edit'])->name('edit');
-        Route::put('/{id}', [BrandController::class, 'update'])->name('update');
-        Route::delete('/{id}', [BrandController::class, 'destroy'])->name('destroy');
+        Route::get('/create', [BrandController::class, 'create'])->middleware('can:master_add')->name('create');
+        Route::post('/store', [BrandController::class, 'store'])->middleware('can:master_add')->name('store');
+        Route::get('/{id}/edit', [BrandController::class, 'edit'])->middleware('can:master_edit')->name('edit');
+        Route::put('/{id}', [BrandController::class, 'update'])->middleware('can:master_edit')->name('update');
+        Route::delete('/{id}', [BrandController::class, 'destroy'])->middleware('can:master_delete')->name('destroy');
     });
 
     // Vehicle Model
     Route::group(['prefix' => 'vehicle-model', 'as' => 'vehicle-model.'], function () {
         Route::get('/', [VehicleModelController::class, 'index'])->name('index');
         Route::get('/get-data', [VehicleModelController::class, 'ajaxData'])->name('data');
-        Route::get('/create', [VehicleModelController::class, 'create'])->name('create');
-        Route::post('/store', [VehicleModelController::class, 'store'])->name('store');
-        Route::get('/{id}/edit', [VehicleModelController::class, 'edit'])->name('edit');
-        Route::put('/{id}', [VehicleModelController::class, 'update'])->name('update');
-        Route::delete('/{id}', [VehicleModelController::class, 'destroy'])->name('destroy');
+        Route::get('/create', [VehicleModelController::class, 'create'])->middleware('can:master_add')->name('create');
+        Route::post('/store', [VehicleModelController::class, 'store'])->middleware('can:master_add')->name('store');
+        Route::get('/{id}/edit', [VehicleModelController::class, 'edit'])->middleware('can:master_edit')->name('edit');
+        Route::put('/{id}', [VehicleModelController::class, 'update'])->middleware('can:master_edit')->name('update');
+        Route::delete('/{id}', [VehicleModelController::class, 'destroy'])->middleware('can:master_delete')->name('destroy');
     });
 
     // Vehicle (Unit Mobil)
     Route::group(['prefix' => 'vehicle', 'as' => 'vehicle.'], function () {
         Route::get('/', [VehicleController::class, 'index'])->name('index');
         Route::get('/get-data', [VehicleController::class, 'ajaxData'])->name('data');
-        Route::get('/create', [VehicleController::class, 'create'])->name('create');
-        Route::post('/store', [VehicleController::class, 'store'])->name('store');
+        Route::get('/create', [VehicleController::class, 'create'])->middleware('can:master_add')->name('create');
+        Route::post('/store', [VehicleController::class, 'store'])->middleware('can:master_add')->name('store');
         Route::get('/{id}', [VehicleController::class, 'show'])->name('show');
-        Route::get('/{id}/edit', [VehicleController::class, 'edit'])->name('edit');
-        Route::put('/{id}', [VehicleController::class, 'update'])->name('update');
-        Route::delete('/{id}', [VehicleController::class, 'destroy'])->name('destroy');
+        Route::get('/{id}/edit', [VehicleController::class, 'edit'])->middleware('can:master_edit')->name('edit');
+        Route::put('/{id}', [VehicleController::class, 'update'])->middleware('can:master_edit')->name('update');
+        Route::delete('/{id}', [VehicleController::class, 'destroy'])->middleware('can:master_delete')->name('destroy');
         Route::get('/{id}/barcode', [VehicleController::class, 'barcode'])->name('barcode');
+        Route::get('/{id}/barcode-pdf', [VehicleController::class, 'barcodePdf'])->name('barcode-pdf');
+        Route::get('/{id}/history', [VehicleController::class, 'history'])->name('history');
     });
 
     // Customer
     Route::group(['prefix' => 'customer', 'as' => 'customer.'], function () {
         Route::get('/', [CustomerController::class, 'index'])->name('index');
         Route::get('/get-data', [CustomerController::class, 'ajaxData'])->name('data');
-        Route::get('/create', [CustomerController::class, 'create'])->name('create');
-        Route::post('/store', [CustomerController::class, 'store'])->name('store');
+        Route::get('/create', [CustomerController::class, 'create'])->middleware('can:master_add')->name('create');
+        Route::post('/store', [CustomerController::class, 'store'])->middleware('can:master_add')->name('store');
         Route::get('/{id}', [CustomerController::class, 'show'])->name('show');
-        Route::get('/{id}/edit', [CustomerController::class, 'edit'])->name('edit');
-        Route::put('/{id}', [CustomerController::class, 'update'])->name('update');
-        Route::delete('/{id}', [CustomerController::class, 'destroy'])->name('destroy');
-        Route::put('/{id}/verify', [CustomerController::class, 'verify'])->name('verify');
-        Route::post('/{id}/rental-now', [CustomerController::class, 'rentalNow'])->name('rental-now');
+        Route::get('/{id}/edit', [CustomerController::class, 'edit'])->middleware('can:master_edit')->name('edit');
+        Route::put('/{id}', [CustomerController::class, 'update'])->middleware('can:master_edit')->name('update');
+        Route::delete('/{id}', [CustomerController::class, 'destroy'])->middleware('can:master_delete')->name('destroy');
+        Route::put('/{id}/verify', [CustomerController::class, 'verify'])->middleware('can:master_edit')->name('verify');
+        Route::post('/{id}/rental-now', [CustomerController::class, 'rentalNow'])->middleware('can:master_add')->name('rental-now');
     });
 
     // Employee
     Route::group(['prefix' => 'employee', 'as' => 'employee.'], function () {
         Route::get('/', [EmployeeController::class, 'index'])->name('index');
         Route::get('/get-data', [EmployeeController::class, 'ajaxData'])->name('data');
-        Route::get('/create', [EmployeeController::class, 'create'])->name('create');
-        Route::post('/store', [EmployeeController::class, 'store'])->name('store');
-        Route::get('/{id}/edit', [EmployeeController::class, 'edit'])->name('edit');
-        Route::put('/{id}', [EmployeeController::class, 'update'])->name('update');
-        Route::delete('/{id}', [EmployeeController::class, 'destroy'])->name('destroy');
-        Route::put('/{id}/toggle-active', [EmployeeController::class, 'toggleActive'])->name('toggle-active');
+        Route::get('/create', [EmployeeController::class, 'create'])->middleware('can:master_add')->name('create');
+        Route::post('/store', [EmployeeController::class, 'store'])->middleware('can:master_add')->name('store');
+        Route::get('/{id}/edit', [EmployeeController::class, 'edit'])->middleware('can:master_edit')->name('edit');
+        Route::put('/{id}', [EmployeeController::class, 'update'])->middleware('can:master_edit')->name('update');
+        Route::delete('/{id}', [EmployeeController::class, 'destroy'])->middleware('can:master_delete')->name('destroy');
+        Route::put('/{id}/toggle-active', [EmployeeController::class, 'toggleActive'])->middleware('can:master_edit')->name('toggle-active');
     });
 
     // Driver
     Route::group(['prefix' => 'driver', 'as' => 'driver.'], function () {
         Route::get('/', [DriverController::class, 'index'])->name('index');
         Route::get('/get-data', [DriverController::class, 'ajaxData'])->name('data');
-        Route::get('/create', [DriverController::class, 'create'])->name('create');
-        Route::post('/store', [DriverController::class, 'store'])->name('store');
-        Route::get('/{id}/edit', [DriverController::class, 'edit'])->name('edit');
-        Route::put('/{id}', [DriverController::class, 'update'])->name('update');
-        Route::delete('/{id}', [DriverController::class, 'destroy'])->name('destroy');
+        Route::get('/create', [DriverController::class, 'create'])->middleware('can:master_add')->name('create');
+        Route::post('/store', [DriverController::class, 'store'])->middleware('can:master_add')->name('store');
+        Route::get('/{id}/edit', [DriverController::class, 'edit'])->middleware('can:master_edit')->name('edit');
+        Route::put('/{id}', [DriverController::class, 'update'])->middleware('can:master_edit')->name('update');
+        Route::delete('/{id}', [DriverController::class, 'destroy'])->middleware('can:master_delete')->name('destroy');
         Route::get('/{id}/history', [DriverController::class, 'history'])->name('history');
     });
 
@@ -113,42 +115,42 @@ Route::group(['prefix' => 'master', 'as' => 'master.'], function () {
     Route::group(['prefix' => 'location', 'as' => 'location.'], function () {
         Route::get('/', [LocationController::class, 'index'])->name('index');
         Route::get('/get-data', [LocationController::class, 'ajaxData'])->name('data');
-        Route::post('/store', [LocationController::class, 'store'])->name('store');
-        Route::get('/{id}/edit', [LocationController::class, 'edit'])->name('edit');
-        Route::put('/{id}', [LocationController::class, 'update'])->name('update');
-        Route::delete('/{id}', [LocationController::class, 'destroy'])->name('destroy');
+        Route::post('/store', [LocationController::class, 'store'])->middleware('can:master_add')->name('store');
+        Route::get('/{id}/edit', [LocationController::class, 'edit'])->middleware('can:master_edit')->name('edit');
+        Route::put('/{id}', [LocationController::class, 'update'])->middleware('can:master_edit')->name('update');
+        Route::delete('/{id}', [LocationController::class, 'destroy'])->middleware('can:master_delete')->name('destroy');
     });
 
     // Workshop
     Route::group(['prefix' => 'workshop', 'as' => 'workshop.'], function () {
         Route::get('/', [WorkshopController::class, 'index'])->name('index');
         Route::get('/get-data', [WorkshopController::class, 'ajaxData'])->name('data');
-        Route::post('/store', [WorkshopController::class, 'store'])->name('store');
-        Route::get('/{id}/edit', [WorkshopController::class, 'edit'])->name('edit');
-        Route::put('/{id}', [WorkshopController::class, 'update'])->name('update');
-        Route::delete('/{id}', [WorkshopController::class, 'destroy'])->name('destroy');
+        Route::post('/store', [WorkshopController::class, 'store'])->middleware('can:master_add')->name('store');
+        Route::get('/{id}/edit', [WorkshopController::class, 'edit'])->middleware('can:master_edit')->name('edit');
+        Route::put('/{id}', [WorkshopController::class, 'update'])->middleware('can:master_edit')->name('update');
+        Route::delete('/{id}', [WorkshopController::class, 'destroy'])->middleware('can:master_delete')->name('destroy');
     });
 
     // Maintenance Type
     Route::group(['prefix' => 'maintenance-type', 'as' => 'maintenance-type.'], function () {
         Route::get('/', [MaintenanceTypeController::class, 'index'])->name('index');
         Route::get('/get-data', [MaintenanceTypeController::class, 'ajaxData'])->name('data');
-        Route::post('/store', [MaintenanceTypeController::class, 'store'])->name('store');
-        Route::get('/{id}/edit', [MaintenanceTypeController::class, 'edit'])->name('edit');
-        Route::put('/{id}', [MaintenanceTypeController::class, 'update'])->name('update');
-        Route::delete('/{id}', [MaintenanceTypeController::class, 'destroy'])->name('destroy');
+        Route::post('/store', [MaintenanceTypeController::class, 'store'])->middleware('can:master_add')->name('store');
+        Route::get('/{id}/edit', [MaintenanceTypeController::class, 'edit'])->middleware('can:master_edit')->name('edit');
+        Route::put('/{id}', [MaintenanceTypeController::class, 'update'])->middleware('can:master_edit')->name('update');
+        Route::delete('/{id}', [MaintenanceTypeController::class, 'destroy'])->middleware('can:master_delete')->name('destroy');
     });
 
     // Promo
     Route::group(['prefix' => 'promo', 'as' => 'promo.'], function () {
         Route::get('/', [PromoController::class, 'index'])->name('index');
         Route::get('/get-data', [PromoController::class, 'ajaxData'])->name('data');
-        Route::get('/create', [PromoController::class, 'create'])->name('create');
-        Route::post('/store', [PromoController::class, 'store'])->name('store');
-        Route::get('/{id}/edit', [PromoController::class, 'edit'])->name('edit');
-        Route::put('/{id}', [PromoController::class, 'update'])->name('update');
-        Route::delete('/{id}', [PromoController::class, 'destroy'])->name('destroy');
-        Route::put('/{id}/toggle', [PromoController::class, 'toggle'])->name('toggle');
+        Route::get('/create', [PromoController::class, 'create'])->middleware('can:master_add')->name('create');
+        Route::post('/store', [PromoController::class, 'store'])->middleware('can:master_add')->name('store');
+        Route::get('/{id}/edit', [PromoController::class, 'edit'])->middleware('can:master_edit')->name('edit');
+        Route::put('/{id}', [PromoController::class, 'update'])->middleware('can:master_edit')->name('update');
+        Route::delete('/{id}', [PromoController::class, 'destroy'])->middleware('can:master_delete')->name('destroy');
+        Route::put('/{id}/toggle', [PromoController::class, 'toggle'])->middleware('can:master_edit')->name('toggle');
     });
 
     // COA (Chart of Account)
@@ -156,22 +158,23 @@ Route::group(['prefix' => 'master', 'as' => 'master.'], function () {
         Route::get('/', [CoaController::class, 'index'])->name('index');
         Route::get('/get-tree', [CoaController::class, 'tree'])->name('tree');
         Route::get('/get-data', [CoaController::class, 'ajaxData'])->name('data');
-        Route::get('/create', [CoaController::class, 'create'])->name('create');
-        Route::post('/store', [CoaController::class, 'store'])->name('store');
-        Route::get('/{id}/edit', [CoaController::class, 'edit'])->name('edit');
-        Route::put('/{id}', [CoaController::class, 'update'])->name('update');
-        Route::delete('/{id}', [CoaController::class, 'destroy'])->name('destroy');
+        Route::get('/create', [CoaController::class, 'create'])->middleware('can:master_add')->name('create');
+        Route::post('/store', [CoaController::class, 'store'])->middleware('can:master_add')->name('store');
+        Route::get('/{id}/edit', [CoaController::class, 'edit'])->middleware('can:master_edit')->name('edit');
+        Route::put('/{id}', [CoaController::class, 'update'])->middleware('can:master_edit')->name('update');
+        Route::delete('/{id}', [CoaController::class, 'destroy'])->middleware('can:master_delete')->name('destroy');
     });
 });
 
 // ===========================================
 // MODUL 3: OPERASIONAL SEWA (Core)
 // ===========================================
-Route::group(['prefix' => 'rental', 'as' => 'rental.'], function () {
+Route::group(['prefix' => 'rental', 'as' => 'rental.', 'middleware' => ['can:rental_view']], function () {
 
     // Daftar Sewa (satu menu, filter via tab status)
     Route::get('/', [RentalController::class, 'index'])->name('index');
     Route::get('/get-data', [RentalController::class, 'data'])->name('data');
+    Route::get('/get-button-option', [RentalController::class, 'getButtonOption'])->name('button-option');
     Route::get('/export', [RentalController::class, 'export'])->name('export');
 
     // Buat Sewa Baru (Wizard)
@@ -185,7 +188,7 @@ Route::group(['prefix' => 'rental', 'as' => 'rental.'], function () {
 
     // Aksi cepat
     Route::put('{id}/confirm', [RentalController::class, 'confirmPickup'])->name('confirm');
-    Route::put('{id}/cancel', [RentalController::class, 'cancelReservation'])->name('cancel');
+    Route::put('{id}/cancel', [RentalController::class, 'cancelReservation'])->middleware('can:rental_cancel')->name('cancel');
 
     // Detail Transaksi (Command Center per rental)
     Route::get('{rental}', [RentalController::class, 'show'])->name('show');
@@ -207,7 +210,7 @@ Route::group(['prefix' => 'rental', 'as' => 'rental.'], function () {
         // Fine
         Route::post('/fine', [RentalController::class, 'fineStore'])->name('fine.store');
         Route::put('/fine/{fineId}/pay', [RentalController::class, 'finePay'])->name('fine.pay');
-        Route::put('/fine/{fineId}/waive', [RentalController::class, 'fineWaive'])->name('fine.waive');
+        Route::put('/fine/{fineId}/waive', [RentalController::class, 'fineWaive'])->middleware('can:fine_waive')->name('fine.waive');
 
         // Invoice
         Route::get('/invoice', [RentalController::class, 'invoiceGenerate'])->name('invoice.generate');
@@ -219,18 +222,23 @@ Route::group(['prefix' => 'rental', 'as' => 'rental.'], function () {
 
         // Refund
         Route::post('/refund', [RentalController::class, 'refundStore'])->name('refund.store');
+
+        // Handover Inspection (checklist bodi + kelengkapan)
+        Route::get('/handover/{type}', [RentalController::class, 'handoverForm'])->name('handover.form')->where('type', 'out|in');
+        Route::post('/handover/{type}', [RentalController::class, 'handoverStore'])->name('handover.store')->where('type', 'out|in');
     });
 });
 
 // ===========================================
 // MODUL 4: FLEET MAINTENANCE & KERUSAKAN
 // ===========================================
-Route::group(['prefix' => 'fleet', 'as' => 'fleet.'], function () {
+Route::group(['prefix' => 'fleet', 'as' => 'fleet.', 'middleware' => ['can:fleet_view']], function () {
 
     // Maintenance
     Route::group(['prefix' => 'maintenance', 'as' => 'maintenance.'], function () {
         Route::get('/', [FleetController::class, 'maintenanceIndex'])->name('index');
         Route::get('/get-data', [FleetController::class, 'maintenanceData'])->name('data');
+        Route::get('/get-button-option', [FleetController::class, 'maintenanceButtonOption'])->name('button-option');
         Route::get('/create', [FleetController::class, 'maintenanceCreate'])->name('create');
         Route::post('/store', [FleetController::class, 'maintenanceStore'])->name('store');
         Route::get('/{id}/edit', [FleetController::class, 'maintenanceEdit'])->name('edit');
@@ -239,22 +247,22 @@ Route::group(['prefix' => 'fleet', 'as' => 'fleet.'], function () {
         Route::put('/{id}/reschedule', [FleetController::class, 'maintenanceReschedule'])->name('reschedule');
     });
 
-    // Damage Report
+    // Damage Report (gabungan Kerusakan + Klaim Asuransi)
     Route::group(['prefix' => 'damage', 'as' => 'damage.'], function () {
         Route::get('/', [FleetController::class, 'damageIndex'])->name('index');
         Route::get('/get-data', [FleetController::class, 'damageData'])->name('data');
+        Route::get('/get-button-option', [FleetController::class, 'damageButtonOption'])->name('button-option');
         Route::get('/create', [FleetController::class, 'damageCreate'])->name('create');
         Route::post('/store', [FleetController::class, 'damageStore'])->name('store');
         Route::get('/{id}', [FleetController::class, 'damageShow'])->name('show');
         Route::put('/{id}/status', [FleetController::class, 'damageUpdateStatus'])->name('update-status');
+        Route::put('/{id}/bill-renter', [FleetController::class, 'damageBillRenter'])->name('bill');
         Route::post('/{id}/photo', [FleetController::class, 'damagePhotoUpload'])->name('photo.upload');
         Route::delete('/photo/{photoId}', [FleetController::class, 'damagePhotoDelete'])->name('photo.delete');
     });
 
-    // Insurance Claim
+    // Insurance Claim (form buat & show diakses dari halaman Kerusakan)
     Route::group(['prefix' => 'insurance-claim', 'as' => 'insurance-claim.'], function () {
-        Route::get('/', [FleetController::class, 'claimIndex'])->name('index');
-        Route::get('/get-data', [FleetController::class, 'claimData'])->name('data');
         Route::get('/create', [FleetController::class, 'claimCreate'])->name('create');
         Route::post('/store', [FleetController::class, 'claimStore'])->name('store');
         Route::get('/{id}', [FleetController::class, 'claimShow'])->name('show');
@@ -265,12 +273,15 @@ Route::group(['prefix' => 'fleet', 'as' => 'fleet.'], function () {
 // ===========================================
 // MODUL 5: KEUANGAN & PENAGIHAN
 // ===========================================
-Route::group(['prefix' => 'finance', 'as' => 'finance.'], function () {
+Route::group(['prefix' => 'finance', 'as' => 'finance.', 'middleware' => ['can:finance_view']], function () {
+
+    // Satu halaman dengan tab: Invoice / Denda / Pembayaran
+    Route::get('/', [FinanceController::class, 'index'])->name('index');
 
     // Invoice
     Route::group(['prefix' => 'invoice', 'as' => 'invoice.'], function () {
-        Route::get('/', [FinanceController::class, 'invoiceIndex'])->name('index');
         Route::get('/get-data', [FinanceController::class, 'invoiceData'])->name('data');
+        Route::get('/get-button-option', [FinanceController::class, 'invoiceButtonOption'])->name('button-option');
         Route::get('/{id}', [FinanceController::class, 'invoiceShow'])->name('show');
         Route::get('/{id}/print', [FinanceController::class, 'invoicePrint'])->name('print');
         Route::post('/{id}/send-email', [FinanceController::class, 'invoiceSendEmail'])->name('send-email');
@@ -278,29 +289,30 @@ Route::group(['prefix' => 'finance', 'as' => 'finance.'], function () {
 
     // Fine
     Route::group(['prefix' => 'fine', 'as' => 'fine.'], function () {
-        Route::get('/', [FinanceController::class, 'fineIndex'])->name('index');
         Route::get('/get-data', [FinanceController::class, 'fineData'])->name('data');
+        Route::get('/get-button-option', [FinanceController::class, 'fineButtonOption'])->name('button-option');
         Route::put('/{id}/pay', [FinanceController::class, 'finePay'])->name('pay');
-        Route::put('/{id}/waive', [FinanceController::class, 'fineWaive'])->name('waive');
+        Route::put('/{id}/waive', [FinanceController::class, 'fineWaive'])->middleware('can:fine_waive')->name('waive');
     });
 
     // Payment History
-    Route::get('/payment', [FinanceController::class, 'paymentIndex'])->name('payment');
     Route::get('/payment/get-data', [FinanceController::class, 'paymentData'])->name('payment.data');
+    Route::get('/payment/get-button-option', [FinanceController::class, 'paymentButtonOption'])->name('payment.button-option');
     Route::get('/payment/{id}/receipt', [FinanceController::class, 'paymentReceipt'])->name('payment.receipt');
 });
 
 // ===========================================
 // MODUL 6: AKUNTANSI (Double-Entry)
 // ===========================================
-Route::group(['prefix' => 'accounting', 'as' => 'accounting.'], function () {
+Route::group(['prefix' => 'accounting', 'as' => 'accounting.', 'middleware' => ['can:accounting_view']], function () {
 
     // Jurnal Umum
     Route::group(['prefix' => 'journal', 'as' => 'journal.'], function () {
         Route::get('/', [AccountingController::class, 'journalIndex'])->name('index');
         Route::get('/get-data', [AccountingController::class, 'journalData'])->name('data');
-        Route::get('/{id}', [AccountingController::class, 'journalShow'])->name('show');
+        Route::get('/get-button-option', [AccountingController::class, 'journalButtonOption'])->name('button-option');
         Route::get('/export', [AccountingController::class, 'journalExport'])->name('export');
+        Route::get('/{id}', [AccountingController::class, 'journalShow'])->name('show');
     });
 
     // Posting Jurnal Manual
@@ -314,25 +326,24 @@ Route::group(['prefix' => 'accounting', 'as' => 'accounting.'], function () {
     Route::group(['prefix' => 'ledger', 'as' => 'ledger.'], function () {
         Route::get('/', [AccountingController::class, 'ledgerIndex'])->name('index');
         Route::get('/get-data', [AccountingController::class, 'ledgerData'])->name('data');
+        Route::get('/get-button-option', [AccountingController::class, 'ledgerButtonOption'])->name('button-option');
         Route::get('/{accountId}', [AccountingController::class, 'ledgerDetail'])->name('detail');
     });
+
+    // Laporan Keuangan Formal (audit 2.6)
+    Route::get('/statement/income', [AccountingController::class, 'incomeStatement'])->name('statement.income');
+    Route::get('/statement/balance-sheet', [AccountingController::class, 'balanceSheet'])->name('statement.balance');
+    Route::get('/statement/cash-flow', [AccountingController::class, 'cashFlow'])->name('statement.cashflow');
 });
 
 // ===========================================
-// MODUL 7: LAPORAN & ANALYTICS
+// MODUL 7: LAPORAN & ANALYTICS (satu halaman, tab)
 // ===========================================
-Route::group(['prefix' => 'report', 'as' => 'report.'], function () {
-    Route::get('/revenue', [ReportController::class, 'revenue'])->name('revenue');
-    Route::get('/revenue/get-data', [ReportController::class, 'revenueData'])->name('revenue.data');
-    Route::get('/fleet-utilization', [ReportController::class, 'fleetUtilization'])->name('fleet-utilization');
-    Route::get('/fleet-utilization/get-data', [ReportController::class, 'fleetUtilizationData'])->name('fleet-utilization.data');
-    Route::get('/top-customers', [ReportController::class, 'topCustomers'])->name('top-customers');
-    Route::get('/top-customers/get-data', [ReportController::class, 'topCustomersData'])->name('top-customers.data');
-    Route::get('/claims', [ReportController::class, 'claims'])->name('claims');
-    Route::get('/claims/get-data', [ReportController::class, 'claimsData'])->name('claims.data');
-    Route::get('/financial', [ReportController::class, 'financial'])->name('financial');
-    Route::get('/financial/get-data', [ReportController::class, 'financialData'])->name('financial.data');
+Route::group(['prefix' => 'report', 'as' => 'report.', 'middleware' => ['can:report_view']], function () {
+    Route::get('/', [ReportController::class, 'index'])->name('index');
+    Route::get('/get-data', [ReportController::class, 'data'])->name('data');
     Route::get('/export/{type}', [ReportController::class, 'export'])->name('export');
+    Route::get('/export-pdf/{type}', [ReportController::class, 'exportPdf'])->name('export-pdf');
 });
 
 // ===========================================
@@ -343,4 +354,5 @@ Route::group(['prefix' => 'system', 'as' => 'system.'], function () {
     Route::put('/settings', [SystemController::class, 'settingsUpdate'])->name('settings.update');
     Route::get('/activity-log', [SystemController::class, 'activityLog'])->name('activity-log');
     Route::get('/activity-log/get-data', [SystemController::class, 'activityLogData'])->name('activity-log.data');
+    Route::get('/backup', [SystemController::class, 'backup'])->middleware('can:settings_edit')->name('backup');
 });

@@ -20,9 +20,24 @@ class DashboardController extends Controller
     {
         $today = Carbon::today();
 
+        // Filter periode statistik (audit 2.1) - default tetap hari ini
+        $period = $request->get('period', 'today');
+        [$periodStart, $periodEnd] = match ($period) {
+            'week' => [$today->copy()->startOfWeek(), $today->copy()->endOfWeek()],
+            'month' => [$today->copy()->startOfMonth(), $today->copy()->endOfMonth()],
+            'year' => [$today->copy()->startOfYear(), $today->copy()->endOfYear()],
+            default => [Carbon::today()->startOfDay(), Carbon::today()->endOfDay()],
+        };
+        $periodLabel = match ($period) {
+            'week' => 'Minggu Ini',
+            'month' => 'Bulan Ini',
+            'year' => 'Tahun Ini',
+            default => 'Hari Ini',
+        };
+
         $stats = [
             'revenueToday' => Rental::whereIn('status', ['ongoing', 'completed'])
-                ->whereDate('created_at', $today)->sum('total_amount'),
+                ->whereBetween('created_at', [$periodStart, $periodEnd])->sum('total_amount'),
             'ongoingCount' => Rental::where('status', 'ongoing')->count(),
             'reservedCount' => Rental::where('status', 'reserved')->count(),
             'availableVehicles' => Vehicle::where('status', 'available')->count(),
@@ -47,6 +62,8 @@ class DashboardController extends Controller
             'title' => 'Dashboard',
             'subtitle' => 'Ringkasan Operasional',
             'stats' => $stats,
+            'period' => $period,
+            'periodLabel' => $periodLabel,
             'upcomingReturns' => $upcomingReturns,
             'upcomingPickups' => $upcomingPickups,
         ]);
@@ -95,7 +112,7 @@ class DashboardController extends Controller
     public function fleetMap()
     {
         try {
-            $vehicles = Vehicle::with(['model.brand'])
+            $vehicles = Vehicle::with(['model.brand', 'location'])
                 ->whereIn('status', ['available', 'rented', 'reserved', 'maintenance'])
                 ->get()
                 ->map(function ($v) {
@@ -104,8 +121,9 @@ class DashboardController extends Controller
                         'plate' => $v->license_plate,
                         'name' => ($v->model?->brand?->brand_name ?? '') . ' ' . ($v->model?->model_name ?? ''),
                         'status' => $v->status,
-                        'lat' => $v->latitude ?? config('baska.map_default_lat', -6.2),
-                        'lng' => $v->longitude ?? config('baska.map_default_lng', 106.816666),
+                        'lat' => $v->latitude ?? $v->location?->latitude ?? config('baska.map_default_lat', -6.2),
+                        'lng' => $v->longitude ?? $v->location?->longitude ?? config('baska.map_default_lng', 106.816666),
+                        'location' => $v->location?->location_name,
                         'rental' => $v->rentals()->whereIn('status', ['ongoing'])->first()?->rental_code,
                     ];
                 });

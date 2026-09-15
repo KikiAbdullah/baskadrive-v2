@@ -28,6 +28,7 @@
                                     <th>ID</th>
                                     <th>Plat Nomor</th>
                                     <th>Model</th>
+                                    <th>Lokasi</th>
                                     <th>Warna</th>
                                     <th>Tahun</th>
                                     <th>Kilometer</th>
@@ -41,7 +42,11 @@
                 </div>
             </div>
             <div class="col-md-6" id="dynamic-form">
-                @include('master.vehicle.create')
+                @can('master_add')
+
+                    @include('master.vehicle.create')
+
+                @endcan
             </div>
 
         </div>
@@ -53,7 +58,15 @@
         var dtable;
         const urlAjax = '{{ route('master.vehicle.data') }}';
         const getButtonOption = '{{ route('get.button-option') }}';
-        const buttons = {!! json_encode(['vedit' => $url['edit'], 'destroy' => $url['destroy']]) !!};
+        @php
+                $btnList = [];
+                if (auth()->user()->can('master_edit')) { $btnList['vedit'] = $url['edit']; }
+                if (auth()->user()->can('master_delete')) { $btnList['destroy'] = $url['destroy']; }
+                $btnList['barcode'] = 'master.vehicle.barcode';
+                $btnList['barcode_pdf'] = 'master.vehicle.barcode-pdf';
+                $btnList['history'] = 'master.vehicle.history';
+            @endphp
+            const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();
         var button_temp =
             '<a href="#!" class="action-link-icon-text btnBack"><i class="ri-arrow-left-s-line"></i><span class="fw-semibold text-uppercase">CANCEL</span></a>';
@@ -79,6 +92,9 @@
                     },
                     {
                         data: 'model'
+                    },
+                    {
+                        data: 'location'
                     },
                     {
                         data: 'color'
@@ -131,7 +147,7 @@
             });
 
             //submit form create
-            $("body").on("submit", "#dform", function(e) {
+            $("body").on("submit", ".js-crud-create", function(e) {
                 $(this).find('.submit_loader').removeAttr('class').addClass(
                     'ri-loader-4-line spinner submit_loader');
             });
@@ -187,7 +203,7 @@
             });
 
             //update form submit
-            $('body').on('submit', '#formupdate', function(e) {
+            $('body').on('submit', '.js-crud-edit', function(e) {
                 swalInit.fire({
                     icon: 'question',
                     title: 'Simpan Perubahan?',
@@ -196,10 +212,13 @@
                     reverseButtons: true,
                     showLoaderOnConfirm: true,
                     preConfirm: () => {
+                        var fd = new FormData($(".js-crud-edit")[0]);
                         return $.ajax({
-                            type: 'PUT',
-                            url: $("#formupdate").attr('action'),
-                            data: $("#formupdate").serialize(),
+                            type: 'POST',
+                            url: $(".js-crud-edit").attr('action'),
+                            data: fd,
+                            processData: false,
+                            contentType: false,
                             dataType: "json",
                         }).done(function(data) {
                             return data;

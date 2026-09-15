@@ -13,10 +13,14 @@ class Location extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'location_name', 'address', 'city', 'province', 'contact_phone', 'is_active',
+        'location_name', 'address', 'city', 'province', 'contact_phone',
+        'opening_hours', 'latitude', 'longitude', 'is_active',
     ];
 
     protected $casts = [
+        'opening_hours' => 'string',
+        'latitude' => 'decimal:7',
+        'longitude' => 'decimal:7',
         'is_active' => 'boolean',
         'created_at' => 'datetime',
     ];

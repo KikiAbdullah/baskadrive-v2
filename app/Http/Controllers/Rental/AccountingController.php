@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Coa;
 use App\Models\Journal;
 use App\Models\JournalDetail;
+use Carbon\Carbon;
 use DB;
 use Exception;
 use Illuminate\Http\Request;
@@ -46,15 +47,22 @@ class AccountingController extends Controller
                 $sum = $j->details->sum('debit');
                 return 'Rp ' . number_format($sum ?? 0, 0, ',', '.');
             })
-            ->addColumn('action', function ($j) {
-                $html = '<div class="d-flex gap-1">';
-                $html .= '<a href="' . route('accounting.journal.show', $j->journal_id) . '" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line"></i></a>';
-                $html .= '<a href="' . route('accounting.journal.export', $j->journal_id) . '" class="btn btn-sm btn-outline-secondary"><i class="ri-download-line"></i></a>';
-                $html .= '</div>';
-                return $html;
-            })
-            ->rawColumns(['action'])
+            ->rawColumns([])
             ->toJson();
+    }
+
+    public function journalButtonOption(Request $request)
+    {
+        try {
+            $item = Journal::findOrFail($request->get('id'));
+
+            return response()->json([
+                'status' => true,
+                'view' => view('accounting.journal.button_option')->with(['item' => $item])->render(),
+            ]);
+        } catch (Exception $e) {
+            return response()->json(['status' => false, 'msg' => $e->getMessage()]);
+        }
     }
 
     public function journalShow($id)
@@ -129,9 +137,22 @@ class AccountingController extends Controller
                 $credit = $a->journalDetails->sum('credit');
                 return 'Rp ' . number_format(($debit - $credit) ?? 0, 0, ',', '.');
             })
-            ->addColumn('action', fn($a) => '<a href="' . route('accounting.ledger.detail', $a->account_id) . '" class="btn btn-sm btn-outline-primary"><i class="ri-book-line"></i> Detail</a>')
-            ->rawColumns(['action'])
+            ->rawColumns([])
             ->toJson();
+    }
+
+    public function ledgerButtonOption(Request $request)
+    {
+        try {
+            $item = Coa::findOrFail($request->get('id'));
+
+            return response()->json([
+                'status' => true,
+                'view' => view('accounting.ledger.button_option')->with(['item' => $item])->render(),
+            ]);
+        } catch (Exception $e) {
+            return response()->json(['status' => false, 'msg' => $e->getMessage()]);
+        }
     }
 
     public function ledgerDetail($accountId)
@@ -164,7 +185,7 @@ class AccountingController extends Controller
 
     public function manualJournalCreate()
     {
-        $accounts = Coa::active()->orderBy('account_code')->get();
+        $accounts = Coa::active()->withCount('children')->orderBy('account_code')->get();
 
         return view('accounting.manual-journal.form')->with([
             'title' => 'Jurnal Manual',
@@ -213,11 +234,19 @@ class AccountingController extends Controller
                 'entries.*.description' => 'nullable|string',
             ]);
 
+            app(\App\Services\AccountingService::class)->assertPeriodOpen($request->transaction_date);
+
             $totalDebit = 0;
             $totalCredit = 0;
             foreach ($request->entries as $e) {
                 $totalDebit += (float) ($e['debit'] ?? 0);
                 $totalCredit += (float) ($e['credit'] ?? 0);
+                // Cegah akun induk (yang punya anak) dipakai mutasi
+                $acc = Coa::withCount('children')->find($e['account_id']);
+                if ($acc && $acc->children_count > 0) {
+                    return redirect()->back()->withInput()
+                        ->withErrors('Akun induk "'.$acc->account_code.' - '.$acc->account_name.'" tidak boleh dipakai transaksi. Pilih sub-akun.');
+                }
             }
 
             if (abs($totalDebit - $totalCredit) >= 0.01) {
@@ -253,5 +282,59 @@ class AccountingController extends Controller
             DB::rollback();
             return redirect()->back()->withInput()->withErrors($e->getMessage());
         }
+    }
+
+    // ============================================================
+    // LAPORAN KEUANGAN FORMAL (audit 2.6)
+    // ============================================================
+
+    private function statementRange(Request $request): array
+    {
+        $start = $request->filled('start_date') ? Carbon::parse($request->start_date)->startOfDay() : Carbon::now()->startOfYear();
+        $end = $request->filled('end_date') ? Carbon::parse($request->end_date)->endOfDay() : Carbon::now()->endOfDay();
+
+        return [$start, $end];
+    }
+
+    public function incomeStatement(Request $request)
+    {
+        [$start, $end] = $this->statementRange($request);
+        $service = app(\App\Services\AccountingService::class);
+
+        return view('accounting.statements.income-statement')->with([
+            'title' => 'Laporan Laba Rugi',
+            'subtitle' => 'Income Statement',
+            'start' => $start->format('Y-m-d'),
+            'end' => $end->format('Y-m-d'),
+            'report' => $service->incomeStatement($start, $end),
+        ]);
+    }
+
+    public function balanceSheet(Request $request)
+    {
+        [$start, $end] = $this->statementRange($request);
+        $service = app(\App\Services\AccountingService::class);
+
+        return view('accounting.statements.balance-sheet')->with([
+            'title' => 'Neraca',
+            'subtitle' => 'Balance Sheet',
+            'start' => $start->format('Y-m-d'),
+            'end' => $end->format('Y-m-d'),
+            'report' => $service->balanceSheet($end),
+        ]);
+    }
+
+    public function cashFlow(Request $request)
+    {
+        [$start, $end] = $this->statementRange($request);
+        $service = app(\App\Services\AccountingService::class);
+
+        return view('accounting.statements.cash-flow')->with([
+            'title' => 'Laporan Arus Kas',
+            'subtitle' => 'Cash Flow',
+            'start' => $start->format('Y-m-d'),
+            'end' => $end->format('Y-m-d'),
+            'report' => $service->cashFlow($start, $end),
+        ]);
     }
 }

@@ -4,7 +4,7 @@
     </div>
 
     <div class="card-body mt-3">
-        <form method="POST" action="{{ route($url['update'], $item->vehicle_id) }}" id="formupdate">
+        <form method="POST" action="{{ route($url['update'], $item->vehicle_id) }}" class="js-crud-edit" enctype="multipart/form-data">
             @csrf
             @method('PUT')
             @include($form)

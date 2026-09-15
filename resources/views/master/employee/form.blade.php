@@ -16,10 +16,10 @@
     </div>
 </div>
 <div class="row mb-3">
-    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Email</label>
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Email <span class="text-danger">*</span></label>
     <div class="col-lg-9">
         <input type="email" name="email" value="{{ $item->email ?? old('email') }}" class="form-control"
-            placeholder="email@perusahaan.com" />
+            placeholder="email@perusahaan.com" required />
     </div>
 </div>
 <div class="row mb-3">
@@ -30,38 +30,46 @@
     </div>
 </div>
 <div class="row mb-3">
-    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Posisi</label>
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Posisi <span class="text-danger">*</span></label>
     <div class="col-lg-9">
         <input type="text" name="position" value="{{ $item->position ?? old('position') }}" class="form-control"
-            placeholder="Staff, Supervisor, Manager..." />
+            placeholder="Staff, Supervisor, Manager..." required />
     </div>
 </div>
 <div class="row mb-3">
-    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Role</label>
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Role <span class="text-danger">*</span></label>
     <div class="col-lg-9">
-        <input type="text" name="role" value="{{ $item->role ?? old('role') }}" class="form-control"
-            placeholder="admin, staff, driver..." />
+        <select name="role" class="select" required>
+            @foreach (['admin' => 'Admin', 'manager' => 'Manager', 'cashier' => 'Cashier', 'mechanic' => 'Mekanik', 'accountant' => 'Akuntan', 'director' => 'Direktur'] as $val => $lbl)
+                <option value="{{ $val }}" {{ old('role', $item->role ?? '') == $val ? 'selected' : '' }}>{{ $lbl }}</option>
+            @endforeach
+        </select>
+        <div class="form-text">Sesuai pilihan role sistem (enum), bukan teks bebas.</div>
     </div>
 </div>
 <div class="row mb-3">
-    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Username</label>
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Username <span class="text-danger">*</span></label>
     <div class="col-lg-9">
         <input type="text" name="username" value="{{ $item->username ?? old('username') }}"
             class="{{ in_array('username', $errors->keys()) ? 'form-control is-invalid' : 'form-control' }}"
-            placeholder="Username" />
+            placeholder="Username" minlength="4" required />
     </div>
 </div>
 <div class="row mb-3">
-    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Password</label>
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Password @if(empty($item))<span class="text-danger">*</span>@endif</label>
     <div class="col-lg-9">
-        <input type="password" name="password_hash" class="form-control"
-            placeholder="{{ empty($item) ? 'Password' : 'Kosongkan jika tidak diubah' }}" />
+        <input type="password" name="password_hash" class="form-control" minlength="8" autocomplete="new-password"
+            @if(empty($item)) required @endif
+            placeholder="{{ empty($item) ? 'Minimal 8 karakter' : 'Kosongkan jika tidak diubah' }}" />
+        @if(empty($item))
+            <div class="form-text">Wajib diisi, minimal 8 karakter (audit M-05).</div>
+        @endif
     </div>
 </div>
 <div class="row mb-3">
-    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Tgl. Masuk</label>
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Tgl. Masuk <span class="text-danger">*</span></label>
     <div class="col-lg-9">
-        <input type="date" name="hire_date" value="{{ $item->hire_date ?? old('hire_date') }}" class="form-control" />
+        <input type="date" name="hire_date" value="{{ $item->hire_date ?? old('hire_date') }}" class="form-control" required />
     </div>
 </div>
 <div class="row mb-3">
@@ -73,3 +81,25 @@
         </select>
     </div>
 </div>
+@if(empty($item))
+<div class="row mb-3">
+    <div class="col-lg-9 offset-lg-3">
+        <div class="card bg-light p-3">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="create_account" value="1" id="create_account">
+                <label class="form-check-label fw-semibold" for="create_account">Buatkan Akun Login otomatis</label>
+            </div>
+            <small class="text-muted">Jika dicentang, akun login akan dibuat dengan username & email karyawan.</small>
+            <div class="mt-2" id="roleSelect" style="display:none;">
+                <label class="form-label">Role Akun</label>
+                <select name="user_role" class="select">
+                    <option value="staff">Staff</option>
+                    <option value="admin">Admin</option>
+                    <option value="manager">Manager</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+<script>document.getElementById('create_account')?.addEventListener('change', e => { document.getElementById('roleSelect').style.display = e.target.checked ? '' : 'none'; });</script>
+@endif

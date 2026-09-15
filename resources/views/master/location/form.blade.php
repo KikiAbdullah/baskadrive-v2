@@ -33,6 +33,26 @@
     </div>
 </div>
 <div class="row mb-3">
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Jam Operasional</label>
+    <div class="col-lg-9">
+        <input type="text" name="opening_hours" value="{{ $item->opening_hours ?? old('opening_hours') }}"
+            class="form-control" placeholder="08:00-17:00 atau 24 Jam" />
+    </div>
+</div>
+<div class="row mb-3">
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Latitude</label>
+    <div class="col-lg-9">
+        <input type="text" name="latitude" value="{{ $item->latitude ?? old('latitude') }}" class="form-control" placeholder="-6.2000000" />
+    </div>
+</div>
+<div class="row mb-3">
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Longitude</label>
+    <div class="col-lg-9">
+        <input type="text" name="longitude" value="{{ $item->longitude ?? old('longitude') }}" class="form-control" placeholder="106.8000000" />
+        <small class="text-muted">Untuk peta armada & monitoring.</small>
+    </div>
+</div>
+<div class="row mb-3">
     <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Status</label>
     <div class="col-lg-9">
         <select name="is_active" class="select">

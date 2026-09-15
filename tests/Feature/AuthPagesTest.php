@@ -16,10 +16,18 @@ class AuthPagesTest extends TestCase
         $this->seed(DatabaseSeeder::class);
     }
 
-    public function test_register_page_renders(): void
+    /**
+     * Audit Setup S-11/S-01: pendaftaran publik dimatikan secara default
+     * (config app.registration_enabled = false) => rute tidak terdaftar.
+     */
+    public function test_register_page_disabled_by_default(): void
     {
-        $response = $this->get('/register');
-        $response->assertStatus(200);
+        $this->assertFalse(config('app.registration_enabled'));
+        $this->get('/register')->assertStatus(404);
+        $this->post('/register', [
+            'name' => 'Probe', 'email' => 'probe@contoh.test',
+            'password' => 'password123', 'password_confirmation' => 'password123',
+        ])->assertStatus(404);
     }
 
     public function test_password_request_page_renders(): void

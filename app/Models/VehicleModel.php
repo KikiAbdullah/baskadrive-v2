@@ -15,7 +15,7 @@ class VehicleModel extends Model
     protected $fillable = [
         'brand_id', 'model_name', 'category', 'fuel_type', 'transmission',
         'seat_capacity', 'base_price_per_day', 'base_price_per_km',
-        'insurance_rate', 'deposit_amount', 'is_active',
+        'insurance_rate', 'deposit_amount', 'photo', 'is_active',
     ];
 
     protected $casts = [

@@ -35,14 +35,17 @@ class TwoFactorVerify
         $redirectUrl = route('2fa.show', ['redirect' => $request->fullUrl()]);
 
         if (date('Y-m-d H:i:s', strtotime($lastrequest.'+2 minutes')) < $now) {
-            $user->token_2fa = mt_rand(10000, 99999);
+            // Token disimpan sebagai hash dengan kedaluwarsa ketat 5 menit (audit 2.9)
+            $otpPlain = (string) random_int(10000, 99999);
+            $user->token_2fa = \Hash::make($otpPlain);
+            $user->token_2fa_expires_at = $now->copy()->addMinutes(5);
             $user->save();
             // send wa
             if ($user->nowa <> '') {
                 $user->token_last_request = $now;
                 $user->save();
                 $wa = new KirimWAHelper;
-                if ($wa->kirim($user->nowa, config('app.name').' OTP Code', 'Your login code to '.config('app.name').' is : '.$user->token_2fa, "Don't share this code to anyone.")) {
+                if ($wa->kirim($user->nowa, config('app.name').' OTP Code', 'Your login code to '.config('app.name').' is : '.$otpPlain, "Don't share this code to anyone.")) {
                     return redirect($redirectUrl);
                 } else {
                     return redirect($redirectUrl)->withErrors('Something went wrong, try again later.');

@@ -1,4 +1,4 @@
-﻿@php
+@php
     $routeName = request()->route() ? (request()->route()->getName() ?? '') : '';
     $is = function (string ...$prefixes) use ($routeName): bool {
         foreach ($prefixes as $p) {
@@ -27,6 +27,7 @@
             <!-- ========================================
                  MASTER DATA
             ======================================== -->
+            @can('master_view')
             <li class="menu-item {{ $is('master') ? 'active open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons ri-database-2-line"></i>
@@ -110,6 +111,7 @@
                     </li>
                 </ul>
             </li>
+            @endcan
 
             <!-- ========================================
                  OPERASIONAL SEWA
@@ -136,16 +138,10 @@
                             <div data-i18n="Jadwal Maintenance">Jadwal Maintenance</div>
                         </a>
                     </li>
-                    <li class="menu-item {{ $is('fleet.damage') ? 'active' : '' }}">
+                    <li class="menu-item {{ $is('fleet.damage', 'fleet.insurance-claim') ? 'active' : '' }}">
                         <a href="{{ route('fleet.damage.index') }}" class="menu-link">
                             <i class="menu-icon tf-icons ri-error-warning-line"></i>
-                            <div data-i18n="Daftar Kerusakan">Daftar Kerusakan</div>
-                        </a>
-                    </li>
-                    <li class="menu-item {{ $is('fleet.insurance-claim') ? 'active' : '' }}">
-                        <a href="{{ route('fleet.insurance-claim.index') }}" class="menu-link">
-                            <i class="menu-icon tf-icons ri-shield-check-line"></i>
-                            <div data-i18n="Klaim Asuransi">Klaim Asuransi</div>
+                            <div data-i18n="Kerusakan & Klaim">Kerusakan &amp; Klaim</div>
                         </a>
                     </li>
                 </ul>
@@ -154,31 +150,11 @@
             <!-- ========================================
                  KEUANGAN & PENAGIHAN
             ======================================== -->
-            <li class="menu-item {{ $is('finance') ? 'active open' : '' }}">
-                <a href="javascript:void(0);" class="menu-link menu-toggle">
+            <li class="menu-item {{ $is('finance') ? 'active' : '' }}">
+                <a href="{{ route('finance.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons ri-wallet-3-line"></i>
                     <div data-i18n="Keuangan">Keuangan</div>
                 </a>
-                <ul class="menu-sub">
-                    <li class="menu-item {{ $is('finance.invoice') ? 'active' : '' }}">
-                        <a href="{{ route('finance.invoice.index') }}" class="menu-link">
-                            <i class="menu-icon tf-icons ri-file-list-3-line"></i>
-                            <div data-i18n="Daftar Invoice">Daftar Invoice</div>
-                        </a>
-                    </li>
-                    <li class="menu-item {{ $is('finance.fine') ? 'active' : '' }}">
-                        <a href="{{ route('finance.fine.index') }}" class="menu-link">
-                            <i class="menu-icon tf-icons ri-alarm-warning-line"></i>
-                            <div data-i18n="Daftar Denda">Daftar Denda</div>
-                        </a>
-                    </li>
-                    <li class="menu-item {{ $is('finance.payment') ? 'active' : '' }}">
-                        <a href="{{ route('finance.payment') }}" class="menu-link">
-                            <i class="menu-icon tf-icons ri-bank-card-line"></i>
-                            <div data-i18n="Riwayat Pembayaran">Riwayat Pembayaran</div>
-                        </a>
-                    </li>
-                </ul>
             </li>
 
             <!-- ========================================
@@ -196,61 +172,41 @@
                             <div data-i18n="Jurnal Umum">Jurnal Umum</div>
                         </a>
                     </li>
-                    <li class="menu-item {{ $is('accounting.manual-journal') ? 'active' : '' }}">
-                        <a href="{{ route('accounting.manual-journal.create') }}" class="menu-link">
-                            <i class="menu-icon tf-icons ri-edit-box-line"></i>
-                            <div data-i18n="Posting Jurnal Manual">Posting Jurnal Manual</div>
-                        </a>
-                    </li>
                     <li class="menu-item {{ $is('accounting.ledger') ? 'active' : '' }}">
                         <a href="{{ route('accounting.ledger.index') }}" class="menu-link">
                             <i class="menu-icon tf-icons ri-file-chart-line"></i>
                             <div data-i18n="Buku Besar">Buku Besar</div>
                         </a>
                     </li>
+                    <li class="menu-item {{ $is('accounting.statement.income') ? 'active' : '' }}">
+                        <a href="{{ route('accounting.statement.income') }}" class="menu-link">
+                            <i class="menu-icon tf-icons ri-line-chart-line"></i>
+                            <div data-i18n="Laporan Laba Rugi">Laporan Laba Rugi</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ $is('accounting.statement.balance') ? 'active' : '' }}">
+                        <a href="{{ route('accounting.statement.balance') }}" class="menu-link">
+                            <i class="menu-icon tf-icons ri-scales-3-line"></i>
+                            <div data-i18n="Neraca">Neraca</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ $is('accounting.statement.cashflow') ? 'active' : '' }}">
+                        <a href="{{ route('accounting.statement.cashflow') }}" class="menu-link">
+                            <i class="menu-icon tf-icons ri-funds-line"></i>
+                            <div data-i18n="Laporan Arus Kas">Laporan Arus Kas</div>
+                        </a>
+                    </li>
                 </ul>
             </li>
 
             <!-- ========================================
-                 LAPORAN
+                 LAPORAN & ANALYTICS
             ======================================== -->
-            <li class="menu-item {{ $is('report') ? 'active open' : '' }}">
-                <a href="javascript:void(0);" class="menu-link menu-toggle">
+            <li class="menu-item {{ $is('report') ? 'active' : '' }}">
+                <a href="{{ route('report.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons ri-bar-chart-2-line"></i>
                     <div data-i18n="Laporan">Laporan</div>
                 </a>
-                <ul class="menu-sub">
-                    <li class="menu-item {{ $is('report.revenue') ? 'active' : '' }}">
-                        <a href="{{ route('report.revenue') }}" class="menu-link">
-                            <i class="menu-icon tf-icons ri-line-chart-line"></i>
-                            <div data-i18n="Pendapatan & Profit">Pendapatan &amp; Profit</div>
-                        </a>
-                    </li>
-                    <li class="menu-item {{ $is('report.fleet-utilization') ? 'active' : '' }}">
-                        <a href="{{ route('report.fleet-utilization') }}" class="menu-link">
-                            <i class="menu-icon tf-icons ri-pie-chart-2-line"></i>
-                            <div data-i18n="Utilisasi Armada">Utilisasi Armada</div>
-                        </a>
-                    </li>
-                    <li class="menu-item {{ $is('report.top-customers') ? 'active' : '' }}">
-                        <a href="{{ route('report.top-customers') }}" class="menu-link">
-                            <i class="menu-icon tf-icons ri-award-line"></i>
-                            <div data-i18n="Top Pelanggan">Top Pelanggan</div>
-                        </a>
-                    </li>
-                    <li class="menu-item {{ $is('report.claims') ? 'active' : '' }}">
-                        <a href="{{ route('report.claims') }}" class="menu-link">
-                            <i class="menu-icon tf-icons ri-alert-line"></i>
-                            <div data-i18n="Klaim & Denda">Klaim &amp; Denda</div>
-                        </a>
-                    </li>
-                    <li class="menu-item {{ $is('report.financial') ? 'active' : '' }}">
-                        <a href="{{ route('report.financial') }}" class="menu-link">
-                            <i class="menu-icon tf-icons ri-money-dollar-circle-line"></i>
-                            <div data-i18n="Laporan Keuangan">Laporan Keuangan</div>
-                        </a>
-                    </li>
-                </ul>
             </li>
 
             <!-- ========================================
@@ -325,5 +281,4 @@
 
         </ul>
     </div>
-</aside>
-<!-- /main navbar -->
+</aside><!-- /main navbar -->

@@ -4,7 +4,7 @@
     <div class="col-lg-9">
         <input type="text" name="account_code" value="{{ $item->account_code ?? old('account_code') }}"
             class="{{ in_array('account_code', $errors->keys()) ? 'form-control is-invalid' : 'form-control' }}"
-            placeholder="1100" required />
+            placeholder="1-1100" required />
     </div>
 </div>
 <div class="row mb-3">

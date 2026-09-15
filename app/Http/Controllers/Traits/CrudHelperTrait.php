@@ -11,10 +11,13 @@ trait CrudHelperTrait
     // Data Things
     public function indexData($type)
     {
+        // M-17: pakai primary key aktual model (tabel master tidak punya kolom `id`)
+        $keyName = $this->model->getKeyName();
+
         if ($type) {
-            return $this->model->withTrashed()->with($this->relation)->orderBy('id', 'DESC')->get();
+            return $this->model->withTrashed()->with($this->relation)->orderBy($keyName, 'DESC')->get();
         } else {
-            return $this->model->with($this->relation)->orderBy('id', 'DESC')->get();
+            return $this->model->with($this->relation)->orderBy($keyName, 'DESC')->get();
         }
     }
 
@@ -96,6 +99,64 @@ trait CrudHelperTrait
         return redirect()->back()->withInput()->withErrors($message);
     }
 
+    /**
+     * Terjemahkan error constraint database menjadi pesan manusiawi (audit M-04),
+     * tanpa membocorkan SQL mentah / struktur skema ke pengguna.
+     */
+    protected function friendlyDbError(\Illuminate\Database\QueryException $e): string
+    {
+        $code = (int) ($e->errorInfo[1] ?? 0);
+
+        return match (true) {
+            $code === 1062 => 'Penyimpanan ditolak: terdapat nilai unik (nama/kode/username/email/NIK/SIM/plat/VIN) yang sudah dipakai data lain.',
+            in_array($code, [1451, 1452], true) => 'Operasi ditolak: data ini masih terkait dengan transaksi lain sehingga tidak dapat diubah/dihapus.',
+            in_array($code, [1048, 1138], true) => 'Ada kolom wajib yang kosong — periksa kembali isian formulir.',
+            default => 'Penyimpanan data gagal karena kendala teknis basis data. Silakan hubungi administrator.',
+        };
+    }
+
+    /**
+     * Referensi objek untuk log aktivitas: nama kelas + primary key aktual (audit M-13).
+     */
+    protected function logReference($model): string
+    {
+        return class_basename($model).'#'.$model->getKey();
+    }
+
+    /**
+     * Periksa apakah baris data masih dirujuk tabel lain lewat foreign key (audit M-07).
+     * Membaca metadata information_schema sehingga bekerja generik untuk semua model
+     * CrudTrait tanpa konfigurasi relasi manual. Null = aman dihapus.
+     */
+    protected function blockedByRelations($model): ?string
+    {
+        try {
+            $fks = \DB::select(
+                'SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE
+                 WHERE REFERENCED_TABLE_SCHEMA = DATABASE()
+                   AND REFERENCED_TABLE_NAME = ?
+                   AND REFERENCED_COLUMN_NAME = ?',
+                [$model->getTable(), $model->getKeyName()]
+            );
+        } catch (\Throwable $e) {
+            return null; // driver tanpa information_schema (sqlite test) -> lewati guard
+        }
+
+        foreach ($fks as $fk) {
+            try {
+                $used = \DB::table($fk->TABLE_NAME)->where($fk->COLUMN_NAME, $model->getKey())->exists();
+            } catch (\Throwable $e) {
+                continue;
+            }
+            if ($used) {
+                return 'Data tidak dapat dihapus karena masih digunakan oleh data pada tabel "'
+                    .$fk->TABLE_NAME.'" (kolom '.$fk->COLUMN_NAME.').';
+            }
+        }
+
+        return null;
+    }
+
     public function redirectWithSessionFlash($message)
     {
         return redirect()->route($this->generateUrl('index'))
@@ -124,6 +185,26 @@ trait CrudHelperTrait
         }
 
         return $request;
+    }
+
+    /**
+     * Ubah string kosong ('') menjadi null pada field numerik/tanggal/unique opsional,
+     * agar lolos rule nullable numeric/date & tidak menabrak constraint unique NOT NULL (M-03/M-04).
+     * Data hasil normalisasi di-merge kembali ke request sebelum validate().
+     */
+    protected function blanksToNull($request, array $keys): array
+    {
+        $data = $request->all();
+
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $data) && $data[$key] === '') {
+                $data[$key] = null;
+            }
+        }
+
+        $request->merge($data);
+
+        return $data;
     }
 
     public function validationRelation($model)

@@ -38,13 +38,14 @@
                 </div>
                 <p class="mb-6">{{ $subtitle }}</p>
             </div>
-            <div class="d-flex align-content-center flex-wrap gap-2">
-                <a href="{{ route('finance.invoice.index') }}" class="btn btn-outline-secondary">
-                    <i class="ri-arrow-left-line me-1"></i> Kembali
+            <div class="d-flex align-content-center flex-wrap gap-4">
+                <a href="{{ route('finance.index') }}" class="action-link-icon-text">
+                    <i class="ri-arrow-left-line"></i>
+                    <span class="fw-semibold text-uppercase">Kembali</span>
                 </a>
-                <a href="{{ route('finance.invoice.print', $item->invoice_id) }}" target="_blank"
-                    class="btn btn-primary">
-                    <i class="ri-printer-line me-1"></i> Cetak
+                <a href="{{ route('finance.invoice.print', $item->invoice_id) }}" class="action-link-icon-text">
+                    <i class="ri-printer-line"></i>
+                    <span class="fw-semibold text-uppercase">Cetak</span>
                 </a>
             </div>
         </div>

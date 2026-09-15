@@ -11,7 +11,9 @@
                 <h4 class="mb-1">{{ $title }}</h4>
                 <p class="mb-6">Daftar {{ $subtitle }}</p>
             </div>
-            <div class="d-flex align-content-center flex-wrap gap-2"></div>
+            <div class="d-flex align-content-center flex-wrap gap-4">
+                <span class="menuoption"></span>
+            </div>
         </div>
 
         @include('layouts.alert')
@@ -32,11 +34,11 @@
                 <table class="table table-xxs" id="dtable">
                     <thead>
                         <tr>
+                            <th>ID</th>
                             <th>Kode Akun</th>
                             <th>Nama Akun</th>
                             <th>Tipe</th>
                             <th>Saldo</th>
-                            <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -50,13 +52,19 @@
     <script type="text/javascript">
         var dtable;
         const urlAjax = '{{ route('accounting.ledger.data') }}';
+        const getButtonOption = '{{ route('accounting.ledger.button-option') }}';
 
         $(document).ready(function() {
             dtable = $('#dtable').DataTable({
+                "select": {
+                    style: "single",
+                    info: false
+                },
                 "serverSide": true,
                 "stateSave": true,
                 "sServerMethod": "GET",
                 "deferRender": true,
+                "rowId": 'account_id',
                 "ajax": {
                     url: urlAjax,
                     data: function(d) {
@@ -64,6 +72,10 @@
                     }
                 },
                 "columns": [{
+                        data: 'account_id',
+                        className: 'd-none'
+                    },
+                    {
                         data: 'account_code'
                     },
                     {
@@ -75,18 +87,46 @@
                     {
                         data: 'balance'
                     },
-                    {
-                        data: 'action'
-                    },
                 ],
                 "order": [
-                    [0, "asc"]
+                    [1, "asc"]
                 ],
+                "columnDefs": [{
+                    "targets": [0],
+                    "visible": false,
+                    "searchable": false
+                }],
                 "dom": '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>><"table-responsive"t><"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
             });
 
+            $("#dtable_length").addClass('d-none d-lg-block');
+
             $('#typeFilter').on('change', function() {
                 dtable.ajax.reload();
+            });
+
+            dtable.on('select', function(e, dt, type, indexes) {
+                var rowData = dtable.rows(indexes).data().toArray();
+                var id = rowData[0].account_id;
+
+                $.ajax({
+                    type: 'GET',
+                    url: getButtonOption,
+                    data: {
+                        id: id
+                    },
+                    success: function(response) {
+                        if (response.status) {
+                            $(".menuoption").html(response.view);
+                        }
+                    }
+                });
+            });
+
+            dtable.on('deselect', function(e, dt, type, indexes) {
+                if (type === 'row') {
+                    $(".menuoption").html('');
+                }
             });
         });
     </script>

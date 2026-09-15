@@ -119,7 +119,7 @@
             });
 
             //submit form create
-            $("body").on("submit", "#dform", function(e) {
+            $("body").on("submit", ".js-crud-create", function(e) {
                 $(this).find('.submit_loader').removeAttr('class').addClass(
                     'ph-spinner spinner submit_loader');
             });
@@ -176,7 +176,7 @@
             });
 
             //remove this if you want to update with form submit
-            $('body').on('submit', '#formupdate', function(e) {
+            $('body').on('submit', '.js-crud-edit', function(e) {
                 swalInit.fire({
                     icon: 'question',
                     title: 'Simpan Perubahan?',
@@ -187,8 +187,8 @@
                     preConfirm: () => {
                         return $.ajax({
                             type: 'PUT',
-                            url: $("#formupdate").attr('action'),
-                            data: $("#formupdate").serialize(),
+                            url: $(".js-crud-edit").attr('action'),
+                            data: $(".js-crud-edit").serialize(),
                             dataType: "json",
                         }).done(function(data) {
                             return data;

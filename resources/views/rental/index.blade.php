@@ -44,9 +44,11 @@
                 <h4 class="mb-1">{{ $title }}</h4>
                 <p class="mb-6">Daftar {{ $subtitle }}</p>
             </div>
-            <div class="d-flex align-content-center flex-wrap gap-2">
-                <a href="{{ route('rental.create') }}" class="btn btn-primary">
-                    <i class="ri-add-line me-1"></i> Buat Sewa Baru
+            <div class="d-flex align-content-center flex-wrap gap-4">
+                <span class="menuoption"></span>
+                <a href="{{ route('rental.create') }}" class="action-link-icon-text">
+                    <i class="ri-add-line"></i>
+                    <span class="fw-semibold text-uppercase">Buat Sewa Baru</span>
                 </a>
             </div>
         </div>
@@ -68,6 +70,7 @@
                 <table class="table table-xxs" id="dtable">
                     <thead>
                         <tr>
+                            <th>ID</th>
                             <th>Kode</th>
                             <th>Pelanggan</th>
                             <th>Kendaraan</th>
@@ -75,7 +78,6 @@
                             <th>Periode</th>
                             <th>Total</th>
                             <th>Status</th>
-                            <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -88,16 +90,27 @@
 @section('customjs')
     <script type="text/javascript">
         var dtable;
+        var currentStatus = '{{ $status }}';
         const urlAjax = '{{ route('rental.data', ['status' => $status]) }}';
+        const getButtonOption = '{{ route('rental.button-option') }}';
 
         $(document).ready(function() {
             dtable = $('#dtable').DataTable({
+                "select": {
+                    style: "single",
+                    info: false
+                },
                 "serverSide": true,
                 "stateSave": true,
                 "sServerMethod": "GET",
                 "deferRender": true,
+                "rowId": 'rental_id',
                 "ajax": urlAjax,
                 "columns": [{
+                        data: 'rental_id',
+                        className: 'd-none'
+                    },
+                    {
                         data: 'rental_code'
                     },
                     {
@@ -118,17 +131,46 @@
                     {
                         data: 'status_badge'
                     },
-                    {
-                        data: 'action'
-                    },
                 ],
                 "order": [
-                    [0, "desc"]
+                    [1, "desc"]
                 ],
+                "columnDefs": [{
+                    "targets": [0],
+                    "visible": false,
+                    "searchable": false
+                }],
                 "dom": '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>><"table-responsive"t><"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
             });
 
-            $('body').on('click', '.btn-confirm', function() {
+            $("#dtable_length").addClass('d-none d-lg-block');
+
+            dtable.on('select', function(e, dt, type, indexes) {
+                var rowData = dtable.rows(indexes).data().toArray();
+                var id = rowData[0].rental_id;
+
+                $.ajax({
+                    type: 'GET',
+                    url: getButtonOption,
+                    data: {
+                        id: id
+                    },
+                    success: function(response) {
+                        if (response.status) {
+                            $(".menuoption").html(response.view);
+                        }
+                    }
+                });
+            });
+
+            dtable.on('deselect', function(e, dt, type, indexes) {
+                if (type === 'row') {
+                    $(".menuoption").html('');
+                }
+            });
+
+            $('body').on('click', '.btn-confirm', function(e) {
+                e.preventDefault();
                 const id = $(this).data('id');
                 Swal.fire({
                     icon: 'question',
@@ -162,7 +204,8 @@
                 });
             });
 
-            $('body').on('click', '.btn-cancel', function() {
+            $('body').on('click', '.btn-cancel', function(e) {
+                e.preventDefault();
                 const id = $(this).data('id');
                 Swal.fire({
                     icon: 'warning',

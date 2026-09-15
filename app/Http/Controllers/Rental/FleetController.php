@@ -47,17 +47,22 @@ class FleetController extends Controller
             ->addColumn('scheduled_date', fn($m) => $m->scheduled_date?->format('d/m/Y') ?? '-')
             ->addColumn('cost', fn($m) => 'Rp ' . number_format($m->cost ?? 0, 0, ',', '.'))
             ->addColumn('status_badge', fn($m) => view('components.maintenance-status-badge', ['status' => $m->status])->render())
-            ->addColumn('action', function ($m) {
-                $html = '<div class="d-flex gap-1">';
-                $html .= '<a href="' . route('fleet.maintenance.edit', $m->maintenance_id) . '" class="btn btn-sm btn-outline-primary"><i class="ri-edit-line"></i></a>';
-                if ($m->status !== 'completed') {
-                    $html .= '<button type="button" class="btn btn-sm btn-success btn-complete" data-id="' . $m->maintenance_id . '"><i class="ri-check-line"></i></button>';
-                }
-                $html .= '</div>';
-                return $html;
-            })
-            ->rawColumns(['status_badge', 'action'])
+            ->rawColumns(['status_badge'])
             ->toJson();
+    }
+
+    public function maintenanceButtonOption(Request $request)
+    {
+        try {
+            $item = Maintenance::findOrFail($request->get('id'));
+
+            return response()->json([
+                'status' => true,
+                'view' => view('fleet.maintenance.button_option')->with(['item' => $item])->render(),
+            ]);
+        } catch (Exception $e) {
+            return response()->json(['status' => false, 'msg' => $e->getMessage()]);
+        }
     }
 
     public function maintenanceCreate()
@@ -200,14 +205,18 @@ class FleetController extends Controller
     public function damageIndex()
     {
         return view('fleet.damage.index')->with([
-            'title' => 'Daftar Kerusakan',
-            'subtitle' => 'Laporan Kerusakan Kendaraan',
+            'title' => 'Kerusakan & Klaim',
+            'subtitle' => 'Laporan Kerusakan & Klaim Asuransi',
         ]);
     }
 
     public function damageData(Request $request)
     {
-        $query = DamageReport::with(['vehicle.model.brand', 'rental']);
+        $query = DamageReport::query()->with(['vehicle.model.brand', 'insuranceClaim']);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
 
         return datatables()->of($query)
             ->addColumn('vehicle_info', fn($d) => $d->vehicle?->license_plate . ' - ' . ($d->vehicle?->model?->brand?->brand_name ?? '') . ' ' . ($d->vehicle?->model?->model_name ?? ''))
@@ -216,9 +225,24 @@ class FleetController extends Controller
             ->addColumn('reported_date', fn($d) => $d->reported_date?->format('d/m/Y') ?? '-')
             ->addColumn('repair_cost', fn($d) => 'Rp ' . number_format($d->actual_repair_cost ?? $d->repair_cost_estimate ?? 0, 0, ',', '.'))
             ->addColumn('status_badge', fn($d) => view('components.damage-status-badge', ['status' => $d->status])->render())
-            ->addColumn('action', fn($d) => '<a href="' . route('fleet.damage.show', $d->damage_id) . '" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line"></i> Detail</a>')
-            ->rawColumns(['status_badge', 'action'])
+            ->addColumn('claim_status_badge', fn($d) => $d->insuranceClaim ? view('components.claim-status-badge', ['status' => $d->insuranceClaim->status])->render() : '<span class="text-muted">-</span>')
+            ->addColumn('claim_amount', fn($d) => $d->insuranceClaim ? 'Rp ' . number_format($d->insuranceClaim->claim_amount ?? 0, 0, ',', '.') : '-')
+            ->rawColumns(['status_badge', 'claim_status_badge'])
             ->toJson();
+    }
+
+    public function damageButtonOption(Request $request)
+    {
+        try {
+            $item = DamageReport::with('insuranceClaim')->findOrFail($request->get('id'));
+
+            return response()->json([
+                'status' => true,
+                'view' => view('fleet.damage.button_option')->with(['item' => $item])->render(),
+            ]);
+        } catch (Exception $e) {
+            return response()->json(['status' => false, 'msg' => $e->getMessage()]);
+        }
     }
 
     public function damageCreate()
@@ -292,17 +316,75 @@ class FleetController extends Controller
     {
         try {
             $item = DamageReport::findOrFail($id);
-            $request->validate(['photo' => 'required|image|max:5120']);
 
-            $path = $request->file('photo')->store('damage-photos', 'public');
+            // Dukungan multi-file sekaligus (audit 2.4): field 'photos[]' dan fallback 'photo' tunggal
+            $request->merge(['photoList' => array_filter(array_merge(
+                (array) $request->file('photos', []),
+                $request->hasFile('photo') ? [$request->file('photo')] : []
+            ))]);
 
-            DamagePhoto::create([
-                'damage_id' => $item->damage_id,
-                'photo_url' => $path,
-                'caption' => $request->caption ?? null,
+            $validated = $request->validate([
+                'photoList' => 'required|array|min:1',
+                'photoList.*' => 'image|max:5120',
             ]);
 
-            return response()->json(['status' => true, 'msg' => 'Foto berhasil diunggah.']);
+            $saved = 0;
+            foreach ($request->file('photoList') as $file) {
+                $path = $file->store('damage-photos', 'public');
+                DamagePhoto::create([
+                    'damage_id' => $item->damage_id,
+                    'photo_url' => $path,
+                    'caption' => $request->caption ?? null,
+                ]);
+                $saved++;
+            }
+
+            return response()->json(['status' => true, 'msg' => $saved.' foto berhasil diunggah.', 'count' => $saved]);
+        } catch (Exception $e) {
+            return response()->json(['status' => false, 'msg' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Konversi biaya perbaikan kerusakan menjadi denda ke penyewa terkait (audit 2.4).
+     */
+    public function damageBillRenter(Request $request, $id)
+    {
+        try {
+            $item = DamageReport::with('rental.customer')->findOrFail($id);
+
+            if (! $item->rental_id || ! $item->rental) {
+                return response()->json(['status' => false, 'msg' => 'Laporan kerusakan ini tidak terhubung ke data sewa.']);
+            }
+
+            $amount = (float) ($item->actual_repair_cost ?? $item->repair_cost_estimate ?? 0);
+            if ($amount <= 0) {
+                return response()->json(['status' => false, 'msg' => 'Biaya perbaikan belum diisi, tidak dapat ditagihkan.']);
+            }
+
+            $alreadyBilled = \App\Models\Fine::where('rental_id', $item->rental_id)
+                ->where('description', 'like', '%kerusakan #'.$item->damage_id.'%')
+                ->exists();
+            if ($alreadyBilled) {
+                return response()->json(['status' => false, 'msg' => 'Biaya kerusakan ini sudah pernah ditagihkan sebagai denda.']);
+            }
+
+            $fine = \App\Models\Fine::create([
+                'rental_id' => $item->rental_id,
+                'fine_type' => 'damage',
+                'description' => 'Tagihan biaya perbaikan kerusakan #'.$item->damage_id.' ('.($item->damage_type ?? 'damage').')',
+                'amount' => $amount,
+                'status' => 'unpaid',
+                'issued_date' => now(),
+                'issued_by' => auth()->user()->employee_id ?? null,
+                'notes' => 'Ditagihkan otomatis dari laporan kerusakan oleh '.(auth()->user()->name ?? 'sistem'),
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'msg' => 'Biaya kerusakan Rp '.number_format($amount, 0, ',', '.').' berhasil ditagihkan sebagai denda ke penyewa.',
+                'data' => $fine,
+            ]);
         } catch (Exception $e) {
             return response()->json(['status' => false, 'msg' => $e->getMessage()]);
         }
@@ -321,31 +403,8 @@ class FleetController extends Controller
     }
 
     // ============================================================
-    // INSURANCE CLAIM
+    // INSURANCE CLAIM (dikelola dari halaman Kerusakan & Klaim)
     // ============================================================
-
-    public function claimIndex()
-    {
-        return view('fleet.insurance-claim.index')->with([
-            'title' => 'Klaim Asuransi',
-            'subtitle' => 'Daftar Klaim Asuransi',
-        ]);
-    }
-
-    public function claimData(Request $request)
-    {
-        $query = InsuranceClaim::with(['damageReport.vehicle', 'rental.customer']);
-
-        return datatables()->of($query)
-            ->addColumn('claim_number', fn($c) => $c->claim_number ?? '-')
-            ->addColumn('vehicle_info', fn($c) => $c->damageReport?->vehicle?->license_plate ?? '-')
-            ->addColumn('provider', fn($c) => $c->insurance_provider ?? '-')
-            ->addColumn('claim_amount', fn($c) => 'Rp ' . number_format($c->claim_amount ?? 0, 0, ',', '.'))
-            ->addColumn('status_badge', fn($c) => view('components.claim-status-badge', ['status' => $c->status])->render())
-            ->addColumn('action', fn($c) => '<a href="' . route('fleet.insurance-claim.show', $c->claim_id) . '" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line"></i> Detail</a>')
-            ->rawColumns(['status_badge', 'action'])
-            ->toJson();
-    }
 
     public function claimCreate()
     {
@@ -382,7 +441,7 @@ class FleetController extends Controller
                 'status' => 'submitted',
             ]));
 
-            return redirect()->route('fleet.insurance-claim.index')
+            return redirect()->route('fleet.damage.index')
                 ->withSuccess('Klaim asuransi berhasil diajukan.');
         } catch (Exception $e) {
             return redirect()->back()->withInput()->withErrors($e->getMessage());
@@ -407,13 +466,36 @@ class FleetController extends Controller
             $item = InsuranceClaim::findOrFail($id);
             $request->validate(['status' => 'required|in:draft,submitted,under_review,approved,rejected,paid,closed']);
 
+            $previousStatus = $item->status;
             $update = ['status' => $request->status];
             if ($request->status === 'approved') {
                 $update['approved_date'] = now();
                 $update['approved_amount'] = $request->approved_amount ?? $item->claim_amount;
             }
 
+            if ($request->status === 'paid') {
+                $update['paid_date'] = now();
+            }
+
             $item->update($update);
+
+            // Jurnal otomatis pencairan klaim: Dr. Bank vs Cr. Pendapatan Klaim Asuransi (audit 2.4)
+            if ($request->status === 'paid' && $previousStatus !== 'paid') {
+                $service = app(\App\Services\AccountingService::class);
+                $amount = (float) ($item->approved_amount ?? $item->claim_amount ?? 0);
+                if ($amount > 0) {
+                    $service->postQuietly(
+                        now()->toDateString(),
+                        'CLM-'.$item->claim_number,
+                        'Pencairan klaim asuransi '.($item->claim_number ?? '#'.$item->claim_id),
+                        'insurance',
+                        [
+                            ['account' => $service->resolveCoa('1-1200'), 'debit' => $amount, 'credit' => 0],
+                            ['account' => $service->resolveCoa('4-3000'), 'debit' => 0, 'credit' => $amount],
+                        ]
+                    );
+                }
+            }
 
             return response()->json(['status' => true, 'msg' => 'Status klaim diperbarui.']);
         } catch (Exception $e) {

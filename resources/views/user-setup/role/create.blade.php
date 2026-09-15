@@ -1,4 +1,4 @@
-<form method="POST" action="{{ route($url['store']) }}" id="dform">
+<form method="POST" action="{{ route($url['store']) }}" class="js-crud-create">
     @csrf
 <div class="col-12 mb-3">
     <div class="form-floating form-floating-outline">

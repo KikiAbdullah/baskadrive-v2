@@ -23,6 +23,28 @@ class PermissionSeeder extends Seeder
         ],
 
         // ===========================================
+        // MODUL OPERASIONAL (audit Setup S-01: gate per modul)
+        // ===========================================
+        'rental' => [
+            'rental_view',
+            'rental_cancel',
+            'fine_waive',
+        ],
+
+        'fleet' => [
+            'fleet_view',
+        ],
+
+        'finance' => [
+            'finance_view',
+        ],
+
+        'accounting' => [
+            'accounting_view',
+            'accounting_export',
+        ],
+
+        // ===========================================
         // USER SETUP - USERS
         // ===========================================
         'users' => [
@@ -80,6 +102,16 @@ class PermissionSeeder extends Seeder
             'report_view',
             'report_export',
             'report_download',
+        ],
+
+        // ===========================================
+        // MASTER DATA (audit M-06)
+        // ===========================================
+        'master' => [
+            'master_view',
+            'master_add',
+            'master_edit',
+            'master_delete',
         ],
     ];
 

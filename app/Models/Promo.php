@@ -14,7 +14,8 @@ class Promo extends Model
 
     protected $fillable = [
         'promo_code', 'description', 'discount_type', 'discount_value',
-        'min_rental_days', 'valid_from', 'valid_to', 'max_usage', 'usage_count', 'is_active',
+        'min_rental_days', 'valid_from', 'valid_to', 'max_usage', 'usage_count',
+        'applicable_categories', 'is_active',
     ];
 
     protected $casts = [
@@ -24,6 +25,7 @@ class Promo extends Model
         'valid_to' => 'date',
         'max_usage' => 'integer',
         'usage_count' => 'integer',
+        'applicable_categories' => 'array',
         'is_active' => 'boolean',
         'created_at' => 'datetime',
     ];

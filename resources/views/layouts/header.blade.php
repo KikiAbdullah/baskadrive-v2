@@ -33,6 +33,7 @@
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/css/rtl/core.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/css/rtl/theme-default.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/css/demo.css" />
+    <link rel="stylesheet" href="{{ asset('app_local/css') }}/app-enhancements.css" />
 
     <!-- Vendors CSS -->
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
@@ -86,12 +87,12 @@
 
             <!-- Layout container -->
             <div class="layout-page">
+                <!-- Menu -->
+                @include('layouts.menu')
+                <!-- / Menu -->
+
                 <!-- Content wrapper -->
                 <div class="content-wrapper">
-                    <!-- Menu -->
-                    @include('layouts.menu')
-                    <!-- / Menu -->
-
                     <!-- Content -->
                     @yield('content')
                     <!--/ Content -->
@@ -136,6 +137,81 @@
         </div>
     </div>
 
+    {{-- Dropdown fix: buka menu horizontal saat hover di seluruh link
+         (template JS hanya trigger saat hover tepat di <a>, bukan icon/teks) --}}
+    @once
+        <script>
+            (function() {
+                function initMenuDropdown() {
+                    var menuEl = document.getElementById('layout-menu');
+                    if (!menuEl || !menuEl.classList.contains('menu-horizontal')) return;
+                    if (menuEl.dataset.dropdownFixed) return;
+                    menuEl.dataset.dropdownFixed = '1';
+
+                    var inner = menuEl.querySelector('.menu-inner');
+                    if (!inner) return;
+
+                    var topItems = Array.prototype.slice.call(inner.children).filter(function(el) {
+                        return el.classList && el.classList.contains('menu-item');
+                    });
+
+                    function closeOthers(except) {
+                        topItems.forEach(function(li) {
+                            if (li !== except) li.classList.remove('open');
+                        });
+                    }
+
+                    var key = 'templateCustomizer-' + (window.templateName || '') + '--ShowDropdownOnHover';
+                    var stored = localStorage.getItem(key);
+                    var hoverMode = stored !== null
+                        ? stored === 'true'
+                        : (window.templateCustomizer !== undefined
+                            ? window.templateCustomizer.settings.defaultShowDropdownOnHover
+                            : true);
+
+                    topItems.forEach(function(li) {
+                        var toggle = li.querySelector('.menu-link.menu-toggle');
+                        if (!toggle) return;
+
+                        toggle.addEventListener('mouseenter', function() {
+                            if (window.innerWidth > 1200) {
+                                closeOthers(li);
+                                li.classList.add('open');
+                            }
+                        });
+
+                        li.addEventListener('mouseleave', function() {
+                            if (window.innerWidth > 1200) {
+                                li.classList.remove('open');
+                            }
+                        });
+
+                        var clickBoundByTemplate = !hoverMode || window.Helpers.isMobileDevice;
+                        if (!clickBoundByTemplate) {
+                            toggle.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                if (window.innerWidth > 1200) {
+                                    closeOthers(li);
+                                    li.classList.add('open');
+                                } else {
+                                    var isOpen = li.classList.contains('open');
+                                    closeOthers();
+                                    li.classList.toggle('open', !isOpen);
+                                }
+                            });
+                        }
+                    });
+                }
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', initMenuDropdown);
+                } else {
+                    initMenuDropdown();
+                }
+            })();
+        </script>
+    @endonce
+
     <!-- Overlay -->
     <div class="layout-overlay layout-menu-toggle"></div>
 
@@ -166,6 +242,7 @@
     <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/chartjs/chartjs.js') }}"></script>
     <script src="{{ asset('app_local/js/settings.js') }}"></script>
+    <script src="{{ asset('app_local/js/app-enhancements.js') }}"></script>
 
 
     <!-- Main JS -->

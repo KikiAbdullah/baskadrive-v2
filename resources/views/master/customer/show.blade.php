@@ -7,7 +7,12 @@
                 <h4 class="mb-1">{{ $item->full_name }}</h4>
                 <p class="mb-6">{{ $subtitle }}</p>
             </div>
-            <a href="{{ route($url['edit'], $item->customer_id) }}" class="btn btn-primary">Edit</a>
+            <div class="d-flex align-content-center flex-wrap gap-4">
+                <a href="{{ route($url['edit'], $item->customer_id) }}" class="action-link-icon-text">
+                    <i class="ri-edit-line"></i>
+                    <span class="fw-semibold text-uppercase">Edit</span>
+                </a>
+            </div>
         </div>
 
         <div class="card">
@@ -24,6 +29,8 @@
                     <tr><th>Kode Pos</th><td>{{ $item->postal_code ?? '-' }}</td></tr>
                     <tr><th>No. SIM</th><td>{{ $item->driver_license_number ?? '-' }}</td></tr>
                     <tr><th>Status Verifikasi</th><td>{!! $item->is_verified ? '<span class="badge bg-success">Verified</span>' : '<span class="badge bg-warning">Pending</span>' !!}</td></tr>
+                    <tr><th>Status Blacklist</th><td>{!! $item->is_blacklisted ? '<span class="badge bg-danger">Blacklist</span> '.e($item->blacklist_reason) : '<span class="badge bg-success">Aman</span>' !!}</td></tr>
+                    <tr><th>NIK</th><td>{{ $item->id_card_number ?? '-' }}</td></tr>
                     <tr><th>Catatan</th><td>{{ $item->notes ?? '-' }}</td></tr>
                 </table>
             </div>

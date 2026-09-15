@@ -9,15 +9,17 @@ use DB;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Spatie\Permission\Models\Role;
 use Yajra\DataTables\Facades\DataTables;
 
 class UserController extends Controller
 {
     public function __construct(User $model)
     {
-        $this->middleware('can:add_users', ['only' => ['store']]);
-        $this->middleware('can:edit_users', ['only' => ['update']]);
-        $this->middleware('can:delete_users', ['only' => ['destroy']]);
+        // S-02: nama permission harus sama dengan PermissionSeeder (users_*), bukan add_users
+        $this->middleware('can:users_add', ['only' => ['store']]);
+        $this->middleware('can:users_edit', ['only' => ['update']]);
+        $this->middleware('can:users_delete', ['only' => ['destroy']]);
 
         $this->title = 'User';
         $this->subtitle = 'User Login';
@@ -59,7 +61,9 @@ class UserController extends Controller
 
     public function customStore($data, $model)
     {
-        $model->assignRole($data['role']);
+        // S-03: select form mengirim role ID (string) — resolve dulu ke model
+        // karena Spatie hanya menerima int/UUID, string angka dilempar ke findByName
+        $model->assignRole(Role::findOrFail((int) $data['role']));
     }
 
     public function update(Request $request, $id)
@@ -75,22 +79,24 @@ class UserController extends Controller
                 $model = $this->model->findOrFail($id);
             }
 
-            if ($data['password'] == '') {
+            if (($data['password'] ?? '') == '') {
                 $model->update([
                     'name' => $data['name'],
                     'email' => $data['email'],
-                    'nowa' => $data['nowa'],
+                    'nowa' => $data['nowa'] ?? null,
                 ]);
             } else {
                 $model->update([
                     'name' => $data['name'],
                     'email' => $data['email'],
-                    'nowa' => $data['nowa'],
+                    'nowa' => $data['nowa'] ?? null,
                     'password' => $data['password'],
                 ]);
             }
 
-            if ($data['role'] <> 1) {
+            // S-03: bandingkan sebagai int (role dari form = ID string), lalu resolve ke model
+            $roleId = (int) ($data['role'] ?? 0);
+            if ($roleId !== 1) {
                 if ($model->id == 1) {
                     $error = ValidationException::withMessages([
                         'SUPERADMIN' => "Can't disable or change roles to this user :)",
@@ -98,9 +104,9 @@ class UserController extends Controller
                     throw $error;
                 }
             }
-            $model->syncRoles($data['role']);
+            $model->syncRoles([Role::findOrFail($roleId)]);
 
-            if ($data['deleted_at_baru'] == '1') {
+            if (($data['deleted_at_baru'] ?? ($model->trashed() ? '0' : '1')) == '1') {
                 $model->restore();
             } else {
                 //SUPERADMIN ID 1

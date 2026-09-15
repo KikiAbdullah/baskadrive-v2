@@ -11,9 +11,11 @@
                 <h4 class="mb-1">{{ $title }}</h4>
                 <p class="mb-6">Daftar {{ $subtitle }}</p>
             </div>
-            <div class="d-flex align-content-center flex-wrap gap-2">
-                <a href="{{ route('fleet.damage.create') }}" class="btn btn-primary">
-                    <i class="ri-add-line me-1"></i> Tambah Laporan
+            <div class="d-flex align-content-center flex-wrap gap-4">
+                <span class="menuoption"></span>
+                <a href="{{ route('fleet.damage.create') }}" class="action-link-icon-text">
+                    <i class="ri-add-line"></i>
+                    <span class="fw-semibold text-uppercase">Tambah Laporan</span>
                 </a>
             </div>
         </div>
@@ -25,13 +27,15 @@
                 <table class="table table-xxs" id="dtable">
                     <thead>
                         <tr>
+                            <th>ID</th>
                             <th>Kendaraan</th>
                             <th>Jenis Kerusakan</th>
                             <th>Severity</th>
                             <th>Tanggal</th>
                             <th>Estimasi Biaya</th>
                             <th>Status</th>
-                            <th>Aksi</th>
+                            <th>Klaim</th>
+                            <th class="text-end">Nilai Klaim</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -45,15 +49,25 @@
     <script type="text/javascript">
         var dtable;
         const urlAjax = '{{ route('fleet.damage.data') }}';
+        const getButtonOption = '{{ route('fleet.damage.button-option') }}';
 
         $(document).ready(function() {
             dtable = $('#dtable').DataTable({
+                "select": {
+                    style: "single",
+                    info: false
+                },
                 "serverSide": true,
                 "stateSave": true,
                 "sServerMethod": "GET",
                 "deferRender": true,
+                "rowId": 'damage_id',
                 "ajax": urlAjax,
                 "columns": [{
+                        data: 'damage_id',
+                        className: 'd-none'
+                    },
+                    {
                         data: 'vehicle_info'
                     },
                     {
@@ -72,13 +86,47 @@
                         data: 'status_badge'
                     },
                     {
-                        data: 'action'
+                        data: 'claim_status_badge'
+                    },
+                    {
+                        data: 'claim_amount'
                     },
                 ],
                 "order": [
-                    [3, "desc"]
+                    [4, "desc"]
                 ],
+                "columnDefs": [{
+                    "targets": [0],
+                    "visible": false,
+                    "searchable": false
+                }],
                 "dom": '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>><"table-responsive"t><"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
+            });
+
+            $("#dtable_length").addClass('d-none d-lg-block');
+
+            dtable.on('select', function(e, dt, type, indexes) {
+                var rowData = dtable.rows(indexes).data().toArray();
+                var id = rowData[0].damage_id;
+
+                $.ajax({
+                    type: 'GET',
+                    url: getButtonOption,
+                    data: {
+                        id: id
+                    },
+                    success: function(response) {
+                        if (response.status) {
+                            $(".menuoption").html(response.view);
+                        }
+                    }
+                });
+            });
+
+            dtable.on('deselect', function(e, dt, type, indexes) {
+                if (type === 'row') {
+                    $(".menuoption").html('');
+                }
             });
         });
     </script>

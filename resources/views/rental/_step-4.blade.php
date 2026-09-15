@@ -143,12 +143,12 @@
                             <td>Diskon</td>
                             <td class="text-end text-success" id="reviewDiscount">Rp 0</td>
                         </tr>
-                        <tr>
-                            <td>Pajak (11%)</td>
+                        <tr id="reviewTaxRow">
+                            <td>{{ $settings['tax_label'] ?? 'PPN' }} (<span id="reviewTaxPercent">11</span>%)</td>
                             <td class="text-end" id="reviewTax">Rp 0</td>
                         </tr>
-                        <tr>
-                            <td>Deposit</td>
+                        <tr id="reviewDepositRow">
+                            <td>Deposit <small class="text-muted">(jaminan, di luar tagihan)</small></td>
                             <td class="text-end" id="reviewDeposit">Rp 0</td>
                         </tr>
                         <tr class="table-active">
@@ -214,6 +214,8 @@
         const withDriver = {{ isset($data['is_with_driver']) && $data['is_with_driver'] ? 'true' : 'false' }};
         const driverId = '{{ $data["driver_id"] ?? "" }}';
         const promoId = '{{ $data["promo_id"] ?? "" }}';
+        const depositAmount = '{{ $data["deposit_amount"] ?? "" }}';
+        const taxPercent = '{{ $data["tax_percent"] ?? "" }}';
 
         if (vehicleId && startDate && endDate) {
             $.ajax({
@@ -227,6 +229,8 @@
                     is_with_driver: withDriver,
                     driver_id: driverId,
                     promo_id: promoId,
+                    deposit_amount: depositAmount,
+                    tax_percent: taxPercent,
                 },
                 dataType: 'JSON',
                 success: function(response) {
@@ -237,9 +241,12 @@
                         $('#reviewInsurance').text('Rp ' + formatNumber(d.insurance_fee));
                         $('#reviewDriverFee').text('Rp ' + formatNumber(d.driver_fee));
                         $('#reviewDiscount').text('Rp -' + formatNumber(d.discount_amount));
+                        $('#reviewTaxPercent').text(d.tax_percent);
                         $('#reviewTax').text('Rp ' + formatNumber(d.tax_amount));
                         $('#reviewDeposit').text('Rp ' + formatNumber(d.deposit_amount));
                         $('#reviewTotal').text('Rp ' + formatNumber(d.total_amount));
+                        $('#reviewTaxRow').toggle(parseFloat(d.tax_percent) > 0);
+                        $('#reviewDepositRow').toggle(parseFloat(d.deposit_amount) > 0);
                     }
                 }
             });

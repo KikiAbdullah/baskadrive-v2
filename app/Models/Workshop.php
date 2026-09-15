@@ -13,10 +13,11 @@ class Workshop extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'name', 'address', 'phone', 'contact_person', 'is_active',
+        'name', 'address', 'phone', 'contact_person', 'rating', 'specialization', 'is_active',
     ];
 
     protected $casts = [
+        'rating' => 'decimal:1',
         'is_active' => 'boolean',
         'created_at' => 'datetime',
     ];

@@ -29,4 +29,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+    })
+    ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
+        $schedule->command('app:cleanup-temp')->dailyAt('02:00');
+        $schedule->command('fleet:check-maintenance')->dailyAt('06:30');
+        $schedule->command('rental:send-reminders')->dailyAt('08:00');
     })->create();

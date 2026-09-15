@@ -16,7 +16,7 @@ class Rental extends Model
         'rental_start_date', 'rental_end_date', 'actual_return_date',
         'rental_days', 'is_with_driver', 'driver_id',
         'base_rate_per_day', 'total_base_price', 'insurance_fee', 'driver_fee',
-        'young_driver_fee', 'discount_amount', 'tax_amount', 'deposit_amount', 'total_amount',
+        'young_driver_fee', 'discount_amount', 'tax_amount', 'tax_percent', 'deposit_amount', 'total_amount',
         'status', 'payment_status', 'notes',
     ];
 
@@ -33,6 +33,7 @@ class Rental extends Model
         'young_driver_fee' => 'decimal:2',
         'discount_amount' => 'decimal:2',
         'tax_amount' => 'decimal:2',
+        'tax_percent' => 'decimal:2',
         'deposit_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'created_at' => 'datetime',
@@ -117,6 +118,21 @@ class Rental extends Model
     public function refunds()
     {
         return $this->hasMany(Refund::class, 'rental_id', 'rental_id');
+    }
+
+    public function inspections()
+    {
+        return $this->hasMany(RentalInspection::class, 'rental_id', 'rental_id');
+    }
+
+    public function handoverOut()
+    {
+        return $this->hasOne(RentalInspection::class, 'rental_id', 'rental_id')->where('inspection_type', 'handover_out');
+    }
+
+    public function handoverIn()
+    {
+        return $this->hasOne(RentalInspection::class, 'rental_id', 'rental_id')->where('inspection_type', 'handover_in');
     }
 
     public function scopeOngoing($query)

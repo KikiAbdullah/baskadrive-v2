@@ -38,15 +38,23 @@
                 </div>
                 <p class="mb-6">{{ $subtitle }}</p>
             </div>
-            <div class="d-flex align-content-center flex-wrap gap-2">
-                <a href="{{ route('fleet.damage.index') }}" class="btn btn-outline-secondary">
-                    <i class="ri-arrow-left-line me-1"></i> Kembali
+            <div class="d-flex align-content-center flex-wrap gap-4">
+                <a href="{{ route('fleet.damage.index') }}" class="action-link-icon-text">
+                    <i class="ri-arrow-left-line"></i>
+                    <span class="fw-semibold text-uppercase">Kembali</span>
                 </a>
                 @if(!$item->insuranceClaim)
                     <a href="{{ route('fleet.insurance-claim.create') }}?damage_id={{ $item->damage_id }}"
-                        class="btn btn-outline-primary">
-                        <i class="ri-shield-check-line me-1"></i> Ajukan Klaim
+                        class="action-link-icon-text">
+                        <i class="ri-shield-check-line"></i>
+                        <span class="fw-semibold text-uppercase">Ajukan Klaim</span>
                     </a>
+                @endif
+                @if($item->rental_id && ((float) ($item->actual_repair_cost ?? 0) > 0 || (float) ($item->repair_cost_estimate ?? 0) > 0))
+                    <button type="button" class="action-link-icon-text border-0 bg-transparent" id="btnBillRenter">
+                        <i class="ri-money-dollar-circle-line"></i>
+                        <span class="fw-semibold text-uppercase">Tagihkan ke Penyewa</span>
+                    </button>
                 @endif
             </div>
         </div>
@@ -104,18 +112,28 @@
                 <div class="card mb-3">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h6 class="mb-0"><i class="ri-image-line me-1"></i> Foto Kerusakan</h6>
-                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnUploadPhoto">
-                            <i class="ri-upload-line"></i> Unggah
-                        </button>
+                        <span class="text-muted small">Multi-file didukung</span>
                     </div>
                     <div class="card-body">
+                        <div id="photoDropzone"
+                            class="border rounded p-4 text-center mb-3 bg-label-secondary"
+                            style="border-style: dashed; cursor: pointer;">
+                            <i class="ri-upload-cloud-2-line ri-2x d-block mb-1"></i>
+                            <span class="fw-semibold">Tarik foto ke sini atau klik untuk memilih banyak file sekaligus</span>
+                            <div class="text-muted small">PNG/JPG/MAX 5MB per file</div>
+                            <input type="file" id="photoFileInput" multiple accept="image/*" class="d-none">
+                        </div>
                         <div class="row" id="photoList">
                             @forelse($item->photos as $photo)
-                                <div class="col-md-4 mb-2" id="photo-{{ $photo->photo_id }}">
+                                <div class="col-md-4 mb-2 position-relative" id="photo-{{ $photo->photo_id }}">
                                     <img src="{{ asset('storage/' . $photo->photo_url) }}" class="img-fluid rounded"
                                         alt="{{ $photo->caption }}">
-                                    <button type="button" class="btn btn-sm btn-outline-danger mt-1 btn-del-photo"
-                                        data-id="{{ $photo->photo_id }}">Hapus</button>
+                                    <button type="button"
+                                        class="btn btn-sm btn-outline-danger btn-del-photo position-absolute"
+                                        style="top: 4px; right: 16px; border: none; background: rgba(255,255,255,0.9); border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; padding: 0;"
+                                        data-id="{{ $photo->photo_id }}" title="Hapus foto">
+                                        <i class="ri-close-circle-line"></i>
+                                    </button>
                                 </div>
                             @empty
                                 <div class="col-12 text-muted">Belum ada foto.</div>
@@ -188,37 +206,80 @@
             });
         });
 
-        $('#btnUploadPhoto').on('click', function() {
+        $('#btnBillRenter').on('click', function() {
+            const btn = this;
             Swal.fire({
-                title: 'Unggah Foto',
-                html: '<input type="file" id="photoInput" class="form-control" accept="image/*">',
+                icon: 'question',
+                title: 'Tagihkan biaya kerusakan?',
+                text: 'Otomatis membuat catatan denda pada sewa terkait.',
                 showCancelButton: true,
-                confirmButtonText: 'Unggah',
-                preConfirm: () => {
-                    const fd = new FormData();
-                    fd.append('_token', '{{ csrf_token() }}');
-                    fd.append('photo', $('#photoInput')[0].files[0]);
-                    return $.ajax({
-                        url: '{{ url('fleet/damage') }}/{{ $item->damage_id }}/photo',
-                        type: 'POST',
-                        data: fd,
-                        processData: false,
-                        contentType: false,
-                        dataType: 'JSON'
-                    }).fail(function() {
-                        Swal.showValidationMessage('Gagal mengunggah');
-                    });
-                }
+                confirmButtonText: 'Ya, Tagihkan',
+                reverseButtons: true
             }).then((result) => {
-                if (result.value && result.value.status) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Berhasil',
-                        text: result.value.msg,
-                        didClose: () => location.reload()
+                if (result.isConfirmed) {
+                    $(btn).prop('disabled', true);
+                    $.ajax({
+                        url: '{{ url('fleet/damage') }}/{{ $item->damage_id }}/bill-renter',
+                        type: 'PUT',
+                        data: { _token: '{{ csrf_token() }}' },
+                        dataType: 'JSON',
+                        complete: () => $(btn).prop('disabled', false),
+                        success: function(res) {
+                            Swal.fire({
+                                icon: res.status ? 'success' : 'error',
+                                title: res.status ? 'Berhasil' : 'Gagal',
+                                text: res.msg,
+                                didClose: () => { if (res.status) location.reload(); }
+                            });
+                        }
                     });
                 }
             });
+        });
+
+        function uploadPhotos(files) {
+            if (!files || !files.length) return;
+            const fd = new FormData();
+            fd.append('_token', '{{ csrf_token() }}');
+            for (let i = 0; i < files.length; i++) {
+                fd.append('photos[]', files[i]);
+            }
+            Swal.fire({
+                title: 'Mengunggah ' + files.length + ' foto...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+            $.ajax({
+                url: '{{ url('fleet/damage') }}/{{ $item->damage_id }}/photo',
+                type: 'POST',
+                data: fd,
+                processData: false,
+                contentType: false,
+                dataType: 'JSON',
+                success: function(res) {
+                    if (res.status) {
+                        Swal.fire({ icon: 'success', title: 'Berhasil', text: res.msg, timer: 1200, showConfirmButton: false, didClose: () => location.reload() });
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Gagal', text: res.msg });
+                    }
+                },
+                error: function() {
+                    Swal.fire({ icon: 'error', title: 'Gagal', text: 'Salah satu atau seluruh file gagal diunggah.' });
+                }
+            });
+        }
+
+        const dz = $('#photoDropzone'), fileInput = $('#photoFileInput');
+        dz.on('click', () => fileInput.trigger('click'));
+        fileInput.on('change', function() { uploadPhotos(this.files); });
+        dz.on('dragover dragenter', function(e) {
+            e.preventDefault(); e.stopPropagation();
+            $(this).addClass('border-primary bg-label-primary');
+        });
+        dz.on('dragleave drop', function(e) {
+            e.preventDefault(); e.stopPropagation();
+            $(this).removeClass('border-primary bg-label-primary');
+            if (e.type === 'drop') uploadPhotos(e.originalEvent.dataTransfer.files);
         });
 
         $('body').on('click', '.btn-del-photo', function() {

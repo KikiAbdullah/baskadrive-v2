@@ -32,6 +32,9 @@ class RoleSeeder extends Seeder
             'logs_view', 'logs_export',
             'settings_view', 'settings_edit',
             'report_view', 'report_export', 'report_download',
+            'rental_cancel', 'fine_waive', 'accounting_export',
+            'master_view', 'master_add', 'master_edit', 'master_delete',
+            'rental_view', 'fleet_view', 'finance_view', 'accounting_view',
         ],
 
         'MANAGER' => [
@@ -40,6 +43,9 @@ class RoleSeeder extends Seeder
             'roles_view',
             'logs_view',
             'report_view', 'report_export', 'report_download',
+            'rental_cancel', 'fine_waive', 'accounting_export',
+            'master_view', 'master_add', 'master_edit', 'master_delete',
+            'rental_view', 'fleet_view', 'finance_view', 'accounting_view',
         ],
 
         'SUPERVISOR' => [
@@ -47,17 +53,23 @@ class RoleSeeder extends Seeder
             'users_view',
             'logs_view',
             'report_view', 'report_export',
+            'rental_cancel',
+            'master_view', 'master_add', 'master_edit',
+            'rental_view', 'fleet_view', 'finance_view', 'accounting_view',
         ],
 
         'STAFF' => [
             'dashboard_view',
             'users_view',
             'report_view',
+            'master_view',
+            'rental_view', 'fleet_view', 'finance_view',
         ],
 
         'VIEWER' => [
             'dashboard_view',
             'report_view',
+            'master_view',
         ],
     ];
 

@@ -81,12 +81,14 @@
 
 @section('customjs')
     <script>
-        const accounts = @json($accounts->map(function($a){ return ['id'=>$a->account_id,'code'=>$a->account_code,'name'=>$a->account_name]; }));
+        const accounts = @json($accounts->map(function($a){ return ['id'=>$a->account_id,'code'=>$a->account_code,'name'=>$a->account_name,'children'=>$a->children_count]; }));
 
         function accountOptions(selected) {
             let opts = '<option value="">Pilih Akun</option>';
             accounts.forEach(a => {
-                opts += `<option value="${a.id}" ${selected == a.id ? 'selected' : ''}>${a.code} - ${a.name}</option>`;
+                const disabled = a.children > 0 ? ' disabled' : '';
+                const label = a.children > 0 ? `${a.code} - ${a.name} (Induk - tidak bisa dipilih)` : `${a.code} - ${a.name}`;
+                opts += `<option value="${a.id}"${disabled} ${selected == a.id ? 'selected' : ''}>${label}</option>`;
             });
             return opts;
         }

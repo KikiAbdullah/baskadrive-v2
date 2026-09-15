@@ -36,6 +36,9 @@ class DatabaseSeeder extends Seeder
 
             // Rental ERP Keuangan
             RentalErpFinanceSeeder::class,
+
+            // Rental ERP — DATA LENGKAP 12 BULAN (realistis, jumlah besar)
+            RentalErpCompleteSeeder::class,
         ]);
     }
 }

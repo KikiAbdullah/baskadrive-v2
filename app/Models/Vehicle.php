@@ -11,14 +11,16 @@ class Vehicle extends Model
     protected $primaryKey = 'vehicle_id';
 
     protected $fillable = [
-        'license_plate', 'vin', 'model_id', 'color', 'year', 'mileage',
+        'license_plate', 'vin', 'model_id', 'location_id', 'color', 'year', 'mileage',
         'status', 'purchase_date', 'purchase_price', 'current_value',
-        'engine_number', 'photo_url', 'notes',
+        'engine_number', 'photo_url', 'notes', 'latitude', 'longitude',
     ];
 
     protected $casts = [
         'year' => 'integer',
         'mileage' => 'integer',
+        'latitude' => 'decimal:7',
+        'longitude' => 'decimal:7',
         'purchase_date' => 'date',
         'purchase_price' => 'decimal:2',
         'current_value' => 'decimal:2',
@@ -29,6 +31,16 @@ class Vehicle extends Model
     public function model()
     {
         return $this->belongsTo(VehicleModel::class, 'model_id', 'model_id');
+    }
+
+    public function location()
+    {
+        return $this->belongsTo(Location::class, 'location_id', 'location_id');
+    }
+
+    public function locationHistories()
+    {
+        return $this->hasMany(VehicleLocationHistory::class, 'vehicle_id', 'vehicle_id');
     }
 
     public function rentals()

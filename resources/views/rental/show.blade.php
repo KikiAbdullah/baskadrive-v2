@@ -36,12 +36,30 @@
                 </div>
                 <p class="mb-6">{{ $subtitle }}</p>
             </div>
-            <div class="d-flex align-content-center flex-wrap gap-2">
-                <a href="{{ route('rental.index') }}" class="btn btn-outline-secondary">
-                    <i class="ri-arrow-left-line me-1"></i> Kembali
+            <div class="d-flex align-content-center flex-wrap gap-4">
+                <a href="{{ route('rental.index') }}" class="action-link-icon-text">
+                    <i class="ri-arrow-left-line"></i>
+                    <span class="fw-semibold text-uppercase">Kembali</span>
                 </a>
-                <a href="{{ route('rental.print', $rental->rental_id) }}" class="btn btn-outline-primary" target="_blank">
-                    <i class="ri-printer-line me-1"></i> Cetak Kontrak
+                <a href="{{ route('rental.print', $rental->rental_id) }}" class="action-link-icon-text">
+                    <i class="ri-printer-line"></i>
+                    <span class="fw-semibold text-uppercase">Cetak Kontrak</span>
+                </a>
+                @if(in_array($rental->status, ['reserved','ongoing']))
+                    <a href="{{ route('rental.detail.handover.form', [$rental->rental_id, 'out']) }}" class="action-link-icon-text">
+                        <i class="ri-car-line"></i>
+                        <span class="fw-semibold text-uppercase">Inspeksi Awal</span>
+                    </a>
+                @endif
+                @if($rental->status === 'ongoing')
+                    <a href="{{ route('rental.detail.handover.form', [$rental->rental_id, 'in']) }}" class="action-link-icon-text">
+                        <i class="ri-checkbox-line"></i>
+                        <span class="fw-semibold text-uppercase">Inspeksi Akhir</span>
+                    </a>
+                @endif
+                <a href="{{ route('rental.edit', $rental->rental_id) }}" class="action-link-icon-text">
+                    <i class="ri-edit-line"></i>
+                    <span class="fw-semibold text-uppercase">Edit</span>
                 </a>
             </div>
         </div>

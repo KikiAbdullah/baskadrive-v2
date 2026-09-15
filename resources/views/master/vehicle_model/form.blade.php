@@ -36,11 +36,11 @@
 <div class="row mb-3">
     <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Tipe Bahan Bakar</label>
     <div class="col-lg-9">
-        <select name="fuel_type" class="select">
+        <select name="fuel_type" class="select" required>
             <option value="">Pilih Bahan Bakar</option>
-            @foreach (['bensin', 'diesel', 'listrik', 'hybrid'] as $fuel)
-                <option value="{{ $fuel }}" {{ old('fuel_type', $item->fuel_type ?? '') == $fuel ? 'selected' : '' }}>
-                    {{ ucfirst($fuel) }}
+            @foreach (['Petrol' => 'Bensin', 'Diesel' => 'Diesel', 'Electric' => 'Listrik', 'Hybrid' => 'Hybrid'] as $val => $fuel)
+                <option value="{{ $val }}" {{ old('fuel_type', $item->fuel_type ?? '') == $val ? 'selected' : '' }}>
+                    {{ $fuel }}
                 </option>
             @endforeach
         </select>
@@ -51,9 +51,9 @@
     <div class="col-lg-9">
         <select name="transmission" class="select">
             <option value="">Pilih Transmisi</option>
-            <option value="manual" {{ old('transmission', $item->transmission ?? '') == 'manual' ? 'selected' : '' }}>Manual</option>
-            <option value="automatic" {{ old('transmission', $item->transmission ?? '') == 'automatic' ? 'selected' : '' }}>Automatic</option>
-            <option value="cvt" {{ old('transmission', $item->transmission ?? '') == 'cvt' ? 'selected' : '' }}>CVT</option>
+            <option value="Manual" {{ old('transmission', $item->transmission ?? '') == 'Manual' ? 'selected' : '' }}>Manual</option>
+            <option value="Automatic" {{ old('transmission', $item->transmission ?? '') == 'Automatic' ? 'selected' : '' }}>Automatic</option>
+            <option value="CVT" {{ old('transmission', $item->transmission ?? '') == 'CVT' ? 'selected' : '' }}>CVT</option>
         </select>
     </div>
 </div>
@@ -92,6 +92,16 @@
     <div class="col-lg-9">
         <input type="number" step="0.01" name="deposit_amount"
             value="{{ $item->deposit_amount ?? old('deposit_amount') }}" class="form-control" placeholder="500000" />
+    </div>
+</div>
+<div class="row mb-3">
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Foto Model</label>
+    <div class="col-lg-9">
+        @if(!empty($item->photo))
+            <div class="mb-2"><img src="{{ asset('storage/vehicle_model/'.$item->photo) }}" alt="Foto" style="max-width:120px;border-radius:6px;border:1px solid #e5e5e8;"></div>
+        @endif
+        <input type="file" name="photo" accept="image/*" class="form-control" />
+        <small class="text-muted">JPG/PNG/WebP maks 2MB — tampil di katalog & wizard.</small>
     </div>
 </div>
 <div class="row mb-3">

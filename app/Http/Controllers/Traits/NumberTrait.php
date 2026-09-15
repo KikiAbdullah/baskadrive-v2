@@ -3,9 +3,24 @@
 namespace App\Http\Controllers\Traits;
 
 use DB;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 trait NumberTrait
 {
+    /**
+     * Query dasar penomoran: denganTrashed HANYA bila model memakai SoftDeletes,
+     * agar gen_number tidak fatal pada model non-soft-delete (Rental/Invoice/Claim).
+     * Menerima instance model maupun fully-qualified class name.
+     */
+    protected function genBaseQuery($model)
+    {
+        $class = is_object($model) ? get_class($model) : $model;
+
+        return in_array(SoftDeletes::class, class_uses_recursive($class), true)
+            ? $class::withTrashed()
+            : $class::query();
+    }
+
     public function gen_number_with_where_in($model, $column, $prefix, $date, $field_date, $every_month = false, $whereCol, $whereVal)
     {
         $year = '';
@@ -22,11 +37,11 @@ trait NumberTrait
         $adaM = strpos($prefix, '@');
         //check model
         if (! empty($date)) {
-            $lastno = $model::withTrashed()->select(DB::raw('IFNULL(MAX(CAST(SUBSTRING('.$column.', '.($pos + 1).','.$jml.') as UNSIGNED)),0) * 1 AS idmax'))->whereIn($whereCol, $whereVal);
+            $lastno = $this->genBaseQuery($model)->select(DB::raw('IFNULL(MAX(CAST(SUBSTRING('.$column.', '.($pos + 1).','.$jml.') as UNSIGNED)),0) * 1 AS idmax'))->whereIn($whereCol, $whereVal);
             $lastno = $this->queryParams($lastno, ['adaY' => $adaY, 'adaM' => $adaM, 'every_month' => $every_month, 'field_date' => $field_date, 'year' => $year, 'month' => $month]);
             $lastno = $lastno->first()->idmax;
         } else {
-            $lastno = $model::withTrashed()->select(DB::raw('IFNULL(MAX(CAST(SUBSTRING('.$column.', '.($pos + 1).','.$jml.') as UNSIGNED)),0) * 1 AS idmax'))->whereIn($whereCol, $whereVal)
+            $lastno = $this->genBaseQuery($model)->select(DB::raw('IFNULL(MAX(CAST(SUBSTRING('.$column.', '.($pos + 1).','.$jml.') as UNSIGNED)),0) * 1 AS idmax'))->whereIn($whereCol, $whereVal)
                 ->first()->idmax;
         }
 
@@ -57,11 +72,11 @@ trait NumberTrait
         $adaM = strpos($prefix, '@');
         //check model
         if (! empty($date)) {
-            $lastno = $model::withTrashed()->select(DB::raw('IFNULL(MAX(CAST(SUBSTRING('.$column.', '.($pos + 1).','.$jml.') as UNSIGNED)),0) * 1 AS idmax'))->where($whereCol, $whereVal);
+            $lastno = $this->genBaseQuery($model)->select(DB::raw('IFNULL(MAX(CAST(SUBSTRING('.$column.', '.($pos + 1).','.$jml.') as UNSIGNED)),0) * 1 AS idmax'))->where($whereCol, $whereVal);
             $lastno = $this->queryParams($lastno, ['adaY' => $adaY, 'adaM' => $adaM, 'every_month' => $every_month, 'field_date' => $field_date, 'year' => $year, 'month' => $month]);
             $lastno = $lastno->first()->idmax;
         } else {
-            $lastno = $model::withTrashed()->select(DB::raw('IFNULL(MAX(CAST(SUBSTRING('.$column.', '.($pos + 1).','.$jml.') as UNSIGNED)),0) * 1 AS idmax'))->where($whereCol, $whereVal)
+            $lastno = $this->genBaseQuery($model)->select(DB::raw('IFNULL(MAX(CAST(SUBSTRING('.$column.', '.($pos + 1).','.$jml.') as UNSIGNED)),0) * 1 AS idmax'))->where($whereCol, $whereVal)
                 ->first()->idmax;
         }
 
@@ -92,11 +107,11 @@ trait NumberTrait
         $adaM = strpos($prefix, '@');
         //check model
         if (! empty($date)) {
-            $lastno = $model::withTrashed()->select(DB::raw('IFNULL(MAX(CAST(SUBSTRING('.$column.', '.($pos + 1).','.$jml.') as UNSIGNED)),0) * 1 AS idmax'));
+            $lastno = $this->genBaseQuery($model)->select(DB::raw('IFNULL(MAX(CAST(SUBSTRING('.$column.', '.($pos + 1).','.$jml.') as UNSIGNED)),0) * 1 AS idmax'));
             $lastno = $this->queryParams($lastno, ['adaY' => $adaY, 'adaM' => $adaM, 'every_month' => $every_month, 'field_date' => $field_date, 'year' => $year, 'month' => $month]);
             $lastno = $lastno->first()->idmax;
         } else {
-            $lastno = $model::withTrashed()->select(DB::raw('IFNULL(MAX(CAST(SUBSTRING('.$column.', '.($pos + 1).','.$jml.') as UNSIGNED)),0) * 1 AS idmax'))
+            $lastno = $this->genBaseQuery($model)->select(DB::raw('IFNULL(MAX(CAST(SUBSTRING('.$column.', '.($pos + 1).','.$jml.') as UNSIGNED)),0) * 1 AS idmax'))
                 ->first()->idmax;
         }
 
@@ -144,7 +159,7 @@ trait NumberTrait
 
     public function gen_number_classic($modelx, $where, $whereYear, $colYear, $prefix)
     {
-        $model = $modelx::withTrashed();
+        $model = $this->genBaseQuery($modelx);
         if (! empty($where)) {
             $model->where($where);
         }

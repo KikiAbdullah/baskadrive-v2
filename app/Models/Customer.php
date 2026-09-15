@@ -14,7 +14,8 @@ class Customer extends Model
         'customer_type', 'first_name', 'last_name', 'company_name',
         'email', 'phone', 'address', 'city', 'province', 'postal_code', 'country',
         'driver_license_number', 'driver_license_expiry', 'driver_license_photo',
-        'id_card_number', 'id_card_photo', 'date_of_birth', 'is_verified', 'notes',
+        'id_card_number', 'id_card_photo', 'date_of_birth', 'is_verified',
+        'is_blacklisted', 'blacklist_reason', 'notes',
     ];
 
     protected $casts = [
@@ -22,6 +23,7 @@ class Customer extends Model
         'driver_license_expiry' => 'date',
         'date_of_birth' => 'date',
         'is_verified' => 'boolean',
+        'is_blacklisted' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -54,5 +56,15 @@ class Customer extends Model
     public function scopeCorporate($query)
     {
         return $query->where('customer_type', 'corporate');
+    }
+
+    public function scopeNotBlacklisted($query)
+    {
+        return $query->where('is_blacklisted', false);
+    }
+
+    public function scopeBlacklisted($query)
+    {
+        return $query->where('is_blacklisted', true);
     }
 }

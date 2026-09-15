@@ -22,11 +22,16 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('login', [LoginController::class, 'showLoginForm'])->name('login');
-Route::post('login', [LoginController::class, 'login']);
+// S-04: batasi brute force — 5 percobaan login / menit (per IP)
+Route::post('login', [LoginController::class, 'login'])->middleware('throttle:5,1');
 Route::post('logout', [LoginController::class, 'logout'])->name('logout');
 
-Route::get('register', [RegisterController::class, 'showRegistrationForm'])->name('register');
-Route::post('register', [RegisterController::class, 'register']);
+// Pendaftaran publik dimatikan secara default (audit Setup S-11; pintu S-01 tertutup
+// kecuali memang dibutuhkan — aktifkan lewat APP_REGISTRATION_ENABLED=true).
+if (config('app.registration_enabled')) {
+    Route::get('register', [RegisterController::class, 'showRegistrationForm'])->name('register');
+    Route::post('register', [RegisterController::class, 'register']);
+}
 
 Route::get('password/reset', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
 Route::post('password/email', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
@@ -39,6 +44,9 @@ Route::post('password/confirm', [ConfirmPasswordController::class, 'confirm']);
 Route::get('email/verify', [VerificationController::class, 'notice'])->name('verification.notice');
 Route::get('email/verify/{id}/{hash}', [VerificationController::class, 'verify'])->name('verification.verify');
 Route::post('email/resend', [VerificationController::class, 'resend'])->name('verification.resend');
+
+// Verifikasi publik keaslian kwitansi (scan QR di dokumen)
+Route::get('verify/receipt/{payment}', [\App\Http\Controllers\ReceiptVerificationController::class, 'verify'])->name('verify.receipt');
 
 // Two-Factor Routes
 Route::group(['middleware' => ['auth']], function () {

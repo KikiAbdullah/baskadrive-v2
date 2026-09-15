@@ -33,6 +33,12 @@ class RegisterController extends Controller
 
     public function register(Request $request)
     {
+        // S-01: defense-in-depth — rute saja tidak cukup; bila route cache basi
+        // atau flag dimatikan saat runtime, tetap tolak.
+        if (! config('app.registration_enabled')) {
+            abort(404);
+        }
+
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
@@ -40,6 +46,10 @@ class RegisterController extends Controller
         ]);
 
         $user = $this->registerUser($request->all());
+
+        // S-01: pendaftar publik (bila fitur dinyalakan) HANYA boleh dapat role
+        // terkecil VIEWER — tidak ada akses modul operasional.
+        $user->assignRole(config('app.registration_default_role', 'VIEWER'));
 
         $this->guard()->login($user);
 

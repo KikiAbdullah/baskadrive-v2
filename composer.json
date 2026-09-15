@@ -7,12 +7,17 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "bacon/bacon-qr-code": "*",
+        "chrome-php/chrome": "1.16",
+        "dompdf/dompdf": "^3.1",
         "guzzlehttp/guzzle": "^8.1",
         "intervention/image": "^4.3",
         "intervention/image-laravel": "^4.1",
         "laravel/framework": "^13.17",
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^3.0",
+        "picqer/php-barcode-generator": "*",
+        "spatie/laravel-pdf": "^2.13",
         "spatie/laravel-permission": "^8.3",
         "yajra/laravel-datatables-oracle": "^13.3"
     },

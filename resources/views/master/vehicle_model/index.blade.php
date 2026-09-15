@@ -26,6 +26,7 @@
                             <thead>
                                 <tr>
                                     <th>ID</th>
+                                    <th>Foto</th>
                                     <th>Model</th>
                                     <th>Brand</th>
                                     <th>Kategori</th>
@@ -40,7 +41,11 @@
                 </div>
             </div>
             <div class="col-md-6" id="dynamic-form">
-                @include('master.vehicle_model.create')
+                @can('master_add')
+
+                    @include('master.vehicle_model.create')
+
+                @endcan
             </div>
 
         </div>
@@ -52,7 +57,12 @@
         var dtable;
         const urlAjax = '{{ route('master.vehicle-model.data') }}';
         const getButtonOption = '{{ route('get.button-option') }}';
-        const buttons = {!! json_encode(['vedit' => $url['edit'], 'destroy' => $url['destroy']]) !!};
+        @php
+                $btnList = [];
+                if (auth()->user()->can('master_edit')) { $btnList['vedit'] = $url['edit']; }
+                if (auth()->user()->can('master_delete')) { $btnList['destroy'] = $url['destroy']; }
+            @endphp
+            const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();
         var button_temp =
             '<a href="#!" class="action-link-icon-text btnBack"><i class="ri-arrow-left-s-line"></i><span class="fw-semibold text-uppercase">CANCEL</span></a>';
@@ -72,6 +82,9 @@
                 "ajax": urlAjax,
                 "columns": [{
                         data: 'model_id'
+                    },
+                    {
+                        data: 'photo'
                     },
                     {
                         data: 'model_name'
@@ -127,7 +140,7 @@
             });
 
             //submit form create
-            $("body").on("submit", "#dform", function(e) {
+            $("body").on("submit", ".js-crud-create", function(e) {
                 $(this).find('.submit_loader').removeAttr('class').addClass(
                     'ri-loader-4-line spinner submit_loader');
             });
@@ -183,7 +196,7 @@
             });
 
             //update form submit
-            $('body').on('submit', '#formupdate', function(e) {
+            $('body').on('submit', '.js-crud-edit', function(e) {
                 swalInit.fire({
                     icon: 'question',
                     title: 'Simpan Perubahan?',
@@ -192,10 +205,13 @@
                     reverseButtons: true,
                     showLoaderOnConfirm: true,
                     preConfirm: () => {
+                        var fd = new FormData($(".js-crud-edit")[0]);
                         return $.ajax({
-                            type: 'PUT',
-                            url: $("#formupdate").attr('action'),
-                            data: $("#formupdate").serialize(),
+                            type: 'POST',
+                            url: $(".js-crud-edit").attr('action'),
+                            data: fd,
+                            processData: false,
+                            contentType: false,
                             dataType: "json",
                         }).done(function(data) {
                             return data;

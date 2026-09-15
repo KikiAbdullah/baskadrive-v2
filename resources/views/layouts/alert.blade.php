@@ -4,6 +4,12 @@
         {{ session('success') }}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
+@elseif(session('warning'))
+    <div class="alert alert-warning border-0 alert-dismissible">
+        <span class="fw-semibold">Perhatian!</span>
+        {{ session('warning') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
 @elseif(session('error'))
     <div class="alert alert-danger border-0 alert-dismissible">
         <span class="fw-semibold">Error!</span>

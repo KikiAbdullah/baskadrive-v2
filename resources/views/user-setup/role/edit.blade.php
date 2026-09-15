@@ -1,4 +1,4 @@
-<form method="POST" action="{{ route($url['update'], $item->id) }}" id="formupdate">
+<form method="POST" action="{{ route($url['update'], $item->id) }}" class="js-crud-edit">
     @csrf
     @method('PUT')
 <div class="col-12 mb-3">

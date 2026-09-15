@@ -7,7 +7,12 @@
                 <h4 class="mb-1">{{ $item->license_plate }}</h4>
                 <p class="mb-6">{{ $subtitle }}</p>
             </div>
-            <a href="{{ route($url['edit'], $item->vehicle_id) }}" class="btn btn-primary">Edit</a>
+            <div class="d-flex align-content-center flex-wrap gap-4">
+                <a href="{{ route($url['edit'], $item->vehicle_id) }}" class="action-link-icon-text">
+                    <i class="ri-edit-line"></i>
+                    <span class="fw-semibold text-uppercase">Edit</span>
+                </a>
+            </div>
         </div>
 
         <div class="card">
@@ -27,7 +32,7 @@
                         default => '<span class="badge bg-secondary">Retired</span>',
                     } !!}</td></tr>
                     <tr><th>Mesin</th><td>{{ $item->engine_number ?? '-' }}</td></tr>
-                    <tr><th>Foto</th><td>@if ($item->photo_url) <img src="{{ $item->photo_url }}" height="60" /> @else - @endif</td></tr>
+                    <tr><th>Foto</th><td>@if ($item->photo_url) <img src="{{ str_starts_with($item->photo_url, 'http') ? $item->photo_url : asset('storage/vehicle/'.$item->photo_url) }}" height="60" /> @else - @endif</td></tr>
                     <tr><th>Catatan</th><td>{{ $item->notes ?? '-' }}</td></tr>
                 </table>
             </div>

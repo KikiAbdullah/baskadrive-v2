@@ -11,9 +11,11 @@
                 <h4 class="mb-1">{{ $title }}</h4>
                 <p class="mb-6">Daftar {{ $subtitle }}</p>
             </div>
-            <div class="d-flex align-content-center flex-wrap gap-2">
-                <a href="{{ route('fleet.maintenance.create') }}" class="btn btn-primary">
-                    <i class="ri-add-line me-1"></i> Tambah Jadwal
+            <div class="d-flex align-content-center flex-wrap gap-4">
+                <span class="menuoption"></span>
+                <a href="{{ route('fleet.maintenance.create') }}" class="action-link-icon-text">
+                    <i class="ri-add-line"></i>
+                    <span class="fw-semibold text-uppercase">Tambah Jadwal</span>
                 </a>
             </div>
         </div>
@@ -25,13 +27,13 @@
                 <table class="table table-xxs" id="dtable">
                     <thead>
                         <tr>
+                            <th>ID</th>
                             <th>Kendaraan</th>
                             <th>Jenis</th>
                             <th>Bengkel</th>
                             <th>Tanggal</th>
                             <th>Biaya</th>
                             <th>Status</th>
-                            <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -45,15 +47,25 @@
     <script type="text/javascript">
         var dtable;
         const urlAjax = '{{ route('fleet.maintenance.data') }}';
+        const getButtonOption = '{{ route('fleet.maintenance.button-option') }}';
 
         $(document).ready(function() {
             dtable = $('#dtable').DataTable({
+                "select": {
+                    style: "single",
+                    info: false
+                },
                 "serverSide": true,
                 "stateSave": true,
                 "sServerMethod": "GET",
                 "deferRender": true,
+                "rowId": 'maintenance_id',
                 "ajax": urlAjax,
                 "columns": [{
+                        data: 'maintenance_id',
+                        className: 'd-none'
+                    },
+                    {
                         data: 'vehicle_info'
                     },
                     {
@@ -71,17 +83,46 @@
                     {
                         data: 'status_badge'
                     },
-                    {
-                        data: 'action'
-                    },
                 ],
                 "order": [
-                    [3, "asc"]
+                    [4, "asc"]
                 ],
+                "columnDefs": [{
+                    "targets": [0],
+                    "visible": false,
+                    "searchable": false
+                }],
                 "dom": '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>><"table-responsive"t><"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
             });
 
-            $('body').on('click', '.btn-complete', function() {
+            $("#dtable_length").addClass('d-none d-lg-block');
+
+            dtable.on('select', function(e, dt, type, indexes) {
+                var rowData = dtable.rows(indexes).data().toArray();
+                var id = rowData[0].maintenance_id;
+
+                $.ajax({
+                    type: 'GET',
+                    url: getButtonOption,
+                    data: {
+                        id: id
+                    },
+                    success: function(response) {
+                        if (response.status) {
+                            $(".menuoption").html(response.view);
+                        }
+                    }
+                });
+            });
+
+            dtable.on('deselect', function(e, dt, type, indexes) {
+                if (type === 'row') {
+                    $(".menuoption").html('');
+                }
+            });
+
+            $('body').on('click', '.btn-complete', function(e) {
+                e.preventDefault();
                 const id = $(this).data('id');
                 Swal.fire({
                     icon: 'question',

@@ -28,6 +28,8 @@
                                     <th>ID</th>
                                     <th>Nama Lokasi</th>
                                     <th>Kota</th>
+                                    <th>Jam</th>
+                                    <th>Koordinat</th>
                                     <th>Telepon</th>
                                     <th>Status</th>
                                 </tr>
@@ -39,7 +41,11 @@
                 </div>
             </div>
             <div class="col-md-6" id="dynamic-form">
-                @include('master.location.create')
+                @can('master_add')
+
+                    @include('master.location.create')
+
+                @endcan
             </div>
 
         </div>
@@ -51,7 +57,12 @@
         var dtable;
         const urlAjax = '{{ route('master.location.data') }}';
         const getButtonOption = '{{ route('get.button-option') }}';
-        const buttons = {!! json_encode(['vedit' => $url['edit'], 'destroy' => $url['destroy']]) !!};
+        @php
+                $btnList = [];
+                if (auth()->user()->can('master_edit')) { $btnList['vedit'] = $url['edit']; }
+                if (auth()->user()->can('master_delete')) { $btnList['destroy'] = $url['destroy']; }
+            @endphp
+            const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();
         var button_temp =
             '<a href="#!" class="action-link-icon-text btnBack"><i class="ri-arrow-left-s-line"></i><span class="fw-semibold text-uppercase">CANCEL</span></a>';
@@ -77,6 +88,12 @@
                     },
                     {
                         data: 'city'
+                    },
+                    {
+                        data: 'opening_hours'
+                    },
+                    {
+                        data: 'coords'
                     },
                     {
                         data: 'contact_phone'
@@ -123,7 +140,7 @@
             });
 
             //submit form create
-            $("body").on("submit", "#dform", function(e) {
+            $("body").on("submit", ".js-crud-create", function(e) {
                 $(this).find('.submit_loader').removeAttr('class').addClass(
                     'ri-loader-4-line spinner submit_loader');
             });
@@ -179,7 +196,7 @@
             });
 
             //update form submit
-            $('body').on('submit', '#formupdate', function(e) {
+            $('body').on('submit', '.js-crud-edit', function(e) {
                 swalInit.fire({
                     icon: 'question',
                     title: 'Simpan Perubahan?',
@@ -190,8 +207,8 @@
                     preConfirm: () => {
                         return $.ajax({
                             type: 'PUT',
-                            url: $("#formupdate").attr('action'),
-                            data: $("#formupdate").serialize(),
+                            url: $(".js-crud-edit").attr('action'),
+                            data: $(".js-crud-edit").serialize(),
                             dataType: "json",
                         }).done(function(data) {
                             return data;

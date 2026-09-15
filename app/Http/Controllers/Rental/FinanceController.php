@@ -10,6 +10,8 @@ use App\Models\Rental;
 use DB;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Spatie\LaravelPdf\Facades\Pdf;
 
 class FinanceController extends Controller
 {
@@ -19,16 +21,34 @@ class FinanceController extends Controller
     }
 
     // ============================================================
-    // INVOICE
+    // SATU HALAMAN: INVOICE / DENDA / PEMBAYARAN
     // ============================================================
 
-    public function invoiceIndex()
+    public function index(Request $request)
     {
-        return view('finance.invoice.index')->with([
-            'title' => 'Invoice',
-            'subtitle' => 'Daftar Invoice',
+        $tab = $request->get('tab', 'invoice');
+
+        $tabs = [
+            'invoice' => 'Invoice',
+            'fine' => 'Denda',
+            'payment' => 'Pembayaran',
+        ];
+
+        if (!array_key_exists($tab, $tabs)) {
+            $tab = 'invoice';
+        }
+
+        return view('finance.index')->with([
+            'title' => 'Keuangan',
+            'subtitle' => 'Invoice, Denda & Pembayaran',
+            'tab' => $tab,
+            'tabs' => $tabs,
         ]);
     }
+
+    // ============================================================
+    // INVOICE
+    // ============================================================
 
     public function invoiceData(Request $request)
     {
@@ -48,16 +68,22 @@ class FinanceController extends Controller
             ->addColumn('paid', fn($i) => 'Rp ' . number_format($i->paid_amount ?? 0, 0, ',', '.'))
             ->addColumn('remaining', fn($i) => 'Rp ' . number_format(($i->total_amount ?? 0) - ($i->paid_amount ?? 0), 0, ',', '.'))
             ->addColumn('status_badge', fn($i) => view('components.invoice-status-badge', ['status' => $i->status])->render())
-            ->addColumn('action', function ($i) {
-                $html = '<div class="d-flex gap-1">';
-                $html .= '<a href="' . route('finance.invoice.show', $i->invoice_id) . '" class="btn btn-sm btn-outline-primary" title="Detail"><i class="ri-eye-line"></i></a>';
-                $html .= '<a href="' . route('finance.invoice.print', $i->invoice_id) . '" target="_blank" class="btn btn-sm btn-outline-secondary" title="Cetak"><i class="ri-printer-line"></i></a>';
-                $html .= '<button type="button" class="btn btn-sm btn-outline-info btn-send" data-id="' . $i->invoice_id . '" title="Kirim Email"><i class="ri-mail-send-line"></i></button>';
-                $html .= '</div>';
-                return $html;
-            })
-            ->rawColumns(['status_badge', 'action'])
+            ->rawColumns(['status_badge'])
             ->toJson();
+    }
+
+    public function invoiceButtonOption(Request $request)
+    {
+        try {
+            $item = Invoice::findOrFail($request->get('id'));
+
+            return response()->json([
+                'status' => true,
+                'view' => view('finance.invoice.button_option')->with(['item' => $item])->render(),
+            ]);
+        } catch (Exception $e) {
+            return response()->json(['status' => false, 'msg' => $e->getMessage()]);
+        }
     }
 
     public function invoiceShow($id)
@@ -78,29 +104,65 @@ class FinanceController extends Controller
         ]);
     }
 
+    private function companySettings(): array
+    {
+        return \App\Support\AppSettings::all();
+    }
+
     public function invoicePrint($id)
     {
         $item = Invoice::with([
             'rental.customer',
             'rental.vehicle.model.brand',
+            'rental.driver',
             'rental.details',
             'rental.pickupLocation',
             'rental.returnLocation',
             'payments',
         ])->findOrFail($id);
 
-        return view('finance.invoice.print')->with(['item' => $item]);
+        return \App\Support\PdfDocument::download(
+            'finance.invoice.print',
+            ['item' => $item, 'settings' => $this->companySettings()],
+            'Invoice-' . ($item->invoice_number ?? $item->invoice_id)
+        );
     }
 
     public function invoiceSendEmail(Request $request, $id)
     {
         try {
-            $item = Invoice::findOrFail($id);
+            $item = Invoice::with(['rental.customer', 'rental.vehicle.model.brand', 'rental.driver', 'rental.details', 'rental.pickupLocation', 'rental.returnLocation', 'payments'])->findOrFail($id);
+
+            $recipient = $item->rental?->customer?->email;
+            if (! $recipient) {
+                return response()->json(['status' => false, 'msg' => 'Pelanggan tidak memiliki alamat email. Perbarui data pelanggan terlebih dahulu.']);
+            }
+
+            $settings = $this->companySettings();
+
+            // Generate PDF invoice ke folder temp untuk dilampirkan (dibersihkan oleh app:cleanup-temp)
+            Storage::disk('local')->makeDirectory('pdf-tmp');
+            $pdfPath = Storage::disk('local')->path('pdf-tmp/Invoice-' . ($item->invoice_number ?? $item->invoice_id) . '.pdf');
+
+            Pdf::view('finance.invoice.print', ['item' => $item, 'settings' => $settings])
+                ->format('a4')
+                ->save($pdfPath);
+
+            try {
+                \Illuminate\Support\Facades\Mail::to($recipient)->send(new \App\Mail\InvoiceMail($item, $pdfPath, $settings));
+            } finally {
+                if (is_file($pdfPath)) {
+                    @unlink($pdfPath);
+                }
+            }
+
             if ($item->status === 'draft') {
                 $item->update(['status' => 'sent']);
             }
 
-            return response()->json(['status' => true, 'msg' => 'Invoice berhasil dikirim (simulasi).']);
+            return response()->json(['status' => true, 'msg' => 'Invoice PDF berhasil dikirim ke '.$recipient]);
+        } catch (\Symfony\Component\Mailer\Exception\TransportException $e) {
+            return response()->json(['status' => false, 'msg' => 'Gagal mengirim email (server surat tidak dapat dihubungi): '.$e->getMessage()]);
         } catch (Exception $e) {
             return response()->json(['status' => false, 'msg' => $e->getMessage()]);
         }
@@ -109,14 +171,6 @@ class FinanceController extends Controller
     // ============================================================
     // FINE (DENDA)
     // ============================================================
-
-    public function fineIndex()
-    {
-        return view('finance.fine.index')->with([
-            'title' => 'Denda',
-            'subtitle' => 'Daftar Denda',
-        ]);
-    }
 
     public function fineData(Request $request)
     {
@@ -134,18 +188,22 @@ class FinanceController extends Controller
             ->addColumn('amount', fn($f) => 'Rp ' . number_format($f->amount ?? 0, 0, ',', '.'))
             ->addColumn('issued_date', fn($f) => $f->issued_date?->format('d/m/Y') ?? '-')
             ->addColumn('status_badge', fn($f) => view('components.fine-status-badge', ['status' => $f->status])->render())
-            ->addColumn('action', function ($f) {
-                if ($f->status !== 'unpaid') {
-                    return '<span class="text-muted">-</span>';
-                }
-                $html = '<div class="d-flex gap-1">';
-                $html .= '<button type="button" class="btn btn-sm btn-success btn-pay" data-id="' . $f->fine_id . '"><i class="ri-check-line"></i> Bayar</button>';
-                $html .= '<button type="button" class="btn btn-sm btn-outline-secondary btn-waive" data-id="' . $f->fine_id . '">Bebaskan</button>';
-                $html .= '</div>';
-                return $html;
-            })
-            ->rawColumns(['status_badge', 'action'])
+            ->rawColumns(['status_badge'])
             ->toJson();
+    }
+
+    public function fineButtonOption(Request $request)
+    {
+        try {
+            $item = Fine::findOrFail($request->get('id'));
+
+            return response()->json([
+                'status' => true,
+                'view' => view('finance.fine.button_option')->with(['item' => $item])->render(),
+            ]);
+        } catch (Exception $e) {
+            return response()->json(['status' => false, 'msg' => $e->getMessage()]);
+        }
     }
 
     public function finePay(Request $request, $id)
@@ -194,14 +252,6 @@ class FinanceController extends Controller
     // PAYMENT (PEMBAYARAN)
     // ============================================================
 
-    public function paymentIndex()
-    {
-        return view('finance.payment.index')->with([
-            'title' => 'Pembayaran',
-            'subtitle' => 'Daftar Pembayaran',
-        ]);
-    }
-
     public function paymentData(Request $request)
     {
         $query = Payment::with(['invoice', 'rental.customer', 'rental.vehicle']);
@@ -219,15 +269,32 @@ class FinanceController extends Controller
             ->addColumn('amount', fn($p) => 'Rp ' . number_format($p->amount ?? 0, 0, ',', '.'))
             ->addColumn('method', fn($p) => ucfirst($p->payment_method ?? '-'))
             ->addColumn('status_badge', fn($p) => view('components.payment-status-badge', ['status' => $p->status])->render())
-            ->addColumn('action', fn($p) => '<a href="' . route('finance.payment.receipt', $p->payment_id) . '" target="_blank" class="btn btn-sm btn-outline-primary"><i class="ri-receipt-line"></i> Kwitansi</a>')
-            ->rawColumns(['status_badge', 'action'])
+            ->rawColumns(['status_badge'])
             ->toJson();
+    }
+
+    public function paymentButtonOption(Request $request)
+    {
+        try {
+            $item = Payment::findOrFail($request->get('id'));
+
+            return response()->json([
+                'status' => true,
+                'view' => view('finance.payment.button_option')->with(['item' => $item])->render(),
+            ]);
+        } catch (Exception $e) {
+            return response()->json(['status' => false, 'msg' => $e->getMessage()]);
+        }
     }
 
     public function paymentReceipt($id)
     {
         $item = Payment::with(['invoice', 'rental.customer', 'rental.vehicle.model.brand'])->findOrFail($id);
 
-        return view('finance.payment.receipt')->with(['item' => $item]);
+        return \App\Support\PdfDocument::download(
+            'finance.payment.receipt',
+            ['item' => $item, 'settings' => $this->companySettings()],
+            'Kwitansi-PAY-' . str_pad($item->payment_id, 5, '0', STR_PAD_LEFT)
+        );
     }
 }

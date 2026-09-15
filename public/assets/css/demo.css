@@ -153,3 +153,16 @@
     display: contents;
     /* Membuat form "invisible" secara tata letak */
 }
+
+
+/* ============================================================
+   Horizontal menu fixed: jarak konten agar tidak tertutup
+   navbar (4rem) + menu horizontal (fixed top 4rem).
+   Mengikuti nilai resmi template (5.15rem) di layar >= 1200px.
+   ============================================================ */
+@media (min-width: 1200px) {
+    .layout-menu-fixed .layout-horizontal .layout-page .content-wrapper > .container-xxl,
+    .layout-menu-fixed .layout-horizontal .layout-page .content-wrapper > .container-fluid {
+        padding-top: 5.15rem !important;
+    }
+}

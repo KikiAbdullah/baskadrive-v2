@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Traits;
 use App\Helpers\LogHelper;
 use DB;
 use Exception;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 trait CrudTrait
 {
@@ -75,7 +77,7 @@ trait CrudTrait
 
             $log_helper = new LogHelper;
 
-            $log_helper->storeLog('add', $model->no ?? $model->id, $this->subtitle);
+            $log_helper->storeLog('add', $this->logReference($model), $this->subtitle);
 
             DB::commit();
             if ($request->ajax()) {
@@ -88,6 +90,19 @@ trait CrudTrait
             } else {
                 return $this->redirectSuccess(__FUNCTION__, false);
             }
+        } catch (ValidationException $e) {
+            DB::rollback();
+
+            throw $e;
+        } catch (QueryException $e) {
+            DB::rollback();
+            \Log::error('Crud query error: '.$e->getMessage());
+
+            if ($request->ajax()) {
+                return response()->json(['status' => false, 'msg' => $this->friendlyDbError($e)]);
+            }
+
+            return $this->redirectBackWithError($this->friendlyDbError($e));
         } catch (Exception $e) {
             DB::rollback();
             if ($request->ajax()) {
@@ -190,17 +205,21 @@ trait CrudTrait
                 $model = $this->model->findOrFail($id);
             }
 
+            // Snapshot nilai asli SEBELUM fill/save — setelah save(), getOriginal()
+            // sudah di-sync ke nilai baru sehingga audit-trail tidak akan pernah terdeteksi (M-01/M-02).
+            $originalAttributes = $model->getOriginal();
+
             $model->fill($data);
 
             $model->save();
 
             if (method_exists($this, 'customUpdate')) {
-                $this->customUpdate($data, $model);
+                $this->customUpdate($data, $model, $originalAttributes);
             }
 
             $log_helper = new LogHelper;
 
-            $log_helper->storeLog('edit', $model->no ?? $model->id, $this->subtitle);
+            $log_helper->storeLog('edit', $this->logReference($model), $this->subtitle);
 
             DB::commit();
             if ($request->ajax()) {
@@ -213,6 +232,19 @@ trait CrudTrait
             } else {
                 return $this->redirectSuccess(__FUNCTION__, false);
             }
+        } catch (ValidationException $e) {
+            DB::rollback();
+
+            throw $e;
+        } catch (QueryException $e) {
+            DB::rollback();
+            \Log::error('Crud query error: '.$e->getMessage());
+
+            if ($request->ajax()) {
+                return response()->json(['status' => false, 'msg' => $this->friendlyDbError($e)]);
+            }
+
+            return $this->redirectBackWithError($this->friendlyDbError($e));
         } catch (Exception $e) {
             DB::rollback();
             if ($request->ajax()) {
@@ -245,19 +277,29 @@ trait CrudTrait
                 $model = $this->model->with($this->relation)->findOrFail($id);
             }
 
+            // Audit M-07: tolak lebih awal dengan pesan ramah bila data masih dirujuk FK
+            if ($blocked = $this->blockedByRelations($model)) {
+                throw new Exception($blocked);
+            }
+
             if (method_exists($this, 'customDestroy')) {
                 $this->customDestroy($model);
             }
 
             $log_helper = new LogHelper;
 
-            $log_helper->storeLog('delete', $model->no ?? $model->id, $this->subtitle);
+            $log_helper->storeLog('delete', $this->logReference($model), $this->subtitle);
 
             $model->delete();
 
             DB::commit();
 
             return $this->redirectSuccess(__FUNCTION__, false);
+        } catch (QueryException $e) {
+            DB::rollback();
+            \Log::error('Crud delete error: '.$e->getMessage());
+
+            return $this->redirectBackWithError($this->friendlyDbError($e));
         } catch (Exception $e) {
             DB::rollback();
 

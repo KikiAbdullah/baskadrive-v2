@@ -28,7 +28,9 @@ class UserRequest extends FormRequest
                     'username' => 'required|unique:users',
                     'email' => 'nullable|email|unique:users,email',
                     'name' => 'required',
-                    'password' => 'required',
+                    'password' => 'required|min:8',
+                    // S-03: role wajib & harus ID role yang ada
+                    'role' => 'required|exists:roles,id',
                 ];
             }
             case 'PATCH':
@@ -36,6 +38,7 @@ class UserRequest extends FormRequest
                 return [
                     'name' => 'required',
                     'email' => [Rule::unique('users')->ignore($this->user), 'nullable', 'email'],
+                    'role' => 'required|exists:roles,id',
                 ];
             }
             default:

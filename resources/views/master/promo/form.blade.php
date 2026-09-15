@@ -56,6 +56,18 @@
     </div>
 </div>
 <div class="row mb-3">
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Berlaku Untuk Kategori</label>
+    <div class="col-lg-9">
+        <select name="applicable_categories[]" class="select" multiple>
+            @php $cats = ['sedan','suv','mpv','hatchback','pickup','van','luxury']; $selected = old('applicable_categories', $item->applicable_categories ?? []); @endphp
+            @foreach($cats as $cat)
+                <option value="{{ $cat }}" {{ in_array($cat, (array)$selected) ? 'selected' : '' }}>{{ ucfirst($cat) }}</option>
+            @endforeach
+        </select>
+        <small class="text-muted">Kosongkan untuk berlaku semua kategori. Contoh: pilih Hatchback & MPV saja.</small>
+    </div>
+</div>
+<div class="row mb-3">
     <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Status</label>
     <div class="col-lg-9">
         <select name="is_active" class="select">

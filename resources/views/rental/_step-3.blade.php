@@ -55,6 +55,49 @@
         </div>
     </div>
 
+    {{-- PPN: ON/OFF + persen (default dari Pengaturan Umum) --}}
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <div class="form-check form-switch mt-3">
+                <input class="form-check-input" type="checkbox" id="tax_enabled" name="tax_enabled" value="1" {{ ($settings['tax_enabled'] ?? true) && !isset($data['tax_percent']) || (isset($data['tax_percent']) && $data['tax_percent'] > 0) ? 'checked' : '' }}>
+                <label class="form-check-label" for="tax_enabled">Kenakan PPN</label>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3" id="taxPercentSection" style="display: {{ ($settings['tax_enabled'] ?? true) && !isset($data['tax_percent']) || (isset($data['tax_percent']) && $data['tax_percent'] > 0) ? 'block' : 'none' }};">
+            <label class="form-label">Persentase PPN (%) <span class="text-danger">*</span></label>
+            <div class="input-group">
+                <input type="number" step="0.01" min="0" max="100" class="form-control" name="tax_percent_input" id="tax_percent_input"
+                    value="{{ $data['tax_percent'] ?? ($settings['tax_enabled'] ?? true ? $settings['tax_percent'] : 0) }}">
+                <span class="input-group-text">%</span>
+            </div>
+            <small class="text-muted">Default: {{ $settings['tax_percent'] }}% (Pengaturan Umum). Isi 0 untuk tanpa PPN.</small>
+        </div>
+    </div>
+
+    {{-- Deposit: tampil bila deposit_enabled di settings --}}
+    @if($settings['deposit_enabled'] ?? true)
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Deposit (Rp) @if($settings['deposit_required'] ?? false)
+                        <span class="text-danger">*</span>
+                    @endif</label>
+                <input type="number" min="0" step="0.01" class="form-control" name="deposit_amount" id="deposit_amount"
+                    value="{{ $data['deposit_amount'] ?? '' }}"
+                    placeholder="{{ $settings['deposit_default'] > 0 ? 'Default: Rp ' . number_format($settings['deposit_default'], 0, ',', '.') . ' (dari Pengaturan Umum)' : '0 = tanpa deposit' }}"
+                    @if($settings['deposit_required'] ?? false) required @endif>
+                <small class="text-muted">Isi 0 bila sewa ini tanpa deposit. Deposit di luar total tagihan (jaminan, dikembalikan).</small>
+            </div>
+            <div class="col-md-6 mb-3 d-flex align-items-end">
+                <small class="text-muted">
+                    <i class="ri-information-line me-1"></i>
+                    Deposit default kendaraan: <strong>Rp {{ number_format(optional(optional($vehicles)->firstWhere('vehicle_id', $data['vehicle_id'] ?? 0))->model->deposit_amount ?? 0, 0, ',', '.') }}</strong>
+                </small>
+            </div>
+        </div>
+    @else
+        <input type="hidden" name="deposit_amount" value="0">
+    @endif
+
     <div class="driver-section" style="display: {{ isset($data['is_with_driver']) && $data['is_with_driver'] ? 'block' : 'none' }}">
         <div class="row">
             <div class="col-md-6 mb-3">
@@ -70,7 +113,7 @@
             </div>
             <div class="col-md-6 mb-3">
                 <label class="form-label">Biaya Sopir/Hari</label>
-                <input type="number" class="form-control" name="driver_fee" id="driver_fee" value="{{ $data['driver_fee'] ?? 150000 }}">
+                <input type="number" class="form-control" name="driver_fee" id="driver_fee" value="{{ $data['driver_fee'] ?? $settings['driver_fee_default'] }}">
             </div>
         </div>
     </div>
@@ -119,12 +162,12 @@
             <span>Diskon</span>
             <span id="priceRowDiscount" class="text-success">Rp -0</span>
         </div>
-        <div class="price-row">
-            <span>Pajak (11%)</span>
+        <div class="price-row" id="taxPriceRow">
+            <span>Pajak (<span id="priceRowTaxPercent">11</span>%)</span>
             <span id="priceRowTax">Rp 0</span>
         </div>
-        <div class="price-row">
-            <span>Deposit</span>
+        <div class="price-row" id="depositPriceRow">
+            <span>Deposit <small class="text-muted">(jaminan, di luar tagihan)</small></span>
             <span id="priceRowDeposit">Rp 0</span>
         </div>
         <div class="price-row total">
@@ -146,6 +189,28 @@
 <script>
     initSelect2();
 
+    // Simpan tax_percent final ke field hidden sebelum submit step
+    function syncTaxPercent() {
+        const on = $('#tax_enabled').is(':checked');
+        const val = on ? ($('#tax_percent_input').val() || 0) : 0;
+
+        if ($('#hiddenTaxPercent').length === 0) {
+            $('#wizardForm').append('<input type="hidden" name="tax_percent" id="hiddenTaxPercent">');
+        }
+        $('#hiddenTaxPercent').val(val);
+    }
+
+    $('#tax_enabled').off('change').on('change', function() {
+        $('#taxPercentSection').toggle($(this).is(':checked'));
+        syncTaxPercent();
+        calculateTotal();
+    });
+
+    $('#tax_percent_input').off('input').on('input', function() {
+        syncTaxPercent();
+        calculateTotal();
+    });
+
     $('#is_with_driver').off('change').on('change', function() {
         if ($(this).is(':checked')) {
             $('.driver-section').slideDown();
@@ -155,11 +220,16 @@
         calculateTotal();
     });
 
-    $('#rental_start_date, #rental_end_date, #vehicle_id, #driver_id, #driver_fee, #promo_id').off('change').on('change', function() {
+    $('#rental_start_date, #rental_end_date, #vehicle_id, #driver_id, #driver_fee, #promo_id, #deposit_amount').off('change').on('change', function() {
         calculateTotal();
     });
 
+    $('.btn-next-step').off('click.step3').on('click.step3', function() {
+        syncTaxPercent();
+    });
+
     if ($('#rental_start_date').val() && $('#rental_end_date').val() && $('#vehicle_id').val()) {
+        syncTaxPercent();
         calculateTotal();
     }
 </script>

@@ -84,6 +84,25 @@
     </div>
 </div>
 <div class="row mb-3">
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">NIK (KTP)</label>
+    <div class="col-lg-9">
+        <input type="text" name="id_card_number" value="{{ $item->id_card_number ?? old('id_card_number') }}"
+            class="form-control" placeholder="16 digit NIK" pattern="\d{16}" maxlength="16" />
+        <small class="text-muted">Harus 16 digit angka (opsional).</small>
+    </div>
+</div>
+<div class="row mb-3">
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Blacklist</label>
+    <div class="col-lg-9">
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="is_blacklisted" value="1" id="is_blacklisted"
+                {{ old('is_blacklisted', $item->is_blacklisted ?? false) ? 'checked' : '' }}>
+            <label class="form-check-label" for="is_blacklisted">Pelanggan bermasalah (blacklist)</label>
+        </div>
+        <textarea name="blacklist_reason" rows="2" class="form-control mt-2" placeholder="Alasan blacklist (wajib jika dicentang)">{{ $item->blacklist_reason ?? old('blacklist_reason') }}</textarea>
+    </div>
+</div>
+<div class="row mb-3">
     <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Catatan</label>
     <div class="col-lg-9">
         <textarea name="notes" rows="2" class="form-control"

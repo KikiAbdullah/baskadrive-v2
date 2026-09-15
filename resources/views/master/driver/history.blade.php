@@ -7,7 +7,12 @@
                 <h4 class="mb-1">{{ $item->full_name }}</h4>
                 <p class="mb-6">Riwayat Sewa Sopir</p>
             </div>
-            <a href="{{ route('master.driver.edit', $item->driver_id) }}" class="btn btn-primary">Edit</a>
+            <div class="d-flex align-content-center flex-wrap gap-4">
+                <a href="{{ route('master.driver.edit', $item->driver_id) }}" class="action-link-icon-text">
+                    <i class="ri-edit-line"></i>
+                    <span class="fw-semibold text-uppercase">Edit</span>
+                </a>
+            </div>
         </div>
 
         <div class="card">

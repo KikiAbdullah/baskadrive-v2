@@ -110,6 +110,17 @@
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
+                                    <label class="form-label">Deposit (Rp)</label>
+                                    <input type="number" min="0" step="0.01" class="form-control" name="deposit_amount"
+                                        value="{{ old('deposit_amount', $rental->deposit_amount ?? 0) }}">
+                                    <small class="text-muted">Jaminan, di luar total tagihan. Isi 0 = tanpa deposit.</small>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">{{ $settings['tax_label'] ?? 'PPN' }} (%) &mdash; 0 = tanpa pajak</label>
+                                    <input type="number" min="0" max="100" step="0.01" class="form-control" name="tax_percent"
+                                        value="{{ old('tax_percent', $rental->tax_percent ?? $settings['tax_percent']) }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
                                     <label class="form-label">Catatan</label>
                                     <textarea class="form-control" name="notes" rows="1">{{ $rental->notes ?? '' }}</textarea>
                                 </div>

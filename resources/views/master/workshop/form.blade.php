@@ -28,6 +28,29 @@
     </div>
 </div>
 <div class="row mb-3">
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Rating</label>
+    <div class="col-lg-9">
+        <select name="rating" class="select">
+            <option value="">Pilih Rating</option>
+            @for($i=5; $i>=1; $i--)
+                <option value="{{ $i }}" {{ old('rating', $item->rating ?? '') == $i ? 'selected' : '' }}>{{ $i }} ★</option>
+                <option value="{{ $i-0.5 }}" {{ old('rating', $item->rating ?? '') == $i-0.5 ? 'selected' : '' }}>{{ $i-0.5 }} ★</option>
+            @endfor
+        </select>
+    </div>
+</div>
+<div class="row mb-3">
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Spesialisasi</label>
+    <div class="col-lg-9">
+        <select name="specialization" class="select">
+            <option value="">Pilih Spesialisasi</option>
+            @foreach(['Mesin', 'Body Repair', 'Cat', 'AC', 'Kaki-kaki', 'Kelistrikan', 'Umum'] as $spec)
+                <option value="{{ $spec }}" {{ old('specialization', $item->specialization ?? '') == $spec ? 'selected' : '' }}>{{ $spec }}</option>
+            @endforeach
+        </select>
+    </div>
+</div>
+<div class="row mb-3">
     <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Status</label>
     <div class="col-lg-9">
         <select name="is_active" class="select">

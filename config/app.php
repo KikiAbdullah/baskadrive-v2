@@ -56,6 +56,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Registration Switch (audit Setup S-11)
+    |--------------------------------------------------------------------------
+    |
+    | Pendaftaran akun baru lewat formulir publik DINONAKTIFKAN secara default
+    | untuk aplikasi internal ERP. Akun dibuat oleh admin lewat menu Setup > User.
+    |
+    */
+
+    'registration_enabled' => env('APP_REGISTRATION_ENABLED', false),
+
+    'registration_default_role' => env('APP_REGISTRATION_ROLE', 'VIEWER'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

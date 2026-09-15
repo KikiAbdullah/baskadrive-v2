@@ -26,18 +26,13 @@ class User extends Authenticatable implements MustVerifyEmail
      * @var array
      */
     protected $fillable = [
-        'name', 'email', 'password', 'username', 'nowa', 'token_2fa', 'token_last_request',
+        'name', 'email', 'password', 'username', 'nowa', 'token_2fa', 'token_last_request', 'token_2fa_expires_at', 'employee_id',
     ];
 
     protected $appends = ['deleted_at_baru'];
 
-    /**
-     * The attributes that should be hidden for arrays.
-     *
-     * @var array
-     */
     protected $hidden = [
-        'password', 'remember_token',
+        'password', 'remember_token', 'token_2fa',
     ];
 
     /**
@@ -50,6 +45,7 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'token_last_request' => 'datetime',
+            'token_2fa_expires_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -57,5 +53,10 @@ class User extends Authenticatable implements MustVerifyEmail
     public function getDeletedAtBaruAttribute()
     {
         return $this->deleted_at == null ? '1' : '0';
+    }
+
+    public function employee()
+    {
+        return $this->belongsTo(Employee::class, 'employee_id', 'employee_id');
     }
 }

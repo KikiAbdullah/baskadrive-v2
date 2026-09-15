@@ -21,6 +21,38 @@
     </div>
 </div>
 <div class="row mb-3">
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Lokasi Saat Ini</label>
+    <div class="col-lg-9">
+        <select name="location_id" class="select">
+            <option value="">Pilih Lokasi</option>
+            @foreach ($data['list_location'] as $key => $value)
+                <option value="{{ $key }}" {{ old('location_id', $item->location_id ?? '') == $key ? 'selected' : '' }}>
+                    {{ $value }}
+                </option>
+            @endforeach
+        </select>
+        <small class="text-muted">Pindah lokasi akan tercatat sebagai riwayat mutasi.</small>
+    </div>
+</div>
+<div class="row mb-3 mutation-notes" style="display:none;">
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Catatan Mutasi</label>
+    <div class="col-lg-9">
+        <input type="text" name="mutation_notes" class="form-control" placeholder="Alasan pindah lokasi (opsional)" />
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sel = document.querySelector('select[name="location_id"]');
+    const notesRow = document.querySelector('.mutation-notes');
+    if (sel && notesRow) {
+        const initial = sel.value;
+        sel.addEventListener('change', function() {
+            notesRow.style.display = this.value && this.value !== initial ? '' : 'none';
+        });
+    }
+});
+</script>
+<div class="row mb-3">
     <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">VIN</label>
     <div class="col-lg-9">
         <input type="text" name="vin" value="{{ $item->vin ?? old('vin') }}" class="form-control"
@@ -61,9 +93,13 @@
     </div>
 </div>
 <div class="row mb-3">
-    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">URL Foto</label>
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Foto Unit</label>
     <div class="col-lg-9">
-        <input type="text" name="photo_url" value="{{ $item->photo_url ?? old('photo_url') }}" class="form-control"
-            placeholder="https://example.com/foto.jpg (opsional)" />
+        @php $cur = $item->photo_url ?? null; @endphp
+        @if(!empty($cur))
+            <div class="mb-2"><img src="{{ str_starts_with($cur, 'http') ? $cur : asset('storage/vehicle/'.$cur) }}" alt="Foto" style="max-width:120px;border-radius:6px;border:1px solid #e5e5e8;"></div>
+        @endif
+        <input type="file" name="photo" accept="image/*" class="form-control" />
+        <small class="text-muted">JPG/PNG/WebP maks 2MB — tersimpan di storage/vehicle/. Kosongkan untuk mempertahankan foto saat ini.</small>
     </div>
 </div>

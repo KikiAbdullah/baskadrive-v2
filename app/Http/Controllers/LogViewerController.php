@@ -28,10 +28,55 @@ class LogViewerController extends Controller
         'files' => '/at ([^:]+):(\d+)/',
     ];
 
+    /**
+     * Jumlah byte ekor file log yang dibaca (bukan seluruh file) — audit S-13.
+     */
+    private const TAIL_BYTES = 2_000_000;
+
+    /**
+     * Baca sebagian ekor (tail) file secara chunked agar tidak melahap memori
+     * saat laravel.log membesar. Sarankan juga LOG_CHANNEL=daily saat produksi.
+     */
+    private function readLogTail(string $path): string
+    {
+        if (! is_file($path)) {
+            return '';
+        }
+
+        $size = filesize($path);
+
+        if ($size === false || $size === 0) {
+            return '';
+        }
+
+        if ($size <= self::TAIL_BYTES) {
+            return (string) file_get_contents($path);
+        }
+
+        $fp = fopen($path, 'rb');
+
+        if ($fp === false) {
+            return '';
+        }
+
+        try {
+            fseek($fp, -self::TAIL_BYTES, SEEK_END);
+
+            $content = (string) stream_get_contents($fp);
+        } finally {
+            fclose($fp);
+        }
+
+        // buang baris pertama yang terpotong
+        $firstNewline = strpos($content, "\n");
+
+        return $firstNewline === false ? $content : substr($content, $firstNewline + 1);
+    }
+
     public function index(Request $request)
     {
-        ini_set('memory_limit', '256M');
-        $file = \File::get(storage_path('logs/laravel.log'));
+        $file = $this->readLogTail(storage_path('logs/laravel.log'));
+        $hasil = [];
 
         preg_match_all($this->getPattern('logs'), $file, $heading);
         rsort($heading[0]);
