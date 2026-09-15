@@ -53,7 +53,7 @@ class RentalErpCompleteSeeder extends Seeder
         foreach ([
             'tr_journal_detail', 'tr_journal', 'tr_refund', 'tr_payment', 'tr_invoice', 'tr_fine',
             'tr_maintenance', 'tr_insurance_claim', 'tr_damage_photo', 'tr_damage_report', 'tr_return',
-            'tr_rental_extension', 'tr_rental_detail', 'tr_rental',
+            'tr_rental_extension', 'tr_rental_detail', 'tr_rental', 'rental_inspections', 'vehicle_location_histories',
             'user_logs',
             'm_coa', 'm_promo', 'm_maintenance_type', 'm_workshop', 'm_location', 'm_driver',
             'm_customer', 'm_vehicle', 'm_vehicle_model', 'm_brand', 'm_employee',
@@ -66,16 +66,18 @@ class RentalErpCompleteSeeder extends Seeder
 
         $this->seedAppSettings();
         $this->seedBrandsAndModels();
-        $this->seedVehicles();
-        $this->seedCustomers();
-        $this->seedDrivers();
         $this->seedLocations();
         $this->seedWorkshops();
         $this->seedMaintenanceTypes();
+        $this->seedCustomers();
+        $this->seedDrivers();
+        $this->seedVehicles();
         $this->seedPromos();
         $this->seedCoa();
         $this->seedEmployees();
         $this->seedRentals();        // rental + detail + extension
+        $this->seedVehicleHistories();
+        $this->seedInspections();
         $this->seedReturns();        // return + mileage progression
         $this->seedDamagesAndClaims();
         $this->seedMaintenances();
@@ -240,6 +242,7 @@ class RentalErpCompleteSeeder extends Seeder
                     'license_plate' => $plate,
                     'vin' => 'MH' . strtoupper(Str::random(2)) . random_int(100000000, 999999999),
                     'model_id' => $this->map['models'][$model]['id'],
+                    'location_id' => random_int(1, 8),
                     'color' => $color === '-' ? $colorsSet[$seq % count($colorsSet)] : $color,
                     'year' => $year,
                     'mileage' => $this->map['vehicles'][$seq - 1]['km'],
@@ -321,6 +324,7 @@ class RentalErpCompleteSeeder extends Seeder
         $slug = strtolower(str_replace(' ', '.', $company ?: ($first . ' ' . $last)));
         $phone = $type === 'corporate' ? '021' . random_int(50000000, 79999999) : '08' . random_int(1111111111, 8999999999);
         $dob = Carbon::create(random_int(1975, 2004), random_int(1, 12), random_int(1, 28));
+        $blacklisted = $this->chance(7);
 
         return [
             'customer_id' => $seq,
@@ -342,6 +346,8 @@ class RentalErpCompleteSeeder extends Seeder
             'id_card_photo' => null,
             'date_of_birth' => $dob->toDateString(),
             'is_verified' => $this->chance(85),
+            'is_blacklisted' => $blacklisted,
+            'blacklist_reason' => $blacklisted ? $this->pick(['Sering telat pengembalian', 'Merusak kendaraan', 'Tidak membayar denda', 'Dokumen palsu']) : null,
             'notes' => null,
             'created_at' => $this->now->copy()->subDays(random_int(30, 400)),
             'updated_at' => $this->now,
@@ -374,14 +380,14 @@ class RentalErpCompleteSeeder extends Seeder
     protected function seedLocations(): void
     {
         $locations = [
-            ['Kantor Pusat Jakarta', 'Jl. Sudirman Kav. 21', 'Jakarta Pusat', 'DKI Jakarta', '021-5711234'],
-            ['Cabang Jakarta Selatan', 'Jl. TB Simatupang No. 15', 'Jakarta Selatan', 'DKI Jakarta', '021-7591234'],
-            ['Cabang Jakarta Barat', 'Jl. Daan Mogot KM 8', 'Jakarta Barat', 'DKI Jakarta', '021-5551234'],
-            ['Cabang Bandung', 'Jl. Asia Afrika No. 8', 'Bandung', 'Jawa Barat', '022-4211234'],
-            ['Cabang Surabaya', 'Jl. Pemuda No. 27', 'Surabaya', 'Jawa Timur', '031-5311234'],
-            ['Cabang Semarang', 'Jl. Pandanaran No. 18', 'Semarang', 'Jawa Tengah', '024-3511234'],
-            ['Cabang Yogyakarta', 'Jl. Malioboro No. 52', 'Yogyakarta', 'DI Yogyakarta', '0274-551234'],
-            ['Cabang Denpasar', 'Jl. Sunset Road No. 88', 'Denpasar', 'Bali', '0361-891234'],
+            ['Kantor Pusat Jakarta', 'Jl. Sudirman Kav. 21', 'Jakarta Pusat', 'DKI Jakarta', '021-5711234', '08:00-17:00', -6.2088, 106.8456],
+            ['Cabang Jakarta Selatan', 'Jl. TB Simatupang No. 15', 'Jakarta Selatan', 'DKI Jakarta', '021-7591234', '08:00-20:00', -6.2615, 106.8106],
+            ['Cabang Jakarta Barat', 'Jl. Daan Mogot KM 8', 'Jakarta Barat', 'DKI Jakarta', '021-5551234', '08:00-17:00', -6.1683, 106.7584],
+            ['Cabang Bandung', 'Jl. Asia Afrika No. 8', 'Bandung', 'Jawa Barat', '022-4211234', '08:00-17:00', -6.9147, 107.6098],
+            ['Cabang Surabaya', 'Jl. Pemuda No. 27', 'Surabaya', 'Jawa Timur', '031-5311234', '08:00-17:00', -7.2575, 112.7521],
+            ['Cabang Semarang', 'Jl. Pandanaran No. 18', 'Semarang', 'Jawa Tengah', '024-3511234', '08:30-17:30', -6.9932, 110.4203],
+            ['Cabang Yogyakarta', 'Jl. Malioboro No. 52', 'Yogyakarta', 'DI Yogyakarta', '0274-551234', '08:00-17:00', -7.7956, 110.3695],
+            ['Cabang Denpasar', 'Jl. Sunset Road No. 88', 'Denpasar', 'Bali', '0361-891234', '08:00-17:00', -8.6705, 115.2126],
         ];
         $rows = [];
         foreach ($locations as $i => $l) {
@@ -392,28 +398,31 @@ class RentalErpCompleteSeeder extends Seeder
                 'city' => $l[2],
                 'province' => $l[3],
                 'contact_phone' => $l[4],
+                'opening_hours' => $l[5],
+                'latitude' => $l[6],
+                'longitude' => $l[7],
                 'is_active' => true,
                 'created_at' => $this->now->copy()->subDays(400),
             ];
             $this->map['locations'][] = $i + 1;
         }
         DB::table('m_location')->insert($rows);
-        $this->command->info('✓ m_location (8)');
+        $this->command->info('✓ m_location (8) + GPS & jam operasional');
     }
 
     protected function seedWorkshops(): void
     {
         $workshops = [
-            ['Auto2000 Jakarta Pusat', 'Jl. Gunung Sahari No. 45', '021-6412345', 'Rudi Hartanto'],
-            ['Daihatsu Service Bandung', 'Jl. Soekarno Hatta No. 210', '022-7322345', 'Yusuf Maulana'],
-            ['Bengkel Jaya Mobil', 'Jl. Raya Bogor KM 22', '021-8712345', 'Slamet Widodo'],
-            ['Pertamina Servis Surabaya', 'Jl. Raya Gubeng No. 44', '031-5022345', 'Agus Wibisono'],
-            ['TirePlus Yogyakarta', 'Jl. Ring Road Utara', '0274-481234', 'Bayu Nugraha'],
-            ['Oto2000 Denpasar', 'Jl. By Pass Ngurah Rai', '0361-701234', 'Wayan Sudira'],
-            ['Bengkel Prima Motor', 'Jl. Cikarang Barat No. 9', '021-8991234', 'Dedi Supriadi'],
-            ['Servis Bersama Motor', 'Jl. Ahmad Yani No. 77', '024-761234', 'Fajar Ramadhan'],
-            ['BMW Astra Semarang', 'Jl. MT Haryono No. 300', '024-651234', 'Gunawan Saputra'],
-            ['Toyota Nasmoco Medan', 'Jl. Gatot Subroto No. 199', '061-451234', 'Halim Tanjung'],
+            ['Auto2000 Jakarta Pusat', 'Jl. Gunung Sahari No. 45', '021-6412345', 'Rudi Hartanto', 4.8, 'Mesin & Tune Up'],
+            ['Daihatsu Service Bandung', 'Jl. Soekarno Hatta No. 210', '022-7322345', 'Yusuf Maulana', 4.5, 'Body Repair'],
+            ['Bengkel Jaya Mobil', 'Jl. Raya Bogor KM 22', '021-8712345', 'Slamet Widodo', 4.2, 'General Service'],
+            ['Pertamina Servis Surabaya', 'Jl. Raya Gubeng No. 44', '031-5022345', 'Agus Wibisono', 4.6, 'Ganti Oli & Filter'],
+            ['TirePlus Yogyakarta', 'Jl. Ring Road Utara', '0274-481234', 'Bayu Nugraha', 4.7, 'Ban & Spooring'],
+            ['Oto2000 Denpasar', 'Jl. By Pass Ngurah Rai', '0361-701234', 'Wayan Sudira', 4.4, 'AC & Elektrikal'],
+            ['Bengkel Prima Motor', 'Jl. Cikarang Barat No. 9', '021-8991234', 'Dedi Supriadi', 4.0, 'Kaki-kaki'],
+            ['Servis Bersama Motor', 'Jl. Ahmad Yani No. 77', '024-761234', 'Fajar Ramadhan', 4.3, 'Rem & Suspensi'],
+            ['BMW Astra Semarang', 'Jl. MT Haryono No. 300', '024-651234', 'Gunawan Saputra', 4.9, 'Premium & Body Repair'],
+            ['Toyota Nasmoco Medan', 'Jl. Gatot Subroto No. 199', '061-451234', 'Halim Tanjung', 4.5, 'General Service'],
         ];
         $rows = [];
         foreach ($workshops as $i => $w) {
@@ -423,13 +432,15 @@ class RentalErpCompleteSeeder extends Seeder
                 'address' => $w[1],
                 'phone' => $w[2],
                 'contact_person' => $w[3],
+                'rating' => $w[4],
+                'specialization' => $w[5],
                 'is_active' => $this->chance(90),
                 'created_at' => $this->now->copy()->subDays(400),
             ];
         }
         DB::table('m_workshop')->insert($rows);
         $this->map['workshops'] = range(1, 10);
-        $this->command->info('✓ m_workshop (10)');
+        $this->command->info('✓ m_workshop (10) + rating & spesialisasi');
     }
 
     protected function seedMaintenanceTypes(): void
@@ -474,8 +485,16 @@ class RentalErpCompleteSeeder extends Seeder
             ['REFERRAL25', 'Referral pelanggan', 'percentage', 25, 3, 365],
         ];
         $rows = [];
+        $cats = ['SUV', 'MPV', 'Hatchback', 'Sedan', 'Pickup', 'Van', 'Luxury'];
         foreach ($promos as $i => $p) {
             $start = $this->now->copy()->subDays(random_int(60, 300));
+            $applicable = $this->chance(35) ? json_encode($this->pick(array_slice($cats, 0, 3), 2)) : null;
+            // pick helper not for array; use random selection
+            if ($applicable && $this->chance(50)) {
+                $applicable = json_encode(['SUV', 'MPV']);
+            } elseif ($applicable) {
+                $applicable = json_encode(['Hatchback', 'MPV']);
+            }
             $rows[] = [
                 'promo_id' => $i + 1,
                 'promo_code' => $p[0],
@@ -487,13 +506,14 @@ class RentalErpCompleteSeeder extends Seeder
                 'valid_to' => $start->copy()->addDays($p[5])->toDateString(),
                 'max_usage' => random_int(50, 500),
                 'usage_count' => random_int(0, 40),
+                'applicable_categories' => $applicable,
                 'is_active' => $this->chance(85),
                 'created_at' => $start->toDateString(),
             ];
             $this->map['promos'][$p[0]] = $i + 1;
         }
         DB::table('m_promo')->insert($rows);
-        $this->command->info('✓ m_promo (10)');
+        $this->command->info('✓ m_promo (10) + kategori terbatas');
     }
 
     protected function seedCoa(): void
@@ -1363,6 +1383,79 @@ class RentalErpCompleteSeeder extends Seeder
         }
         foreach (array_chunk($rows, 50) as $ch) DB::table('user_logs')->insert($ch);
         $this->command->info('✓ user_logs (90)');
+    }
+
+    protected function seedVehicleHistories(): void
+    {
+        $rows = [];
+        foreach ($this->map['vehicles'] as $v) {
+            if ($this->chance(30)) {
+                $veh = DB::table('m_vehicle')->where('vehicle_id', $v['id'])->first();
+                $current = $veh->location_id ?? $this->pick($this->map['locations']);
+                $candidates = array_values(array_filter($this->map['locations'], fn ($id) => $id !== $current));
+                $newLoc = $candidates ? $this->pick($candidates) : $current;
+                if ($newLoc && $current) {
+                    $rows[] = [
+                        'vehicle_id' => $v['id'],
+                        'from_location_id' => $current,
+                        'to_location_id' => $newLoc,
+                        'notes' => $this->pick(['Mutasi cabang operasional', 'Rotasi armada', 'Penyesuaian kebutuhan cabang', 'Pindah pool']),
+                        'created_by' => $this->pick(array_values($this->map['employees'])),
+                        'created_at' => $this->now->copy()->subDays(random_int(10, 200)),
+                        'updated_at' => $this->now->copy()->subDays(random_int(10, 200)),
+                    ];
+                }
+            }
+        }
+        if ($rows) {
+            DB::table('vehicle_location_histories')->insert($rows);
+        }
+        $this->command->info('✓ vehicle_location_histories (' . count($rows) . ')');
+    }
+
+    protected function seedInspections(): void
+    {
+        $rows = [];
+        foreach ($this->map['rentalMeta'] as $meta) {
+            if ($this->chance(80)) {
+                $rows[] = [
+                    'rental_id' => $meta['id'],
+                    'vehicle_id' => $meta['vehicle'],
+                    'inspection_type' => 'handover_out',
+                    'odometer' => random_int(8000, 48000),
+                    'fuel_level' => $this->pick(['full', 'three_quarter', 'half', 'quarter']),
+                    'body_damage_points' => json_encode($this->chance(70) ? [] : [['x' => random_int(10, 90), 'y' => random_int(10, 90), 'note' => 'Baret halus']]),
+                    'checklist' => json_encode(['stnk' => true, 'dongkrak' => true, 'ban_serep' => $this->chance(90), 'segitiga' => true, 'p3k' => true]),
+                    'exterior_notes' => $this->chance(20) ? 'Baret kecil pintu kanan' : null,
+                    'interior_notes' => null,
+                    'notes' => 'Serah terima awal',
+                    'created_by' => $this->pick(array_values($this->map['employees'])),
+                    'created_at' => $meta['start']->copy()->subHours(1),
+                    'updated_at' => $meta['start']->copy()->subHours(1),
+                ];
+            }
+            if ($meta['status'] === 'completed' && $this->chance(70)) {
+                $rows[] = [
+                    'rental_id' => $meta['id'],
+                    'vehicle_id' => $meta['vehicle'],
+                    'inspection_type' => 'handover_in',
+                    'odometer' => random_int(9000, 50000),
+                    'fuel_level' => $this->pick(['full', 'three_quarter', 'half', 'quarter', 'empty']),
+                    'body_damage_points' => json_encode([]),
+                    'checklist' => json_encode(['stnk' => true, 'dongkrak' => true, 'ban_serep' => true, 'segitiga' => true, 'p3k' => true]),
+                    'exterior_notes' => null,
+                    'interior_notes' => null,
+                    'notes' => 'Pengembalian diperiksa',
+                    'created_by' => $this->pick(array_values($this->map['employees'])),
+                    'created_at' => $meta['end']->copy()->addHours(1),
+                    'updated_at' => $meta['end']->copy()->addHours(1),
+                ];
+            }
+        }
+        if ($rows) {
+            DB::table('rental_inspections')->insert($rows);
+        }
+        $this->command->info('✓ rental_inspections (' . count($rows) . ')');
     }
 
     /* =========================================================
