@@ -22,6 +22,16 @@
     .price-breakdown { background: #f8f9fa; border-radius: 0.5rem; padding: 1.5rem; }
     .price-breakdown .price-row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e9ecef; }
     .price-breakdown .price-row.total { border-bottom: none; font-size: 1.25rem; font-weight: 700; color: #666cff; }
+    .wizard-footer { position: sticky; bottom: 0; z-index: 20; display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; justify-content: space-between; background: #fff; border-top: 1px solid rgba(67,89,113,.15); box-shadow: 0 -6px 16px rgba(67,89,113,.07); padding: 0.85rem 1.5rem; border-radius: 0 0 .5rem .5rem; }
+    .wizard-footer-info { display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem; min-width: 0; }
+    .wizard-scroll { max-height: 55vh; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(67,89,113,.35) transparent; padding-right: 0.35rem; }
+    .wizard-scroll::-webkit-scrollbar { width: 6px; }
+    .wizard-scroll::-webkit-scrollbar-track { background: transparent; }
+    .wizard-scroll::-webkit-scrollbar-thumb { background: rgba(67,89,113,.3); border-radius: 6px; }
+    @media (max-width: 767.98px) {
+        .wizard-footer { padding: 0.75rem 1rem; }
+        .wizard-scroll { max-height: 60vh; }
+    }
 </style>
 @endsection
 
@@ -69,7 +79,25 @@
             </div>
 
             <div id="wizardContent">
-                @include('rental._step-1')
+                @include('rental._step-' . max(1, min(4, (int) $step)))
+            </div>
+        </div>
+        <div class="wizard-footer" id="wizardFooter">
+            <div class="wizard-footer-info">
+                <span class="badge bg-label-primary">Langkah <span id="footerStepNum">1</span>/4</span>
+                <span class="text-muted small" id="footerStepName">Pelanggan</span>
+                <span class="text-primary fw-semibold small text-truncate" id="footerSelection"></span>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-secondary btn-prev-step" id="footerPrev" data-step="1">
+                    <i class="ri-arrow-left-s-line"></i> Sebelumnya
+                </button>
+                <button type="button" class="btn btn-primary btn-next-step" id="footerNext" data-step="1">
+                    Selanjutnya <i class="ri-arrow-right-s-line"></i>
+                </button>
+                <button type="button" class="btn btn-success" id="footerSubmit" style="display: none;">
+                    <i class="ri-check-line"></i> Konfirmasi &amp; Simpan
+                </button>
             </div>
         </div>
     </div>
@@ -79,6 +107,17 @@
 @section('customjs')
 <script>
     let currentStep = {{ $step }};
+    const stepNames = { 1: 'Pelanggan', 2: 'Kendaraan', 3: 'Detail Sewa', 4: 'Konfirmasi' };
+
+    function updateFooter(step) {
+        currentStep = step;
+        $('#footerStepNum').text(step);
+        $('#footerStepName').text(stepNames[step]);
+        $('#footerSelection').text('');
+        $('#footerPrev').toggle(step > 1).attr('data-step', Math.max(step - 1, 1));
+        $('#footerNext').toggle(step < 4).attr('data-step', step);
+        $('#footerSubmit').toggle(step === 4);
+    }
 
     function updateStepIndicator(step) {
         $('.step-indicator .step-item').each(function() {
@@ -106,8 +145,8 @@
                 Swal.close();
                 if (response.status) {
                     $('#wizardContent').html(response.view);
-                    currentStep = response.step;
-                    updateStepIndicator(currentStep);
+                    updateFooter(response.step);
+                    updateStepIndicator(response.step);
                     initStepHandlers();
                     initSelect2();
                     initDatepicker();
@@ -116,8 +155,7 @@
             error: function() {
                 Swal.close();
                 Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal memuat langkah.' });
-            }
-        });
+            }        });
     }
 
     function saveStep(step, formData) {
@@ -135,15 +173,19 @@
                 Swal.close();
                 if (response.status) {
                     loadStep(response.step);
+                } else if (response.msg) {
+                    Swal.fire({ icon: 'error', title: 'Gagal', text: response.msg });
                 }
             },
             error: function(jqXHR) {
                 Swal.close();
-                if (jqXHR.status === 422) {
-                    const errors = jqXHR.responseJSON.errors;
+                const res = jqXHR.responseJSON || {};
+                if (jqXHR.status === 422 && res.errors) {
                     let msg = '';
-                    $.each(errors, function(key, val) { msg += val[0] + '<br>'; });
+                    $.each(res.errors, function(key, val) { msg += val[0] + '<br>'; });
                     Swal.fire({ icon: 'error', title: 'Validasi Gagal', html: msg });
+                } else if (res.msg) {
+                    Swal.fire({ icon: 'error', title: 'Gagal', text: res.msg });
                 } else {
                     Swal.fire({ icon: 'error', title: 'Error', text: 'Terjadi kesalahan.' });
                 }
@@ -151,17 +193,58 @@
         });
     }
 
+    function warnSwal(msg) {
+        Swal.fire({ icon: 'warning', title: msg, timer: 1600, showConfirmButton: false });
+    }
+
     function initStepHandlers() {
-        $('.btn-next-step').off('click').on('click', function() {
-            const step = parseInt($(this).data('step'));
+        // Tombol footer permanen (tidak ikut di-reload AJAX) — JANGAN pakai
+        // $(this).data('step'): jQuery cache membuat nilai basi saat updateFooter
+        // mengganti .attr('data-step'). Pakai currentStep sebagai single source of truth.
+        $('#footerNext').off('click.wizard').on('click.wizard', function() {
+            if (currentStep === 1 && !$('#customer_id').val()) {
+                warnSwal('Pilih pelanggan terlebih dahulu.');
+                return;
+            }
+            if (currentStep === 2) {
+                if (!$('#filterStartDate').val() || !$('#filterEndDate').val()) {
+                    warnSwal('Isi tanggal mulai dan selesai, lalu Cek Ketersediaan.');
+                    return;
+                }
+                if (!$('#vehicle_id').val()) {
+                    warnSwal('Pilih kendaraan yang tersedia terlebih dahulu.');
+                    return;
+                }
+            }
+            if (currentStep === 3) {
+                if (!$('#rental_start_date').val() || !$('#rental_end_date').val()) {
+                    warnSwal('Isi tanggal mulai dan selesai sewa.');
+                    return;
+                }
+                if (!$('#pickup_location_id').val() || !$('#return_location_id').val()) {
+                    warnSwal('Lokasi penjemputan dan pengembalian wajib dipilih.');
+                    return;
+                }
+            }
+            if (currentStep === 3 && typeof window.syncTaxPercent === 'function') {
+                window.syncTaxPercent();
+            }
             const form = $('#wizardForm')[0];
             const formData = new FormData(form);
-            saveStep(step, formData);
+            if (currentStep === 3) {
+                // Select remote (allowClear): field yg dikosongkan tidak ikut terkirim
+                // FormData → set eksplisit agar nilai lama di session tidak basi.
+                // Switch sopir mati → id sopir ikut dibersihkan.
+                formData.set('driver_id', $('#is_with_driver').is(':checked') ? ($('#driver_id').val() || '') : '');
+                formData.set('promo_id', $('#promo_id').val() || '');
+            }
+            saveStep(currentStep, formData);
         });
 
-        $('.btn-prev-step').off('click').on('click', function() {
-            const step = parseInt($(this).data('step'));
-            loadStep(step);
+        $('#footerPrev').off('click.wizard').on('click.wizard', function() {
+            if (currentStep > 1) {
+                loadStep(currentStep - 1);
+            }
         });
     }
 
@@ -206,6 +289,7 @@
                     $('#priceRowTax').text('Rp ' + formatNumber(d.tax_amount));
                     $('#priceRowDeposit').text('Rp ' + formatNumber(d.deposit_amount));
                     $('#priceRowTotal').text('Rp ' + formatNumber(d.total_amount));
+                    $('#footerSelection').text('· Total: Rp ' + formatNumber(d.total_amount));
                     $('#taxPriceRow').toggle(parseFloat(d.tax_percent) > 0);
                     $('#depositPriceRow').toggle(parseFloat(d.deposit_amount) > 0);
                     $('#priceSummary').slideDown();
@@ -220,13 +304,40 @@
     }
 
     function initSelect2() {
-        if ($.fn.select2) {
-            $('.select2').each(function() {
-                if (!$(this).hasClass('select2-hidden-accessible')) {
-                    $(this).select2();
-                }
-            });
-        }
+        if (!$.fn.select2) return;
+        // Pola resmi tema Sneat: wrapper position-relative + dropdownParent di dalam
+        // wrapper. Tanpa ini dropdown menempel ke <body>, tertutup elemen lain/z-index
+        // sehingga select terlihat "hilang" saat step dimuat via AJAX.
+        $('#wizardContent .select2').each(function() {
+            var $el = $(this);
+            // Self-healing: anggap ter-init HANYA bila container select2 benar-benar
+            // ada. Sisa class 'select2-hidden-accessible' tanpa container = init yang
+            // gagal di tengah jalan (select asli ikut tersembunyi) → bersihkan agar
+            // select native tampil dan bisa dipakai.
+            var hasContainer = $el.next('.select2-container').length > 0;
+            if ($el.hasClass('select2-hidden-accessible') && hasContainer) return;
+            try { if ($el.data('select2')) $el.select2('destroy'); } catch (e) {}
+            $el.removeClass('select2-hidden-accessible');
+            $el.next('.select2-container').remove();
+            if (!$el.parent().hasClass('position-relative')) {
+                $el.wrap('<div class="position-relative"></div>');
+            }
+            if (typeof window.select2Focus === 'function') {
+                window.select2Focus($el);
+            }
+            try {
+                $el.select2({
+                    placeholder: 'Pilih...',
+                    dropdownParent: $el.parent()
+                });
+            } catch (e) {
+                if (window.console && console.error) console.error('select2 init gagal:', e);
+            }
+            // Verifikasi akhir: container tidak terbentuk → kembalikan select native.
+            if ($el.next('.select2-container').length === 0) {
+                $el.removeClass('select2-hidden-accessible');
+            }
+        });
     }
 
     function initDatepicker() {
@@ -236,6 +347,8 @@
     }
 
     $(document).ready(function() {
+        updateFooter(currentStep);
+        updateStepIndicator(currentStep);
         initStepHandlers();
         initSelect2();
         initDatepicker();

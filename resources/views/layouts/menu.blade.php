@@ -222,26 +222,32 @@
             <!-- ========================================
                  SISTEM & ADMINISTRASI
             ======================================== -->
+            @canany(['settings_view', 'logs_view'])
             <li class="menu-item {{ $is('system') ? 'active open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons ri-settings-5-line"></i>
                     <div data-i18n="Sistem">Sistem</div>
                 </a>
                 <ul class="menu-sub">
+                    @can('settings_view')
                     <li class="menu-item {{ $is('system.settings') ? 'active' : '' }}">
                         <a href="{{ route('system.settings') }}" class="menu-link">
                             <i class="menu-icon tf-icons ri-equalizer-line"></i>
                             <div data-i18n="Pengaturan Umum">Pengaturan Umum</div>
                         </a>
                     </li>
+                    @endcan
+                    @can('logs_view')
                     <li class="menu-item {{ $is('system.activity-log') ? 'active' : '' }}">
                         <a href="{{ route('system.activity-log') }}" class="menu-link">
                             <i class="menu-icon tf-icons ri-file-list-line"></i>
                             <div data-i18n="Log Aktivitas">Log Aktivitas</div>
                         </a>
                     </li>
+                    @endcan
                 </ul>
             </li>
+            @endcanany
 
             {{-- ========================================
                  SETUP (User, Role, Permission)

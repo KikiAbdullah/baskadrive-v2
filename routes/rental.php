@@ -184,6 +184,9 @@ Route::group(['prefix' => 'rental', 'as' => 'rental.', 'middleware' => ['can:ren
     Route::get('/create/step/{step}', [RentalController::class, 'createStep'])->middleware('can:rental_add')->name('create.step');
     Route::post('/create/store', [RentalController::class, 'store'])->middleware('can:rental_add')->name('create.store');
     Route::get('/create/search-customer', [RentalController::class, 'searchCustomer'])->name('create.search-customer');
+    Route::get('/create/search-location', [RentalController::class, 'searchLocation'])->name('create.search-location');
+    Route::get('/create/search-driver', [RentalController::class, 'searchDriver'])->name('create.search-driver');
+    Route::get('/create/search-promo', [RentalController::class, 'searchPromo'])->name('create.search-promo');
     Route::get('/create/available-vehicles', [RentalController::class, 'availableVehicles'])->name('create.available-vehicles');
     Route::post('/create/calculate-total', [RentalController::class, 'calculateTotal'])->name('create.calculate-total');
 
@@ -351,9 +354,9 @@ Route::group(['prefix' => 'report', 'as' => 'report.', 'middleware' => ['can:rep
 // MODUL 8: SISTEM & ADMINISTRASI
 // ===========================================
 Route::group(['prefix' => 'system', 'as' => 'system.'], function () {
-    Route::get('/settings', [SystemController::class, 'settings'])->name('settings');
-    Route::put('/settings', [SystemController::class, 'settingsUpdate'])->name('settings.update');
-    Route::get('/activity-log', [SystemController::class, 'activityLog'])->name('activity-log');
-    Route::get('/activity-log/get-data', [SystemController::class, 'activityLogData'])->name('activity-log.data');
-    Route::get('/backup', [SystemController::class, 'backup'])->middleware('can:settings_edit')->name('backup');
+    Route::get('/settings', [SystemController::class, 'settings'])->middleware('can:settings_view')->name('settings');
+    Route::put('/settings', [SystemController::class, 'settingsUpdate'])->middleware('can:settings_edit')->name('settings.update');
+    Route::get('/activity-log', [SystemController::class, 'activityLog'])->middleware('can:logs_view')->name('activity-log');
+    Route::get('/activity-log/get-data', [SystemController::class, 'activityLogData'])->middleware('can:logs_view')->name('activity-log.data');
+    Route::post('/backup', [SystemController::class, 'backup'])->middleware(['can:settings_edit', 'throttle:3,1'])->name('backup');
 });

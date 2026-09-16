@@ -10,39 +10,83 @@
         </div>
     </div>
 
+    @if(empty($defaultLocation) && empty($stepPickupLoc))
+        <div class="alert alert-warning d-flex align-items-center" role="alert">
+            <i class="ri-alert-line me-2"></i>
+            <div>Belum ada <strong>lokasi aktif</strong> — lokasi penjemputan/pengembalian wajib diisi dan tidak bisa lanjut. Tambahkan dulu di Master &raquo; Lokasi.</div>
+        </div>
+    @endif
+
+    @php
+        // Normalisasi nilai dari session: tanggal-only dari step 2 → datetime agar
+        // terbaca flatpickr (dateFormat 'Y-m-d H:i' gagal parse nilai date-only).
+        $startVal = (string) ($data['rental_start_date'] ?? '');
+        $endVal = (string) ($data['rental_end_date'] ?? '');
+        if ($startVal !== '' && !str_contains($startVal, ' ')) {
+            $startVal .= ' 00:00';
+        }
+        if ($endVal !== '' && !str_contains($endVal, ' ')) {
+            $endVal .= ' 23:59';
+        }
+    @endphp
     <div class="row">
         <div class="col-md-6 mb-3">
             <label class="form-label">Tanggal Mulai Sewa <span class="text-danger">*</span></label>
-            <input type="text" class="form-control flatpickr-datetime" name="rental_start_date" id="rental_start_date" value="{{ $data['rental_start_date'] ?? '' }}" placeholder="YYYY-MM-DD HH:MM" autocomplete="off" required>
+            <input type="text" class="form-control flatpickr-datetime" name="rental_start_date" id="rental_start_date" value="{{ $startVal }}" placeholder="YYYY-MM-DD HH:MM" autocomplete="off" required>
         </div>
         <div class="col-md-6 mb-3">
             <label class="form-label">Tanggal Selesai Sewa <span class="text-danger">*</span></label>
-            <input type="text" class="form-control flatpickr-datetime" name="rental_end_date" id="rental_end_date" value="{{ $data['rental_end_date'] ?? '' }}" placeholder="YYYY-MM-DD HH:MM" autocomplete="off" required>
+            <input type="text" class="form-control flatpickr-datetime" name="rental_end_date" id="rental_end_date" value="{{ $endVal }}" placeholder="YYYY-MM-DD HH:MM" autocomplete="off" required>
         </div>
     </div>
 
+    @php
+        // Lokasi wajib (kolom NOT NULL) — remote data; preselect lokasi tersimpan
+        // atau lokasi aktif pertama & samakan pengembalian dgn penjemputan bila
+        // belum diisi agar admin cukup klik lanjut.
+        $pickupLoc = $stepPickupLoc ?? $defaultLocation;
+        $returnLoc = $stepReturnLoc ?? $pickupLoc;
+        $pickupVal = $pickupLoc?->location_id ?? '';
+        $returnVal = $returnLoc?->location_id ?? '';
+        $pickupText = $pickupLoc ? $pickupLoc->location_name . ' - ' . $pickupLoc->city : '';
+        $returnText = $returnLoc ? $returnLoc->location_name . ' - ' . $returnLoc->city : '';
+    @endphp
     <div class="row">
         <div class="col-md-6 mb-3">
-            <label class="form-label">Lokasi Penjemputan</label>
-            <select class="form-select select2" name="pickup_location_id">
-                <option value="">Pilih Lokasi</option>
-                @foreach($locations as $loc)
-                    <option value="{{ $loc->location_id }}" {{ isset($data['pickup_location_id']) && $data['pickup_location_id'] == $loc->location_id ? 'selected' : '' }}>
-                        {{ $loc->location_name }} - {{ $loc->city }}
-                    </option>
-                @endforeach
+            <label class="form-label">Lokasi Penjemputan <span class="text-danger">*</span></label>
+            <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text"><i class="ri-search-line"></i></span>
+                <input type="text" class="form-control remote-opt-search" data-target="#pickup_location_id"
+                    placeholder="Ketik untuk cari lokasi..." autocomplete="off">
+            </div>
+            <select class="form-select remote-select" name="pickup_location_id" id="pickup_location_id"
+                data-url="{{ route('rental.create.search-location') }}"
+                data-empty-label="— Pilih lokasi —" data-current-text="{{ $pickupText }}">
+                @if($pickupVal)
+                    <option value="{{ $pickupVal }}" selected>{{ $pickupText }}</option>
+                @else
+                    <option value="" selected disabled>Memuat lokasi...</option>
+                @endif
             </select>
+            <div class="remote-err text-danger small mt-1" style="display:none">Gagal memuat data lokasi — periksa koneksi lalu ketik ulang di kolom cari.</div>
         </div>
         <div class="col-md-6 mb-3">
-            <label class="form-label">Lokasi Pengembalian</label>
-            <select class="form-select select2" name="return_location_id">
-                <option value="">Pilih Lokasi</option>
-                @foreach($locations as $loc)
-                    <option value="{{ $loc->location_id }}" {{ isset($data['return_location_id']) && $data['return_location_id'] == $loc->location_id ? 'selected' : '' }}>
-                        {{ $loc->location_name }} - {{ $loc->city }}
-                    </option>
-                @endforeach
+            <label class="form-label">Lokasi Pengembalian <span class="text-danger">*</span></label>
+            <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text"><i class="ri-search-line"></i></span>
+                <input type="text" class="form-control remote-opt-search" data-target="#return_location_id"
+                    placeholder="Ketik untuk cari lokasi..." autocomplete="off">
+            </div>
+            <select class="form-select remote-select" name="return_location_id" id="return_location_id"
+                data-url="{{ route('rental.create.search-location') }}"
+                data-empty-label="— Pilih lokasi —" data-current-text="{{ $returnText }}">
+                @if($returnVal)
+                    <option value="{{ $returnVal }}" selected>{{ $returnText }}</option>
+                @else
+                    <option value="" selected disabled>Memuat lokasi...</option>
+                @endif
             </select>
+            <div class="remote-err text-danger small mt-1" style="display:none">Gagal memuat data lokasi — periksa koneksi lalu ketik ulang di kolom cari.</div>
         </div>
     </div>
 
@@ -108,14 +152,25 @@
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label class="form-label">Pilih Sopir</label>
-                <select class="form-select select2" name="driver_id" id="driver_id">
-                    <option value="">Pilih Sopir</option>
-                    @foreach($drivers as $driver)
-                        <option value="{{ $driver->driver_id }}" {{ isset($data['driver_id']) && $data['driver_id'] == $driver->driver_id ? 'selected' : '' }}>
-                            {{ $driver->full_name }} - {{ $driver->phone }}
-                        </option>
-                    @endforeach
+                @php
+                    $driverVal = $data['driver_id'] ?? '';
+                    $driverText = $stepDriver ? $stepDriver->full_name . ' - ' . $stepDriver->phone : '';
+                @endphp
+                <div class="input-group input-group-sm mb-2">
+                    <span class="input-group-text"><i class="ri-search-line"></i></span>
+                    <input type="text" class="form-control remote-opt-search" data-target="#driver_id"
+                        placeholder="Ketik untuk cari sopir..." autocomplete="off">
+                </div>
+                <select class="form-select remote-select" name="driver_id" id="driver_id"
+                    data-url="{{ route('rental.create.search-driver') }}"
+                    data-allow-clear="1" data-empty-label="— Tanpa Sopir —" data-current-text="{{ $driverText }}">
+                    @if($driverVal)
+                        <option value="{{ $driverVal }}" selected>{{ $driverText }}</option>
+                    @else
+                        <option value="" selected>— Tanpa Sopir —</option>
+                    @endif
                 </select>
+                <div class="remote-err text-danger small mt-1" style="display:none">Gagal memuat data sopir — periksa koneksi lalu ketik ulang di kolom cari.</div>
             </div>
             <div class="col-md-6 mb-3">
                 <label class="form-label">Biaya Sopir/Hari</label>
@@ -127,14 +182,27 @@
     <div class="row">
         <div class="col-md-6 mb-3">
             <label class="form-label">Kode Promo</label>
-            <select class="form-select select2" name="promo_id" id="promo_id">
-                <option value="">Tidak ada promo</option>
-                @foreach($promos as $promo)
-                    <option value="{{ $promo->promo_id }}" {{ isset($data['promo_id']) && $data['promo_id'] == $promo->promo_id ? 'selected' : '' }}>
-                        {{ $promo->promo_code }} - {{ $promo->discount_type == 'percentage' ? $promo->discount_value . '%' : 'Rp ' . number_format($promo->discount_value, 0, ',', '.') }}
-                    </option>
-                @endforeach
+            @php
+                $promoVal = $data['promo_id'] ?? '';
+                $promoText = $stepPromo
+                    ? $stepPromo->promo_code . ' - ' . ($stepPromo->discount_type == 'percentage' ? $stepPromo->discount_value . '%' : 'Rp ' . number_format($stepPromo->discount_value, 0, ',', '.'))
+                    : '';
+            @endphp
+            <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text"><i class="ri-search-line"></i></span>
+                <input type="text" class="form-control remote-opt-search" data-target="#promo_id"
+                    placeholder="Ketik untuk cari promo..." autocomplete="off">
+            </div>
+            <select class="form-select remote-select" name="promo_id" id="promo_id"
+                data-url="{{ route('rental.create.search-promo') }}"
+                data-allow-clear="1" data-empty-label="— Tanpa Promo —" data-current-text="{{ $promoText }}">
+                @if($promoVal)
+                    <option value="{{ $promoVal }}" selected>{{ $promoText }}</option>
+                @else
+                    <option value="" selected>— Tanpa Promo —</option>
+                @endif
             </select>
+            <div class="remote-err text-danger small mt-1" style="display:none">Gagal memuat data promo — periksa koneksi lalu ketik ulang di kolom cari.</div>
         </div>
         <div class="col-md-6 mb-3">
             <label class="form-label">Catatan</label>
@@ -181,19 +249,75 @@
             <span id="priceRowTotal">Rp 0</span>
         </div>
     </div>
-
-    <div class="text-end mt-4">
-        <button type="button" class="btn btn-outline-secondary btn-prev-step" data-step="2">
-            <i class="ri-arrow-left-s-line"></i> Sebelumnya
-        </button>
-        <button type="button" class="btn btn-primary btn-next-step" data-step="3">
-            Selanjutnya <i class="ri-arrow-right-s-line"></i>
-        </button>
-    </div>
 </form>
 
 <script>
-    initSelect2();
+    // Remote options TANPA transport AJAX select2 (pola yg sama & terbukti dgn
+    // pencarian pelanggan step-1): search box → plain $.ajax → rebuild <option>
+    // native. Mandiri (tidak tergantung script step lain), aman di-reload AJAX.
+    function escOpt(s) {
+        return $('<div>').text(s ?? '').html();
+    }
+
+    function renderRemoteOptions($select, items, more) {
+        var cur = String($select.val() ?? '');
+        var curText = $select.data('current-text') || '';
+        var html = '';
+        if ($select.data('allow-clear') == 1 || !cur) {
+            html += '<option value="">' + escOpt($select.data('empty-label') || '— Pilih —') + '</option>';
+        }
+        var seen = {};
+        (items || []).forEach(function(it) {
+            var id = String(it.id);
+            if (seen[id]) return;
+            seen[id] = 1;
+            if (id === cur) curText = it.text;
+            html += '<option value="' + escOpt(id) + '">' + escOpt(it.text) + '</option>';
+        });
+        if (cur && !seen[cur] && curText) {
+            html = '<option value="' + escOpt(cur) + '" selected>' + escOpt(curText) + '</option>' + html;
+        }
+        $select.html(html);
+        $select.val(cur);
+        if (more) {
+            $select.append('<option value="" disabled>… hasil banyak, ketik untuk mempersempit …</option>');
+        }
+    }
+
+    function fetchRemoteOptions($select, term) {
+        if (!$select.length) return;
+        var seq = ($select.data('seq') || 0) + 1;
+        $select.data('seq', seq);
+        var $err = $select.closest('.mb-3').find('.remote-err');
+        $.ajax({
+            url: $select.data('url'),
+            type: 'GET',
+            data: { q: term || '' },
+            dataType: 'json'
+        }).done(function(res) {
+            if ($select.data('seq') !== seq) return;
+            $err.hide();
+            renderRemoteOptions($select, res.results || [], !!(res.pagination && res.pagination.more));
+        }).fail(function() {
+            if ($select.data('seq') !== seq) return;
+            $err.show();
+        });
+    }
+
+    var remoteOptTimer = null;
+    $(document)
+        .off('input.remoteOpt', '.remote-opt-search')
+        .on('input.remoteOpt', '.remote-opt-search', function() {
+            var $input = $(this);
+            var $select = $($input.data('target'));
+            clearTimeout(remoteOptTimer);
+            remoteOptTimer = setTimeout(function() {
+                fetchRemoteOptions($select, $input.val().trim());
+            }, 300);
+        });
+
+    // Muat awal (20 pertama) utk tiap select remote
+    $('.remote-select').each(function() { fetchRemoteOptions($(this), ''); });
 
     // Simpan tax_percent final ke field hidden sebelum submit step
     function syncTaxPercent() {
@@ -230,12 +354,10 @@
         calculateTotal();
     });
 
-    $('.btn-next-step').off('click.step3').on('click.step3', function() {
-        syncTaxPercent();
-    });
-
     if ($('#rental_start_date').val() && $('#rental_end_date').val() && $('#vehicle_id').val()) {
         syncTaxPercent();
-        calculateTotal();
+        if (typeof window.calculateTotal === 'function') {
+            calculateTotal();
+        }
     }
 </script>

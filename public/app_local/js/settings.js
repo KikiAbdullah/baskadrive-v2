@@ -6,7 +6,10 @@ function numberWithCommas(x) {
 
 $(document).on('select2:open', () => {
     // $(".select2-container--open").find('.select2-search__field').trigger('focus');
-    document.querySelector('.select2-search__field').focus();
+    var searchField = document.querySelector('.select2-search__field');
+    if (searchField) {
+        searchField.focus();
+    }
 });
 
 $(function () {

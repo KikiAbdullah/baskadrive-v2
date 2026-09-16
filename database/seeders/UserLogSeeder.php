@@ -73,7 +73,7 @@ class UserLogSeeder extends Seeder
 
                 UserLog::create([
                     'user_id' => $user->id,
-                    'action' => $type === 'login' ? 'Login' : 'Logout',
+                    'action' => $type, // 'login'/'logout' lowercase (mutator UserLog menormalisasi sisanya)
                     'menu' => null,
                     'message' => $this->renderMessage($type, $user->name, null, $user->id),
                     'created_at' => $timestamp,
@@ -123,12 +123,12 @@ class UserLogSeeder extends Seeder
     protected function actionLabel(string $type): string
     {
         return match ($type) {
-            'add' => 'Penambahan',
-            'edit' => 'Perubahan',
-            'delete' => 'Penghapusan',
-            'approve' => 'Approve',
-            'reject' => 'Reject',
-            default => 'Login',
+            'add' => 'create',
+            'edit' => 'update',
+            'delete' => 'delete',
+            'approve' => 'approve',
+            'reject' => 'reject',
+            default => 'login',
         };
     }
 

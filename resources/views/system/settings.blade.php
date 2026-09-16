@@ -163,7 +163,7 @@
                 <p class="mb-0">{{ $subtitle }}</p>
             </div>
             <div class="settings-actions">
-                <button type="submit" form="settingsForm" class="btn btn-primary">
+                <button type="button" id="btnSaveSettings" class="btn btn-primary">
                     <i class="ri-save-line me-1"></i> Simpan Pengaturan
                 </button>
             </div>
@@ -494,9 +494,13 @@
                             <div class="card-body">
                                 <p class="text-muted small">Unduh cadangan seluruh tabel database (format SQL dump) tanpa membuka terminal server.</p>
                                 @can('settings_edit')
-                                    <a href="{{ route('system.backup') }}" class="btn btn-outline-primary">
-                                        <i class="ri-download-cloud-line me-1"></i> Backup Database Sekarang
-                                    </a>
+                                    <form method="POST" action="{{ route('system.backup') }}"
+                                        onsubmit="return confirm('Unduh backup database sekarang? Proses dapat memakan waktu beberapa menit.')">
+                                        @csrf
+                                        <button type="submit" class="btn btn-outline-primary">
+                                            <i class="ri-download-cloud-line me-1"></i> Backup Database Sekarang
+                                        </button>
+                                    </form>
                                 @else
                                     <span class="text-muted small fst-italic">Butuh izin pengaturan untuk mencadangkan database.</span>
                                 @endcan
@@ -528,6 +532,18 @@
         }
         bindToggle('tax_enabled', 'taxSettingsBody');
         bindToggle('deposit_enabled', 'depositSettingsBody');
+
+        // ===== Konfirmasi simpan (+ peringatan tutup buku) =====
+        $('#btnSaveSettings').on('click', function() {
+            const closing = $('input[name="accounting_closing_date"]').val();
+            if (closing && !confirm('Tanggal tutup buku (' + closing + ') akan MENGUNCI transaksi sebelumnya. Lanjutkan menyimpan?')) {
+                return;
+            }
+            if (!closing && !confirm('Simpan perubahan pengaturan?')) {
+                return;
+            }
+            $('#settingsForm').submit();
+        });
 
         // ===== Logo preview =====
         $('#logoInput').on('change', function() {

@@ -7,6 +7,8 @@ use App\Models\UserLog;
 use App\Support\AppSettings;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class SystemController extends Controller
 {
@@ -59,7 +61,7 @@ class SystemController extends Controller
                 // Aplikasi
                 'currency' => 'required|string|max:10',
                 'currency_symbol' => 'required|string|max:5',
-                'timezone' => 'required|string|max:50',
+                'timezone' => 'required|in:Asia/Jakarta,Asia/Makassar,Asia/Jayapura',
                 // Logo
                 'company_logo' => 'nullable|image|mimes:png,jpg,jpeg,svg,webp|max:2048',
             ]);
@@ -69,8 +71,9 @@ class SystemController extends Controller
             $validated['deposit_enabled'] = $request->boolean('deposit_enabled');
             $validated['deposit_required'] = $request->boolean('deposit_required');
 
-            // Logo upload (hapus lama)
-            if ($request->hasFile('company_logo')) {
+            // Logo upload (hapus lama) — bila remove_logo dicentang, upload diabaikan
+            // agar tidak yatim di storage (file baru tersimpan lalu DB di-null-kan)
+            if ($request->hasFile('company_logo') && !$request->boolean('remove_logo')) {
                 AppSettings::deleteLogo();
                 $validated['company_logo'] = $request->file('company_logo')->store('branding', 'public');
             } else {
@@ -94,6 +97,8 @@ class SystemController extends Controller
             ]);
 
             return redirect()->route('system.settings')->withSuccess('Pengaturan berhasil disimpan.');
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (Exception $e) {
             return redirect()->back()->withInput()->withErrors($e->getMessage());
         }
@@ -138,11 +143,19 @@ class SystemController extends Controller
         $query = UserLog::query()->with('user');
 
         if ($request->filled('action')) {
-            $query->where('action', $request->action);
+            $query->whereRaw('LOWER(action) = ?', [UserLog::normalizeAction($request->action)]);
         }
 
         if ($request->filled('user_id')) {
             $query->where('user_id', $request->user_id);
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('user_logs.created_at', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('user_logs.created_at', '<=', $request->date_to);
         }
 
         return datatables()->of($query)
@@ -161,54 +174,80 @@ class SystemController extends Controller
         set_time_limit(0);
         ini_set('memory_limit', '512M');
 
-        $baseTables = collect(DB::select("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'"))
-            ->map(fn($t) => current(array_values((array) $t)))
-            ->values()
-            ->all();
-
+        $baseTables = self::backupTableList();
         $filename = 'baskadrive_backup_' . now()->format('Ymd_His') . '.sql';
-
-        UserLog::create([
-            'user_id' => auth()->id(),
-            'action' => 'export',
-            'menu' => 'system.backup',
-            'message' => 'Mencadangkan database dari UI (' . count($baseTables) . ' tabel)',
-        ]);
 
         $callback = function () use ($baseTables) {
             $handle = fopen('php://output', 'w');
-            $pdo = DB::connection()->getPdo();
-
-            fwrite($handle, "-- BaskaDrive Database Backup\n-- Waktu: " . now()->toDateTimeString() . "\nSET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n\n");
-
-            foreach ($baseTables as $table) {
-                $create = DB::select("SHOW CREATE TABLE `{$table}`");
-                $createSql = $create[0]->{'Create Table'} ?? '';
-
-                fwrite($handle, "-- Struktur tabel {$table}\nDROP TABLE IF EXISTS `{$table}`;\n{$createSql};\n\n");
-
-                $columnNames = null;
-                DB::table($table)->chunk(200, function ($rows) use ($handle, $pdo, $table, &$columnNames) {
-                    foreach ($rows as $row) {
-                        $row = (array) $row;
-                        if ($columnNames === null) {
-                            $columnNames = array_keys($row);
-                        }
-                        $vals = array_map(fn($v) => $v === null ? 'NULL' : $pdo->quote((string) $v), array_values($row));
-                        fwrite($handle, 'INSERT INTO `' . $table . '` (`' . implode('`,`', $columnNames) . '`) VALUES (' . implode(',', $vals) . ");\n");
-                    }
-                });
-
-                fwrite($handle, "\n");
-            }
-
-            fwrite($handle, "SET FOREIGN_KEY_CHECKS=1;\n");
+            self::writeBackupDump($handle, $baseTables);
             fclose($handle);
         };
+
+        // Catat SETELAH stream terkirim (bukan sebelumnya) — unduhan batal tidak tercatat sukses
+        $tableCount = count($baseTables);
+        $userId = auth()->id();
+        app()->terminating(function () use ($tableCount, $userId) {
+            UserLog::create([
+                'user_id' => $userId,
+                'action' => 'export',
+                'menu' => 'system.backup',
+                'message' => 'Mencadangkan database dari UI (' . $tableCount . ' tabel)',
+            ]);
+        });
 
         return response()->stream($callback, 200, [
             'Content-Type' => 'application/sql',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ]);
+    }
+
+    /**
+     * Daftar tabel BASE TABLE — dipakai backup UI & command terjadwal.
+     */
+    public static function backupTableList(): array
+    {
+        return collect(DB::select("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'"))
+            ->map(fn($t) => current(array_values((array) $t)))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Tulis SQL dump ke handle terbuka — dipakai backup UI & command terjadwal.
+     */
+    public static function writeBackupDump($handle, array $baseTables): void
+    {
+        $pdo = DB::connection()->getPdo();
+
+        fwrite($handle, "-- BaskaDrive Database Backup\n-- Waktu: " . now()->toDateTimeString() . "\nSET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n\n");
+
+        foreach ($baseTables as $table) {
+            $create = DB::select("SHOW CREATE TABLE `{$table}`");
+            $createSql = $create[0]->{'Create Table'} ?? '';
+
+            fwrite($handle, "-- Struktur tabel {$table}\nDROP TABLE IF EXISTS `{$table}`;\n{$createSql};\n\n");
+
+            $columnNames = null;
+            // chunk() wajib orderBy — pakai kolom pertama tabel (deterministik per page)
+            $firstCol = DB::select("SHOW COLUMNS FROM `{$table}`")[0]->Field ?? null;
+            $rowsQuery = DB::table($table);
+            if ($firstCol) {
+                $rowsQuery->orderBy($firstCol);
+            }
+            $rowsQuery->chunk(200, function ($rows) use ($handle, $pdo, $table, &$columnNames) {
+                foreach ($rows as $row) {
+                    $row = (array) $row;
+                    if ($columnNames === null) {
+                        $columnNames = array_keys($row);
+                    }
+                    $vals = array_map(fn($v) => $v === null ? 'NULL' : $pdo->quote((string) $v), array_values($row));
+                    fwrite($handle, 'INSERT INTO `' . $table . '` (`' . implode('`,`', $columnNames) . '`) VALUES (' . implode(',', $vals) . ");\n");
+                }
+            });
+
+            fwrite($handle, "\n");
+        }
+
+        fwrite($handle, "SET FOREIGN_KEY_CHECKS=1;\n");
     }
 }

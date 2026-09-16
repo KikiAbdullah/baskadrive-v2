@@ -18,7 +18,7 @@
         $promo = $stepPromo ?? null;
         $start = isset($data['rental_start_date']) ? \Carbon\Carbon::parse($data['rental_start_date']) : null;
         $end = isset($data['rental_end_date']) ? \Carbon\Carbon::parse($data['rental_end_date']) : null;
-        $days = $start && $end ? ($start->diffInDays($end) ?: 1) : 0;
+        $days = $start && $end ? max(1, (int) $start->copy()->startOfDay()->diffInDays($end->copy()->startOfDay())) : 0;
     @endphp
 
     <div class="row">
@@ -161,19 +161,10 @@
             </div>
         </div>
     </div>
-
-    <div class="text-end mt-4">
-        <button type="button" class="btn btn-outline-secondary btn-prev-step" data-step="3">
-            <i class="ri-arrow-left-s-line"></i> Sebelumnya
-        </button>
-        <button type="button" class="btn btn-success" id="btnSubmitRental">
-            <i class="ri-check-line"></i> Konfirmasi & Simpan
-        </button>
-    </div>
 </form>
 
 <script>
-    $('#btnSubmitRental').off('click').on('click', function(e) {
+    $('#footerSubmit').off('click').on('click', function(e) {
         e.preventDefault();
         Swal.fire({
             icon: 'question',
@@ -204,6 +195,8 @@
                 Swal.fire({ icon: 'success', title: 'Berhasil', text: result.value.msg, didClose: () => {
                     window.location.href = result.value.redirect;
                 }});
+            } else if (result.value && result.value.msg) {
+                Swal.fire({ icon: 'error', title: 'Gagal', text: result.value.msg });
             }
         });
     });
@@ -246,6 +239,7 @@
                         $('#reviewTax').text('Rp ' + formatNumber(d.tax_amount));
                         $('#reviewDeposit').text('Rp ' + formatNumber(d.deposit_amount));
                         $('#reviewTotal').text('Rp ' + formatNumber(d.total_amount));
+                        $('#footerSelection').text('· Total: Rp ' + formatNumber(d.total_amount));
                         $('#reviewTaxRow').toggle(parseFloat(d.tax_percent) > 0);
                         $('#reviewDepositRow').toggle(parseFloat(d.deposit_amount) > 0);
                     }

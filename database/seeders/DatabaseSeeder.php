@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             UserLogSeeder::class,
             SanctumTokenSeeder::class,
+            SettingsSeeder::class,
 
             // Rental ERP Master
             RentalErpMasterSeeder::class,

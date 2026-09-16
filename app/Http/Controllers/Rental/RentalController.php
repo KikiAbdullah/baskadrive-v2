@@ -38,27 +38,42 @@ class RentalController extends Controller
 
     public function create()
     {
-        $step = session()->get('rental_wizard_step', 1);
-        $data = session()->get('rental_wizard_data', []);
+        $step = $this->resolveWizardStep(
+            (int) session()->get('rental_wizard_step', 1),
+            session()->get('rental_wizard_data', [])
+        );
 
-        $view = [
+        $view = array_merge($this->wizardViewData($step), [
             'title' => 'Buat Sewa',
             'subtitle' => 'Buat Sewa Baru',
-            'step' => $step,
-            'data' => $data,
-            'customers' => Customer::where('is_blacklisted', false)->orderBy('first_name')->get(),
-            'locations' => Location::active()->get(),
-            'drivers' => Driver::active()->licenseValid()->get(),
-            'promos' => Promo::active()->get(),
-        ];
+        ]);
 
         return view('rental.create')->with($view);
     }
 
+    /**
+     * Step wizard harus konsisten dgn data session — akses URL/step di depan
+     * prasyarat dikembalikan ke step pertama yang belum lengkap (bukan form kosong).
+     */
+    private function resolveWizardStep(int $step, array $data): int
+    {
+        $step = max(1, min(4, $step));
+
+        if ($step >= 2 && empty($data['customer_id'])) {
+            return 1;
+        }
+        if ($step >= 3 && empty($data['vehicle_id'])) {
+            return 2;
+        }
+        if ($step >= 4 && (empty($data['rental_start_date']) || empty($data['rental_end_date']))) {
+            return 3;
+        }
+
+        return $step;
+    }
+
     public function createStep(Request $request, $step)
     {
-        $request->session()->put('rental_wizard_step', $step);
-
         if ($request->ajax()) {
             $response = $this->renderStep($request, $step);
             // Cegah cache GET yang mengubah state session
@@ -67,6 +82,17 @@ class RentalController extends Controller
         }
 
         return redirect()->route('rental.create');
+    }
+
+    /**
+     * Hari sewa = selisih kalender (DATEDIFF) dengan floor min 1 —
+     * identik dgn trigger trg_rental_before_insert (menghitung ulang rental_days).
+     * Carbon 3 mengembalikan float (mis. 2.9993 utk 00:00→23:59) yang merusak
+     * total_base_price bila dipakai apa adanya.
+     */
+    private function rentalDays(Carbon $start, Carbon $end): int
+    {
+        return max(1, (int) $start->copy()->startOfDay()->diffInDays($end->copy()->startOfDay()));
     }
 
     public function store(Request $request)
@@ -84,6 +110,11 @@ class RentalController extends Controller
                 throw new Exception('Data pelanggan dan kendaraan harus diisi.');
             }
 
+            // Kolom pickup/return_location_id NOT NULL di DB — wajib ada sejak step 3
+            if (empty($data['pickup_location_id']) || empty($data['return_location_id'])) {
+                throw new Exception('Lokasi penjemputan dan pengembalian wajib dipilih. Kembali ke langkah Detail Sewa.');
+            }
+
             $vehicle = Vehicle::with('model')->findOrFail($data['vehicle_id']);
 
             // FASE 1 audit sewa: re-check blacklist (pemicu asli bypass via session wizard)
@@ -97,7 +128,7 @@ class RentalController extends Controller
 
             $startDate = Carbon::parse($data['rental_start_date']);
             $endDate = Carbon::parse($data['rental_end_date']);
-            $rentalDays = $startDate->diffInDays($endDate) ?: 1;
+            $rentalDays = $this->rentalDays($startDate, $endDate);
 
             // FASE 1 audit sewa: lock baris kendaraan + enforcement overlap/buffer (anti double-booking)
             Vehicle::where('vehicle_id', $vehicle->vehicle_id)->lockForUpdate()->first();
@@ -252,6 +283,81 @@ class RentalController extends Controller
         return response()->json(['results' => $customers]);
     }
 
+    public function searchLocation(Request $request)
+    {
+        $search = $request->get('q', '');
+        $page = max(1, (int) $request->get('page', 1));
+
+        $items = Location::active()
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(function ($w) use ($search) {
+                    $w->where('location_name', 'like', "%{$search}%")
+                        ->orWhere('city', 'like', "%{$search}%");
+                });
+            })
+            ->orderBy('location_name')
+            ->paginate(20, ['*'], 'page', $page);
+
+        return response()->json([
+            'results' => $items->map(fn($l) => [
+                'id' => $l->location_id,
+                'text' => $l->location_name . ' - ' . $l->city,
+            ])->values(),
+            'pagination' => ['more' => $items->hasMorePages()],
+        ]);
+    }
+
+    public function searchDriver(Request $request)
+    {
+        $search = $request->get('q', '');
+        $page = max(1, (int) $request->get('page', 1));
+
+        $items = Driver::active()->licenseValid()
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(function ($w) use ($search) {
+                    $w->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%");
+                });
+            })
+            ->orderBy('first_name')
+            ->paginate(20, ['*'], 'page', $page);
+
+        return response()->json([
+            'results' => $items->map(fn($d) => [
+                'id' => $d->driver_id,
+                'text' => $d->full_name . ' - ' . $d->phone,
+            ])->values(),
+            'pagination' => ['more' => $items->hasMorePages()],
+        ]);
+    }
+
+    public function searchPromo(Request $request)
+    {
+        $search = $request->get('q', '');
+        $page = max(1, (int) $request->get('page', 1));
+
+        $items = Promo::active()
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(function ($w) use ($search) {
+                    $w->where('promo_code', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+                });
+            })
+            ->orderBy('promo_code')
+            ->paginate(20, ['*'], 'page', $page);
+
+        return response()->json([
+            'results' => $items->map(fn($p) => [
+                'id' => $p->promo_id,
+                'text' => $p->promo_code . ' - ' . ($p->discount_type == 'percentage'
+                    ? $p->discount_value . '%'
+                    : 'Rp ' . number_format($p->discount_value, 0, ',', '.')),
+            ])->values(),
+            'pagination' => ['more' => $items->hasMorePages()],
+        ]);
+    }
+
     public function availableVehicles(Request $request)
     {
         $request->validate([
@@ -299,7 +405,7 @@ class RentalController extends Controller
         $vehicleId = $request->get('vehicle_id');
         $startDate = Carbon::parse($request->get('rental_start_date'));
         $endDate = Carbon::parse($request->get('rental_end_date'));
-        $rentalDays = $startDate->diffInDays($endDate) ?: 1;
+        $rentalDays = $this->rentalDays($startDate, $endDate);
         $withDriver = $request->boolean('is_with_driver');
         $promoId = $request->get('promo_id');
         $settings = \App\Support\AppSettings::all();
@@ -482,9 +588,13 @@ class RentalController extends Controller
         return in_array($value, $allowed, true) ? $value : null;
     }
 
-    private function renderStep(Request $request, $step)
+    /**
+     * Data view wizard SATU-SATUNYA (dipakai create() utk render awal & renderStep
+     * utk AJAX) — agar _step-N.blade.php tidak kehilangan variabel ($settings dll).
+     */
+    private function wizardViewData(int $step): array
     {
-        $data = $request->session()->get('rental_wizard_data', []);
+        $data = session()->get('rental_wizard_data', []);
 
         // FASE 3 audit sewa: resolusi relasi ( Customer/Vehicle/Lokasi/Sopir/Promo )
         // dipindah KE controller — view tidak lagi mengakses DB langsung (N+1 di blade).
@@ -495,13 +605,13 @@ class RentalController extends Controller
         $driver = (! empty($data['is_with_driver']) && ! empty($data['driver_id'])) ? Driver::find($data['driver_id']) : null;
         $promo = ! empty($data['promo_id']) ? Promo::find($data['promo_id']) : null;
 
-        $viewData = [
+        return [
             'step' => $step,
             'data' => $data,
             'customers' => Customer::where('is_blacklisted', false)->orderBy('first_name')->get(),
-            'locations' => Location::active()->get(),
-            'drivers' => Driver::active()->licenseValid()->get(),
-            'promos' => Promo::active()->get(),
+            // Select lokasi/sopir/promo memakai remote data (select2 AJAX) — hanya
+            // lokasi default (1 baris) yang dimuat untuk preselect.
+            'defaultLocation' => Location::active()->orderBy('location_name')->first(),
             'vehicles' => Vehicle::with('model.brand')->where('status', 'available')->get(),
             'settings' => \App\Support\AppSettings::all(),
             'stepCustomer' => $customer,
@@ -511,8 +621,15 @@ class RentalController extends Controller
             'stepDriver' => $driver,
             'stepPromo' => $promo,
         ];
+    }
 
-        $view = match ((int) $step) {
+    private function renderStep(Request $request, $step)
+    {
+        $step = $this->resolveWizardStep((int) $step, $request->session()->get('rental_wizard_data', []));
+        $request->session()->put('rental_wizard_step', $step);
+        $viewData = $this->wizardViewData($step);
+
+        $view = match ($step) {
             2 => view('rental._step-2', $viewData)->render(),
             3 => view('rental._step-3', $viewData)->render(),
             4 => view('rental._step-4', $viewData)->render(),
@@ -522,7 +639,7 @@ class RentalController extends Controller
         return response()->json([
             'status' => true,
             'view' => $view,
-            'step' => (int) $step,
+            'step' => $step,
         ]);
     }
 
@@ -538,15 +655,20 @@ class RentalController extends Controller
                 ['customer_id'],
             ],
             2 => [
-                ['vehicle_id' => 'required|exists:m_vehicle,vehicle_id'],
-                ['vehicle_id'],
+                [
+                    'vehicle_id' => 'required|exists:m_vehicle,vehicle_id',
+                    // Window ketersediaan ikut disimpan → step 3 otomatis terisi
+                    'rental_start_date' => 'nullable|date',
+                    'rental_end_date' => 'nullable|date|after:rental_start_date',
+                ],
+                ['vehicle_id', 'rental_start_date', 'rental_end_date'],
             ],
             3 => [
                 [
                     'rental_start_date' => 'required|date|after_or_equal:today',
                     'rental_end_date' => 'required|date|after:rental_start_date',
-                    'pickup_location_id' => 'nullable|exists:m_location,location_id',
-                    'return_location_id' => 'nullable|exists:m_location,location_id',
+                    'pickup_location_id' => 'required|exists:m_location,location_id',
+                    'return_location_id' => 'required|exists:m_location,location_id',
                     'is_with_driver' => 'nullable|boolean',
                     'driver_id' => 'nullable|exists:m_driver,driver_id',
                     'driver_fee' => 'nullable|numeric|min:0|max:2000000',
@@ -768,8 +890,8 @@ class RentalController extends Controller
             $validated = $request->validate([
                 'rental_start_date' => 'required|date',
                 'rental_end_date' => 'required|date|after:rental_start_date',
-                'pickup_location_id' => 'nullable|exists:m_location,location_id',
-                'return_location_id' => 'nullable|exists:m_location,location_id',
+                'pickup_location_id' => 'required|exists:m_location,location_id',
+                'return_location_id' => 'required|exists:m_location,location_id',
                 'is_with_driver' => 'nullable|boolean',
                 'driver_id' => 'nullable|exists:m_driver,driver_id',
                 'promo_id' => 'nullable|exists:m_promo,promo_id',
@@ -806,7 +928,7 @@ class RentalController extends Controller
 
             $startDate = Carbon::parse($validated['rental_start_date']);
             $endDate = Carbon::parse($validated['rental_end_date']);
-            $days = $startDate->diffInDays($endDate) ?: 1;
+            $days = $this->rentalDays($startDate, $endDate);
 
             // Anti double-booking saat tanggal dipindahkan (exclude rental ini sendiri)
             Vehicle::where('vehicle_id', $rental->vehicle_id)->lockForUpdate()->first();
@@ -991,7 +1113,7 @@ class RentalController extends Controller
 
             $newEnd = Carbon::parse($validated['new_end_date']);
             $oldEnd = Carbon::parse($rental->rental_end_date);
-            $days = $oldEnd->diffInDays($newEnd);
+            $days = $this->rentalDays($oldEnd, $newEnd);
 
             if ($days < 1) {
                 throw new Exception('Perpanjangan minimal 1 hari.');
@@ -1059,7 +1181,7 @@ class RentalController extends Controller
             $rental->update([
                 'rental_end_date' => $extension->new_end_date,
                 // §3.5 audit sewa: rental_days ikut diperbarui (sebelumnya drift)
-                'rental_days' => Carbon::parse($rental->rental_start_date)->diffInDays($extension->new_end_date) ?: $rental->rental_days,
+                'rental_days' => $this->rentalDays(Carbon::parse($rental->rental_start_date), Carbon::parse($extension->new_end_date)),
                 'total_base_price' => ($rental->total_base_price ?? 0) + $extension->additional_base_price,
                 'tax_amount' => ($rental->tax_amount ?? 0) + $extension->additional_tax,
                 'total_amount' => ($rental->total_amount ?? 0) + $extension->additional_total,

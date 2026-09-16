@@ -32,6 +32,8 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
         $schedule->command('app:cleanup-temp')->dailyAt('02:00');
+        // SYS-07 audit sistem: backup database otomatis + retensi 14 file
+        $schedule->command('system:backup --keep=14')->dailyAt('01:30');
         $schedule->command('fleet:check-maintenance')->dailyAt('06:30');
         $schedule->command('rental:send-reminders')->dailyAt('08:00');
         // FASE 3 audit sewa: sweep jatuh tempo + proses antrean tanpa worker khusus

@@ -25,7 +25,8 @@
         </div>
     </div>
 
-    <div class="row" id="customerList">
+    <div class="wizard-scroll">
+        <div class="row" id="customerList">
         @forelse($customers as $customer)
             <div class="col-md-6 mb-3 customer-item" data-search="{{ strtolower($customer->full_name . ' ' . $customer->phone . ' ' . $customer->email) }}">
                 <div class="card customer-card {{ isset($data['customer_id']) && $data['customer_id'] == $customer->customer_id ? 'selected' : '' }}" data-id="{{ $customer->customer_id }}" role="button" tabindex="0" aria-pressed="{{ isset($data['customer_id']) && $data['customer_id'] == $customer->customer_id ? 'true' : 'false' }}">
@@ -58,12 +59,7 @@
                 <p class="text-muted">Belum ada pelanggan. Silakan tambah pelanggan baru.</p>
             </div>
         @endforelse
-    </div>
-
-    <div class="text-end mt-2">
-        <button type="button" class="btn btn-primary btn-next-step" data-step="1">
-            Selanjutnya <i class="ri-arrow-right-s-line"></i>
-        </button>
+        </div>
     </div>
 </form>
 
@@ -116,26 +112,34 @@
 @endcan
 
 <script>
-    let searchTimer = null;
-    let initialCustomerHtml = $('#customerList').html();
+    // NB: pakai var + delegated event ber-namespace — script ini dieksekusi ulang
+    // tiap loadStep(1); "let/const" top-level akan melempar SyntaxError dan
+    // membuat handler klik card mati total saat reload step.
+    var searchTimer = null;
+    var initialCustomerHtml = $('#customerList').html();
+
+    function pickCustomerCard(card) {
+        $('.customer-card').removeClass('selected').attr('aria-pressed', 'false');
+        $('input[name="_customer_radio"]').prop('checked', false);
+        card.addClass('selected').attr('aria-pressed', 'true');
+        card.find('input[name="_customer_radio"]').prop('checked', true);
+        $('#customer_id').val(card.data('id'));
+        var nm = card.find('h6').first().text().trim();
+        $('#footerSelection').text(nm ? '· ' + nm : '');
+    }
 
     function bindCustomerCards() {
-        function pickCard(card) {
-            $('.customer-card').removeClass('selected').attr('aria-pressed', 'false');
-            $('input[name="_customer_radio"]').prop('checked', false);
-            card.addClass('selected').attr('aria-pressed', 'true');
-            card.find('input[name="_customer_radio"]').prop('checked', true);
-            $('#customer_id').val(card.data('id'));
-        }
-        $('.customer-card').off('click').on('click', function() {
-            pickCard($(this));
-        });
-        $('.customer-card').off('keydown').on('keydown', function(e) {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                pickCard($(this));
-            }
-        });
+        $(document)
+            .off('.custPick', '.customer-card')
+            .on('click.custPick', '.customer-card', function() {
+                pickCustomerCard($(this));
+            })
+            .on('keydown.custPick', '.customer-card', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    pickCustomerCard($(this));
+                }
+            });
     }
     bindCustomerCards();
 
@@ -159,7 +163,8 @@
             const selectedId = $('#customer_id').val();
             const isSelected = String(selectedId) === String(c.customer_id) ? ' selected' : '';
             const checked = isSelected ? ' checked' : '';
-            html += '<div class="col-md-6 mb-3 customer-item">'
+            const dataSearch = escapeHtml(((c.full_name || '') + ' ' + (c.phone || '') + ' ' + (c.email || '')).toLowerCase());
+            html += '<div class="col-md-6 mb-3 customer-item" data-search="' + dataSearch + '">'
                 + '<div class="card customer-card' + isSelected + '" data-id="' + c.customer_id + '" role="button" tabindex="0" aria-pressed="' + (isSelected ? 'true' : 'false') + '">'
                 + '<div class="card-body"><div class="d-flex justify-content-between align-items-start"><div>'
                 + '<h6 class="mb-1">' + label + '</h6>'
@@ -170,76 +175,78 @@
                 + '</div></div></div></div>';
         });
         $('#customerList').html(html);
-        bindCustomerCards();
     }
 
-    $('#searchCustomer').on('keyup', function() {
-        const q = $(this).val().trim();
-        if (q.length === 0) {
-            $('#customerList').html(initialCustomerHtml);
-            bindCustomerCards();
-            return;
-        }
-        if (q.length < 2) return;
-        clearTimeout(searchTimer);
-        searchTimer = setTimeout(function() {
-            $.ajax({
-                url: '{{ route("rental.create.search-customer") }}',
-                type: 'GET',
-                data: { q: q },
-                dataType: 'JSON',
-                success: function(res) {
-                    // endpoint mengembalikan {results:[...]} — fallback ke array langsung
-                    const items = res.results || res.data || res || [];
-                    renderCustomerResults(items);
-                },
-                error: function() {
-                    // fallback ke filter client-side bila endpoint gagal
-                    const ql = q.toLowerCase();
-                    $('.customer-item').each(function() {
-                        const search = ($(this).data('search') || '').toString().toLowerCase();
-                        $(this).toggle(search.includes(ql));
-                    });
-                }
-            });
-        }, 300);
-    });
+    $(document)
+        .off('keyup.custSearch', '#searchCustomer')
+        .on('keyup.custSearch', '#searchCustomer', function() {
+            const q = $(this).val().trim();
+            if (q.length === 0) {
+                $('#customerList').html(initialCustomerHtml);
+                return;
+            }
+            if (q.length < 2) return;
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function() {
+                $.ajax({
+                    url: '{{ route("rental.create.search-customer") }}',
+                    type: 'GET',
+                    data: { q: q },
+                    dataType: 'JSON',
+                    success: function(res) {
+                        // endpoint mengembalikan {results:[...]} — fallback ke array langsung
+                        const items = res.results || res.data || res || [];
+                        renderCustomerResults(items);
+                    },
+                    error: function() {
+                        // fallback ke filter client-side bila endpoint gagal
+                        const ql = q.toLowerCase();
+                        $('.customer-item').each(function() {
+                            const search = ($(this).data('search') || '').toString().toLowerCase();
+                            $(this).toggle(search.includes(ql));
+                        });
+                    }
+                });
+            }, 300);
+        });
 
     // Quick-create pelanggan tanpa keluar wizard — simpan via AJAX lalu muat ulang daftar step 1.
-    $(document).on('submit', '#quickCustomerForm', function(e) {
-        e.preventDefault();
-        const form = this;
-        const btn = $(form).find('button[type=submit]');
-        if (btn.prop('disabled')) return;
-        btn.prop('disabled', true);
+    $(document)
+        .off('submit.custQuick', '#quickCustomerForm')
+        .on('submit.custQuick', '#quickCustomerForm', function(e) {
+            e.preventDefault();
+            const form = this;
+            const btn = $(form).find('button[type=submit]');
+            if (btn.prop('disabled')) return;
+            btn.prop('disabled', true);
 
-        $.ajax({
-            url: '{{ route("master.customer.store") }}',
-            type: 'POST',
-            data: $(form).serialize(),
-            dataType: 'JSON',
-            success: function(res) {
-                btn.prop('disabled', false);
-                if (res.status) {
-                    const modalEl = document.getElementById('quickCustomerModal');
-                    if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).hide();
-                    form.reset();
-                    Swal.fire({ icon: 'success', title: 'Tersimpan', text: 'Pelanggan baru ditambahkan.', timer: 1200, showConfirmButton: false });
-                    if (window.loadStep) loadStep(1);
-                } else {
-                    Swal.fire({ icon: 'error', title: 'Gagal', text: res.msg || 'Tidak dapat menyimpan pelanggan.' });
+            $.ajax({
+                url: '{{ route("master.customer.store") }}',
+                type: 'POST',
+                data: $(form).serialize(),
+                dataType: 'JSON',
+                success: function(res) {
+                    btn.prop('disabled', false);
+                    if (res.status) {
+                        const modalEl = document.getElementById('quickCustomerModal');
+                        if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+                        form.reset();
+                        Swal.fire({ icon: 'success', title: 'Tersimpan', text: 'Pelanggan baru ditambahkan.', timer: 1200, showConfirmButton: false });
+                        if (window.loadStep) loadStep(1);
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Gagal', text: res.msg || 'Tidak dapat menyimpan pelanggan.' });
+                    }
+                },
+                error: function(xhr) {
+                    btn.prop('disabled', false);
+                    if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
+                        let msg = '';
+                        $.each(xhr.responseJSON.errors, function(k, v) { msg += v[0] + '<br>'; });
+                        Swal.fire({ icon: 'error', title: 'Periksa isian', html: msg });
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Error', text: 'Tidak dapat menyimpan pelanggan.' });
+                    }
                 }
-            },
-            error: function(xhr) {
-                btn.prop('disabled', false);
-                if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
-                    let msg = '';
-                    $.each(xhr.responseJSON.errors, function(k, v) { msg += v[0] + '<br>'; });
-                    Swal.fire({ icon: 'error', title: 'Periksa isian', html: msg });
-                } else {
-                    Swal.fire({ icon: 'error', title: 'Error', text: 'Tidak dapat menyimpan pelanggan.' });
-                }
-            }
+            });
         });
-    });
 </script>

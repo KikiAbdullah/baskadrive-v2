@@ -16,6 +16,10 @@
             <div class="card-header d-flex justify-content-between align-items-center gap-2">
                 <h6 class="mb-0">Filter</h6>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <input type="text" class="form-control form-control-sm flatpickr-date w-auto" id="dateFromFilter"
+                        placeholder="Dari tanggal" autocomplete="off" style="max-width: 150px;">
+                    <input type="text" class="form-control form-control-sm flatpickr-date w-auto" id="dateToFilter"
+                        placeholder="Sampai tanggal" autocomplete="off" style="max-width: 150px;">
                     <select class="form-select form-select-sm w-auto" id="userFilter">
                         <option value="">Semua Pengguna</option>
                         @foreach($users as $u)
@@ -29,6 +33,7 @@
                         <option value="delete">Delete</option>
                         <option value="login">Login</option>
                         <option value="logout">Logout</option>
+                        <option value="export">Export</option>
                     </select>
                 </div>
             </div>
@@ -66,6 +71,8 @@
                     data: function(d) {
                         d.action = $('#actionFilter').val();
                         d.user_id = $('#userFilter').val();
+                        d.date_from = $('#dateFromFilter').val();
+                        d.date_to = $('#dateToFilter').val();
                     }
                 },
                 "columns": [{
@@ -90,10 +97,14 @@
                 "dom": '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>><"table-responsive"t><"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
             });
 
-            $('#actionFilter, #userFilter').on('change', function() {
+            $('#actionFilter, #userFilter, #dateFromFilter, #dateToFilter').on('change', function() {
                 dtable.ajax.reload();
             });
         });
+
+        if (window.initFlatpickr) {
+            window.initFlatpickr(document.getElementById('dtable')?.closest('.card') ?? document);
+        }
     </script>
 @endsection
 

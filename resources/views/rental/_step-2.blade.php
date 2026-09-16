@@ -1,5 +1,6 @@
 <form id="wizardForm">
     @csrf
+    <input type="hidden" name="customer_id" value="{{ $data['customer_id'] ?? '' }}">
     <input type="hidden" name="vehicle_id" id="vehicle_id" value="{{ $data['vehicle_id'] ?? '' }}">
 
     <div class="row mb-4">
@@ -12,11 +13,11 @@
     <div class="row mb-4">
         <div class="col-md-4">
             <label class="form-label">Tanggal Mulai <span class="text-danger">*</span></label>
-            <input type="text" class="form-control flatpickr-date" name="rental_start_date" id="filterStartDate" value="{{ $data['rental_start_date'] ?? '' }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
+            <input type="text" class="form-control flatpickr-date" name="rental_start_date" id="filterStartDate" value="{{ \Illuminate\Support\Str::before($data['rental_start_date'] ?? '', ' ') }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
         </div>
         <div class="col-md-4">
             <label class="form-label">Tanggal Selesai <span class="text-danger">*</span></label>
-            <input type="text" class="form-control flatpickr-date" name="rental_end_date" id="filterEndDate" value="{{ $data['rental_end_date'] ?? '' }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
+            <input type="text" class="form-control flatpickr-date" name="rental_end_date" id="filterEndDate" value="{{ \Illuminate\Support\Str::before($data['rental_end_date'] ?? '', ' ') }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
         </div>
         <div class="col-md-4">
             <label class="form-label">&nbsp;</label>
@@ -26,20 +27,11 @@
         </div>
     </div>
 
-    <div id="vehicleList">
+    <div class="wizard-scroll" id="vehicleList">
         <div class="text-center py-4 text-muted">
             <i class="ri-car-line ri-3x mb-2 d-block"></i>
             Pilih tanggal untuk melihat kendaraan tersedia
         </div>
-    </div>
-
-    <div class="text-end mt-4">
-        <button type="button" class="btn btn-outline-secondary btn-prev-step" data-step="1">
-            <i class="ri-arrow-left-s-line"></i> Sebelumnya
-        </button>
-        <button type="button" class="btn btn-primary btn-next-step" data-step="2">
-            Selanjutnya <i class="ri-arrow-right-s-line"></i>
-        </button>
     </div>
 </form>
 
@@ -49,6 +41,13 @@
 
         // FASE 3 audit sewa: escape semua nilai dinamis (anti XSS dari data master)
         const esc = (s) => $('<div>').text(s ?? '').html();
+
+        // Pilihan lama tidak lagi tersedia untuk window tanggal baru → kosongkan
+        if (selectedVehicle && !(response || []).some(function(v) { return String(v.id) === String(selectedVehicle); })) {
+            selectedVehicle = '';
+            $('#vehicle_id').val('');
+            $('#footerSelection').text('');
+        }
 
         if (!response.length) {
             html = '<div class="text-center py-4 text-muted"><i class="ri-close-circle-line ri-3x mb-2 d-block"></i>Tidak ada kendaraan tersedia untuk tanggal tersebut.</div>';
@@ -94,7 +93,16 @@
             $(this).addClass('selected');
             $(this).find('.vehicle-radio').prop('checked', true);
             $('#vehicle_id').val($(this).data('id'));
+            const plate = $(this).find('h6').first().text().trim();
+            const price = $(this).data('price') || 0;
+            $('#footerSelection').text('· ' + plate + ' (Rp ' + formatNumber(price) + '/hari)');
         });
+
+        const $init = $('.vehicle-card.selected').first();
+        if ($init.length) {
+            const p = $init.find('h6').first().text().trim();
+            $('#footerSelection').text('· ' + p + ' (Rp ' + formatNumber($init.data('price') || 0) + '/hari)');
+        }
     }
 
     $('#checkAvailability').on('click', function() {

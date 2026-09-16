@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Customer;
 use App\Models\Rental;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
@@ -37,16 +38,19 @@ class RentalIntegrityTest extends TestCase
     public function test_double_booking_with_overlap_is_rejected(): void
     {
         $ongoing = Rental::where('status', 'ongoing')->firstOrFail();
+        $customer = Customer::where('is_blacklisted', false)->firstOrFail();
 
         $before = Rental::count();
 
         $response = $this->actingAs($this->user('staff'))
             ->withSession([
                 'rental_wizard_data' => [
-                    'customer_id' => $ongoing->customer_id,
+                    'customer_id' => $customer->customer_id,
                     'vehicle_id' => $ongoing->vehicle_id,
                     'rental_start_date' => $ongoing->rental_start_date->toDateString(),
                     'rental_end_date' => $ongoing->rental_end_date->toDateString(),
+                    'pickup_location_id' => $ongoing->pickup_location_id,
+                    'return_location_id' => $ongoing->return_location_id,
                 ],
             ])
             ->postJson(route('rental.create.store'));
@@ -124,6 +128,8 @@ class RentalIntegrityTest extends TestCase
             [
                 'rental_start_date' => $rental->rental_start_date->format('Y-m-d\TH:i'),
                 'rental_end_date' => $rental->rental_end_date->format('Y-m-d\TH:i'),
+                'pickup_location_id' => $rental->pickup_location_id,
+                'return_location_id' => $rental->return_location_id,
                 'status' => 'completed',
             ]
         );
