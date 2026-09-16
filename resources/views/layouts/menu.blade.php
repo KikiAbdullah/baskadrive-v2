@@ -116,16 +116,19 @@
             <!-- ========================================
                  OPERASIONAL SEWA
             ======================================== -->
+            @can('rental_view')
             <li class="menu-item {{ $is('rental') ? 'active' : '' }}">
                 <a href="{{ route('rental.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons ri-handbag-line"></i>
                     <div data-i18n="Sewa">Sewa</div>
                 </a>
             </li>
+            @endcan
 
             <!-- ========================================
                  FLEET MAINTENANCE & KERUSAKAN
             ======================================== -->
+            @can('fleet_view')
             <li class="menu-item {{ $is('fleet') ? 'active open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons ri-settings-3-line"></i>
@@ -146,20 +149,24 @@
                     </li>
                 </ul>
             </li>
+            @endcan
 
             <!-- ========================================
                  KEUANGAN & PENAGIHAN
             ======================================== -->
+            @can('finance_view')
             <li class="menu-item {{ $is('finance') ? 'active' : '' }}">
                 <a href="{{ route('finance.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons ri-wallet-3-line"></i>
                     <div data-i18n="Keuangan">Keuangan</div>
                 </a>
             </li>
+            @endcan
 
             <!-- ========================================
                  AKUNTANSI
             ======================================== -->
+            @can('accounting_view')
             <li class="menu-item {{ $is('accounting') ? 'active open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons ri-book-2-line"></i>
@@ -198,16 +205,19 @@
                     </li>
                 </ul>
             </li>
+            @endcan
 
             <!-- ========================================
                  LAPORAN & ANALYTICS
             ======================================== -->
+            @can('report_view')
             <li class="menu-item {{ $is('report') ? 'active' : '' }}">
                 <a href="{{ route('report.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons ri-bar-chart-2-line"></i>
                     <div data-i18n="Laporan">Laporan</div>
                 </a>
             </li>
+            @endcan
 
             <!-- ========================================
                  SISTEM & ADMINISTRASI

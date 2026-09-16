@@ -64,12 +64,12 @@
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Tanggal Dijadwalkan <span class="text-danger">*</span></label>
-                                    <input type="date" class="form-control datepicker" name="scheduled_date"
+                                    <input type="text" class="form-control flatpickr-date" name="scheduled_date" autocomplete="off"
                                         value="{{ $item ? $item->scheduled_date?->format('Y-m-d') : '' }}" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Tanggal Aktual</label>
-                                    <input type="date" class="form-control datepicker" name="actual_date"
+                                    <input type="text" class="form-control flatpickr-date" name="actual_date" autocomplete="off"
                                         value="{{ $item ? $item->actual_date?->format('Y-m-d') : '' }}">
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -123,18 +123,7 @@
 @section('customjs')
     <script>
         $('.select2').select2();
-        if ($.fn.datepicker) {
-            $('.datepicker').each(function() {
-                if (!$(this).data('datepicker')) {
-                    $(this).datepicker({
-                        format: 'yyyy-mm-dd',
-                        autoclose: true,
-                        todayHighlight: true,
-                        orientation: 'bottom auto'
-                    });
-                }
-            });
-        }
+        if (window.initFlatpickr) { window.initFlatpickr(); }
     </script>
 @endsection
 

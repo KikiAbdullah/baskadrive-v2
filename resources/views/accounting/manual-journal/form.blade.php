@@ -21,7 +21,7 @@
                             <div class="row mb-3">
                                 <div class="col-md-4">
                                     <label class="form-label">Tanggal Transaksi <span class="text-danger">*</span></label>
-                                    <input type="date" class="form-control datepicker" name="transaction_date"
+                                    <input type="text" class="form-control flatpickr-date" name="transaction_date" autocomplete="off"
                                         value="{{ date('Y-m-d') }}" required>
                                 </div>
                                 <div class="col-md-4">
@@ -133,14 +133,7 @@
         }
 
         $(document).ready(function() {
-            if ($.fn.datepicker) {
-                $('.datepicker').datepicker({
-                    format: 'yyyy-mm-dd',
-                    autoclose: true,
-                    todayHighlight: true,
-                    orientation: 'bottom auto'
-                });
-            }
+            if (window.initFlatpickr) { window.initFlatpickr(); }
             addRow();
             addRow();
 

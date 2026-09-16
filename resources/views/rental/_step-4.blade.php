@@ -9,12 +9,13 @@
     </div>
 
     @php
-        $customer = isset($data['customer_id']) ? \App\Models\Customer::find($data['customer_id']) : null;
-        $vehicle = isset($data['vehicle_id']) ? \App\Models\Vehicle::with('model.brand')->find($data['vehicle_id']) : null;
-        $pickupLoc = isset($data['pickup_location_id']) ? \App\Models\Location::find($data['pickup_location_id']) : null;
-        $returnLoc = isset($data['return_location_id']) ? \App\Models\Location::find($data['return_location_id']) : null;
-        $driver = (isset($data['is_with_driver']) && $data['is_with_driver'] && isset($data['driver_id'])) ? \App\Models\Driver::find($data['driver_id']) : null;
-        $promo = isset($data['promo_id']) ? \App\Models\Promo::find($data['promo_id']) : null;
+        // FASE 3: data dirender dari controller (renderStep) — view tidak query DB.
+        $customer = $stepCustomer ?? null;
+        $vehicle = $stepVehicle ?? null;
+        $pickupLoc = $stepPickupLoc ?? null;
+        $returnLoc = $stepReturnLoc ?? null;
+        $driver = $stepDriver ?? null;
+        $promo = $stepPromo ?? null;
         $start = isset($data['rental_start_date']) ? \Carbon\Carbon::parse($data['rental_start_date']) : null;
         $end = isset($data['rental_end_date']) ? \Carbon\Carbon::parse($data['rental_end_date']) : null;
         $days = $start && $end ? ($start->diffInDays($end) ?: 1) : 0;

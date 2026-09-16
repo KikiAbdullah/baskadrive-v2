@@ -105,6 +105,27 @@
     </div>
 </div>
 <div class="row mb-3">
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Foto 4 Sisi</label>
+    <div class="col-lg-9">
+        <div class="row g-2">
+            @foreach (['depan' => 'Depan', 'belakang' => 'Belakang', 'kiri' => 'Kiri', 'kanan' => 'Kanan'] as $side => $label)
+                <div class="col-6 col-md-3">
+                    <div class="border rounded p-2 text-center h-100">
+                        <div class="small text-muted mb-1">{{ $label }}</div>
+                        @if (! empty($item->{'photo_' . $side}))
+                            <img src="{{ asset('storage/vehicle_model/' . $item->{'photo_' . $side}) }}" alt="Foto {{ $label }}" style="max-width:100%;height:64px;object-fit:contain;border-radius:6px;">
+                        @else
+                            <div class="text-muted small" style="height:64px;line-height:64px;">(kosong)</div>
+                        @endif
+                        <input type="file" name="photo_{{ $side }}" accept="image/*" class="form-control form-control-sm mt-1" />
+                    </div>
+                </div>
+            @endforeach
+        </div>
+        <small class="text-muted">Dipakai sebagai latar foto pada inspeksi serah-terima. Jika kosong, sistem memakai gambar contoh.</small>
+    </div>
+</div>
+<div class="row mb-3">
     <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Status</label>
     <div class="col-lg-9">
         <select name="is_active" class="select">

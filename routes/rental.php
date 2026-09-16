@@ -175,57 +175,58 @@ Route::group(['prefix' => 'rental', 'as' => 'rental.', 'middleware' => ['can:ren
     Route::get('/', [RentalController::class, 'index'])->name('index');
     Route::get('/get-data', [RentalController::class, 'data'])->name('data');
     Route::get('/get-button-option', [RentalController::class, 'getButtonOption'])->name('button-option');
-    Route::get('/export', [RentalController::class, 'export'])->name('export');
+    // Audit sewa §6: ekspor data sensitif butuh izin tersendiri
+    Route::get('/export', [RentalController::class, 'export'])->middleware('can:rental_export')->name('export');
 
-    // Buat Sewa Baru (Wizard)
-    Route::get('/create', [RentalController::class, 'create'])->name('create');
-    Route::post('/create', [RentalController::class, 'saveStep'])->name('create.save');
-    Route::get('/create/step/{step}', [RentalController::class, 'createStep'])->name('create.step');
-    Route::post('/create/store', [RentalController::class, 'store'])->name('create.store');
+    // Buat Sewa Baru (Wizard) — tulis: rental_add
+    Route::get('/create', [RentalController::class, 'create'])->middleware('can:rental_add')->name('create');
+    Route::post('/create', [RentalController::class, 'saveStep'])->middleware('can:rental_add')->name('create.save');
+    Route::get('/create/step/{step}', [RentalController::class, 'createStep'])->middleware('can:rental_add')->name('create.step');
+    Route::post('/create/store', [RentalController::class, 'store'])->middleware('can:rental_add')->name('create.store');
     Route::get('/create/search-customer', [RentalController::class, 'searchCustomer'])->name('create.search-customer');
     Route::get('/create/available-vehicles', [RentalController::class, 'availableVehicles'])->name('create.available-vehicles');
     Route::post('/create/calculate-total', [RentalController::class, 'calculateTotal'])->name('create.calculate-total');
 
     // Aksi cepat
-    Route::put('{id}/confirm', [RentalController::class, 'confirmPickup'])->name('confirm');
+    Route::put('{id}/confirm', [RentalController::class, 'confirmPickup'])->middleware('can:rental_confirm')->name('confirm');
     Route::put('{id}/cancel', [RentalController::class, 'cancelReservation'])->middleware('can:rental_cancel')->name('cancel');
 
     // Detail Transaksi (Command Center per rental)
     Route::get('{rental}', [RentalController::class, 'show'])->name('show');
-    Route::get('{rental}/edit', [RentalController::class, 'edit'])->name('edit');
-    Route::put('{rental}', [RentalController::class, 'update'])->name('update');
+    Route::get('{rental}/edit', [RentalController::class, 'edit'])->middleware('can:rental_edit')->name('edit');
+    Route::put('{rental}', [RentalController::class, 'update'])->middleware('can:rental_edit')->name('update');
     Route::get('{rental}/print', [RentalController::class, 'printContract'])->name('print');
 
     // Sub-aksi detail
     Route::group(['prefix' => '{rental}', 'as' => 'detail.'], function () {
-        // Extension
-        Route::post('/extension', [RentalController::class, 'extensionStore'])->name('extension.store');
-        Route::put('/extension/{extensionId}/approve', [RentalController::class, 'extensionApprove'])->name('extension.approve');
-        Route::put('/extension/{extensionId}/reject', [RentalController::class, 'extensionReject'])->name('extension.reject');
+        // Extension — mengubah periode & total: butuh rental_edit
+        Route::post('/extension', [RentalController::class, 'extensionStore'])->middleware('can:rental_edit')->name('extension.store');
+        Route::put('/extension/{extensionId}/approve', [RentalController::class, 'extensionApprove'])->middleware('can:rental_edit')->name('extension.approve');
+        Route::put('/extension/{extensionId}/reject', [RentalController::class, 'extensionReject'])->middleware('can:rental_edit')->name('extension.reject');
 
-        // Return
-        Route::get('/return', [RentalController::class, 'returnForm'])->name('return.form');
-        Route::post('/return', [RentalController::class, 'returnStore'])->name('return.store');
+        // Return — mutasi status + mileage + jurnal: rental_return
+        Route::get('/return', [RentalController::class, 'returnForm'])->middleware('can:rental_return')->name('return.form');
+        Route::post('/return', [RentalController::class, 'returnStore'])->middleware('can:rental_return')->name('return.store');
 
         // Fine
-        Route::post('/fine', [RentalController::class, 'fineStore'])->name('fine.store');
-        Route::put('/fine/{fineId}/pay', [RentalController::class, 'finePay'])->name('fine.pay');
+        Route::post('/fine', [RentalController::class, 'fineStore'])->middleware('can:fine_add')->name('fine.store');
+        Route::put('/fine/{fineId}/pay', [RentalController::class, 'finePay'])->middleware('can:fine_pay')->name('fine.pay');
         Route::put('/fine/{fineId}/waive', [RentalController::class, 'fineWaive'])->middleware('can:fine_waive')->name('fine.waive');
 
         // Invoice
-        Route::get('/invoice', [RentalController::class, 'invoiceGenerate'])->name('invoice.generate');
-        Route::post('/invoice', [RentalController::class, 'invoiceStore'])->name('invoice.store');
+        Route::get('/invoice', [RentalController::class, 'invoiceGenerate'])->middleware('can:finance_invoice_add')->name('invoice.generate');
+        Route::post('/invoice', [RentalController::class, 'invoiceStore'])->middleware('can:finance_invoice_add')->name('invoice.store');
         Route::get('/invoice/print', [RentalController::class, 'invoicePrint'])->name('invoice.print');
 
         // Payment
-        Route::post('/payment', [RentalController::class, 'paymentStore'])->name('payment.store');
+        Route::post('/payment', [RentalController::class, 'paymentStore'])->middleware('can:finance_payment_add')->name('payment.store');
 
         // Refund
-        Route::post('/refund', [RentalController::class, 'refundStore'])->name('refund.store');
+        Route::post('/refund', [RentalController::class, 'refundStore'])->middleware('can:finance_refund_add')->name('refund.store');
 
-        // Handover Inspection (checklist bodi + kelengkapan)
-        Route::get('/handover/{type}', [RentalController::class, 'handoverForm'])->name('handover.form')->where('type', 'out|in');
-        Route::post('/handover/{type}', [RentalController::class, 'handoverStore'])->name('handover.store')->where('type', 'out|in');
+        // Handover Inspection (checklist bodi + kelengkapan) — bagian alur serah-terima: rental_return
+        Route::get('/handover/{type}', [RentalController::class, 'handoverForm'])->middleware('can:rental_return')->name('handover.form')->where('type', 'out|in');
+        Route::post('/handover/{type}', [RentalController::class, 'handoverStore'])->middleware('can:rental_return')->name('handover.store')->where('type', 'out|in');
     });
 });
 
@@ -291,7 +292,7 @@ Route::group(['prefix' => 'finance', 'as' => 'finance.', 'middleware' => ['can:f
     Route::group(['prefix' => 'fine', 'as' => 'fine.'], function () {
         Route::get('/get-data', [FinanceController::class, 'fineData'])->name('data');
         Route::get('/get-button-option', [FinanceController::class, 'fineButtonOption'])->name('button-option');
-        Route::put('/{id}/pay', [FinanceController::class, 'finePay'])->name('pay');
+        Route::put('/{id}/pay', [FinanceController::class, 'finePay'])->middleware('can:fine_pay')->name('pay');
         Route::put('/{id}/waive', [FinanceController::class, 'fineWaive'])->middleware('can:fine_waive')->name('waive');
     });
 

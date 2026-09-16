@@ -32,9 +32,11 @@ class RoleSeeder extends Seeder
             'logs_view', 'logs_export',
             'settings_view', 'settings_edit',
             'report_view', 'report_export', 'report_download',
-            'rental_cancel', 'fine_waive', 'accounting_export',
+            'rental_view', 'rental_add', 'rental_edit', 'rental_confirm', 'rental_return',
+            'rental_cancel', 'rental_export', 'fine_add', 'fine_pay', 'fine_waive',
+            'finance_view', 'finance_invoice_add', 'finance_payment_add', 'finance_refund_add',
+            'fleet_view', 'accounting_view', 'accounting_export',
             'master_view', 'master_add', 'master_edit', 'master_delete',
-            'rental_view', 'fleet_view', 'finance_view', 'accounting_view',
         ],
 
         'MANAGER' => [
@@ -43,9 +45,11 @@ class RoleSeeder extends Seeder
             'roles_view',
             'logs_view',
             'report_view', 'report_export', 'report_download',
-            'rental_cancel', 'fine_waive', 'accounting_export',
+            'rental_view', 'rental_add', 'rental_edit', 'rental_confirm', 'rental_return',
+            'rental_cancel', 'rental_export', 'fine_add', 'fine_pay', 'fine_waive',
+            'finance_view', 'finance_invoice_add', 'finance_payment_add', 'finance_refund_add',
+            'fleet_view', 'accounting_view', 'accounting_export',
             'master_view', 'master_add', 'master_edit', 'master_delete',
-            'rental_view', 'fleet_view', 'finance_view', 'accounting_view',
         ],
 
         'SUPERVISOR' => [
@@ -53,9 +57,11 @@ class RoleSeeder extends Seeder
             'users_view',
             'logs_view',
             'report_view', 'report_export',
-            'rental_cancel',
+            'rental_view', 'rental_add', 'rental_edit', 'rental_confirm', 'rental_return',
+            'rental_cancel', 'rental_export', 'fine_add', 'fine_pay',
+            'finance_view', 'finance_invoice_add', 'finance_payment_add', 'finance_refund_add',
+            'fleet_view', 'accounting_view',
             'master_view', 'master_add', 'master_edit',
-            'rental_view', 'fleet_view', 'finance_view', 'accounting_view',
         ],
 
         'STAFF' => [
@@ -64,6 +70,9 @@ class RoleSeeder extends Seeder
             'report_view',
             'master_view',
             'rental_view', 'fleet_view', 'finance_view',
+            'rental_add', 'rental_edit', 'rental_confirm', 'rental_return',
+            'fine_add', 'fine_pay',
+            'finance_invoice_add', 'finance_payment_add',
         ],
 
         'VIEWER' => [

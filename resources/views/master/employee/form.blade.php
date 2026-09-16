@@ -69,7 +69,7 @@
 <div class="row mb-3">
     <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Tgl. Masuk <span class="text-danger">*</span></label>
     <div class="col-lg-9">
-        <input type="date" name="hire_date" value="{{ $item->hire_date ?? old('hire_date') }}" class="form-control" required />
+        <input type="text" name="hire_date" value="{{ $item->hire_date?->format('Y-m-d') ?? old('hire_date') }}" class="form-control flatpickr-date" autocomplete="off" required />
     </div>
 </div>
 <div class="row mb-3">

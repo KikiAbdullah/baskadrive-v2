@@ -189,9 +189,9 @@
                 <div class="rpt-filter">
                     <i class="ri-filter-3-line text-muted"></i>
                     <strong class="small text-muted">Filter:</strong>
-                    <input type="date" class="form-control form-control-sm" id="startDate" value="{{ $start }}">
+                    <input type="text" class="form-control form-control-sm flatpickr-date" id="startDate" value="{{ $start }}" autocomplete="off" placeholder="YYYY-MM-DD">
                     <span class="text-muted small">s/d</span>
-                    <input type="date" class="form-control form-control-sm" id="endDate" value="{{ $end }}">
+                    <input type="text" class="form-control form-control-sm flatpickr-date" id="endDate" value="{{ $end }}" autocomplete="off" placeholder="YYYY-MM-DD">
                     @if($tab === 'claims')
                         <select class="form-select form-select-sm w-auto" id="statusFilter">
                             <option value="">Semua Status</option>

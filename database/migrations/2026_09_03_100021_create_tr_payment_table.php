@@ -19,6 +19,7 @@ return new class extends Migration
             $table->enum('status', ['pending', 'completed', 'failed', 'refunded'])->default('pending');
             $table->text('notes')->nullable();
             $table->timestamp('created_at')->useCurrent();
+            $table->softDeletes();
 
             $table->foreign('invoice_id')->references('invoice_id')->on('tr_invoice')->nullOnDelete();
             $table->foreign('rental_id')->references('rental_id')->on('tr_rental')->cascadeOnDelete();

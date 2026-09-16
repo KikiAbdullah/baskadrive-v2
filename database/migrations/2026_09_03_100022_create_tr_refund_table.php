@@ -18,6 +18,8 @@ return new class extends Migration
             $table->enum('status', ['pending', 'processed', 'failed'])->default('pending');
             $table->string('reference_number', 50)->nullable();
             $table->text('notes')->nullable();
+            $table->timestamp('created_at')->useCurrent();
+            $table->softDeletes();
 
             $table->foreign('payment_id')->references('payment_id')->on('tr_payment')->nullOnDelete();
             $table->foreign('rental_id')->references('rental_id')->on('tr_rental')->cascadeOnDelete();

@@ -12,11 +12,11 @@
     <div class="row mb-4">
         <div class="col-md-4">
             <label class="form-label">Tanggal Mulai <span class="text-danger">*</span></label>
-            <input type="text" class="form-control datepicker" name="rental_start_date" id="filterStartDate" value="{{ $data['rental_start_date'] ?? '' }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
+            <input type="text" class="form-control flatpickr-date" name="rental_start_date" id="filterStartDate" value="{{ $data['rental_start_date'] ?? '' }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
         </div>
         <div class="col-md-4">
             <label class="form-label">Tanggal Selesai <span class="text-danger">*</span></label>
-            <input type="text" class="form-control datepicker" name="rental_end_date" id="filterEndDate" value="{{ $data['rental_end_date'] ?? '' }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
+            <input type="text" class="form-control flatpickr-date" name="rental_end_date" id="filterEndDate" value="{{ $data['rental_end_date'] ?? '' }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
         </div>
         <div class="col-md-4">
             <label class="form-label">&nbsp;</label>
@@ -47,6 +47,9 @@
     function renderVehicles(response, selectedVehicle) {
         let html = '';
 
+        // FASE 3 audit sewa: escape semua nilai dinamis (anti XSS dari data master)
+        const esc = (s) => $('<div>').text(s ?? '').html();
+
         if (!response.length) {
             html = '<div class="text-center py-4 text-muted"><i class="ri-close-circle-line ri-3x mb-2 d-block"></i>Tidak ada kendaraan tersedia untuk tanggal tersebut.</div>';
         } else {
@@ -54,21 +57,21 @@
             $.each(response, function(i, v) {
                 const isSelected = String(selectedVehicle) === String(v.id);
                 html += '<div class="col-md-6 mb-3">';
-                html += '<div class="card vehicle-card h-100 ' + (isSelected ? 'selected' : '') + '" data-id="' + v.id + '" data-price="' + (v.base_price_per_day || 0) + '">';
+                html += '<div class="card vehicle-card h-100 ' + (isSelected ? 'selected' : '') + '" data-id="' + esc(v.id) + '" data-price="' + esc(v.base_price_per_day || 0) + '">';
                 html += '<div class="card-body">';
                 html += '<div class="d-flex justify-content-between">';
                 html += '<div class="flex-grow-1 me-2">';
                 html += '<div class="d-flex justify-content-between align-items-start mb-1">';
-                html += '<h6 class="mb-0">' + (v.license_plate || '-') + '</h6>';
+                html += '<h6 class="mb-0">' + esc(v.license_plate || '-') + '</h6>';
                 html += '<div class="form-check ms-2">';
-                html += '<input class="form-check-input vehicle-radio" type="radio" name="_vehicle_radio" value="' + v.id + '" ' + (isSelected ? 'checked' : '') + '>';
+                html += '<input class="form-check-input vehicle-radio" type="radio" name="_vehicle_radio" value="' + esc(v.id) + '" ' + (isSelected ? 'checked' : '') + '>';
                 html += '</div>';
                 html += '</div>';
-                html += '<p class="text-muted small mb-2">' + (v.brand_name || '') + ' ' + (v.model_name || '') + ' (' + (v.year || '-') + ')</p>';
+                html += '<p class="text-muted small mb-2">' + esc((v.brand_name || '') + ' ' + (v.model_name || '') + ' (' + (v.year || '-') + ')') + '</p>';
                 html += '<div class="d-flex flex-wrap gap-1 mb-2">';
-                html += '<span class="badge bg-label-info"><i class="ri-palette-line"></i> ' + (v.color || '-') + '</span>';
-                html += '<span class="badge bg-label-secondary"><i class="ri-steering-2-line"></i> ' + (v.transmission || '-') + '</span>';
-                html += '<span class="badge bg-label-warning"><i class="ri-group-line"></i> ' + (v.seat_capacity || '-') + ' kursi</span>';
+                html += '<span class="badge bg-label-info"><i class="ri-palette-line"></i> ' + esc(v.color || '-') + '</span>';
+                html += '<span class="badge bg-label-secondary"><i class="ri-steering-2-line"></i> ' + esc(v.transmission || '-') + '</span>';
+                html += '<span class="badge bg-label-warning"><i class="ri-group-line"></i> ' + esc((v.seat_capacity || '-') + ' kursi') + '</span>';
                 html += '</div>';
                 html += '<table class="table table-sm table-borderless mb-0">';
                 html += '<tr><td class="ps-0 text-muted small">Harga/hari</td><td class="pe-0 text-end"><strong>Rp ' + (v.base_price_per_day ? formatNumber(v.base_price_per_day) : '0') + '</strong></td></tr>';

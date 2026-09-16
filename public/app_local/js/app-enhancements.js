@@ -3,9 +3,41 @@
  * 1. Spinner loading saat area .menuoption diisi via AJAX get-button-option.
  * 2. Indikator spinner pada ikon .action-link-icon-text selama request AJAX berjalan.
  * 3. Proteksi double-submit pada semua form (tombol submit langsung dinonaktifkan).
+ * 4. Flatpickr global untuk semua form tanggal/waktu (.flatpickr-datetime / .flatpickr-date).
  */
 (function ($) {
     'use strict';
+
+    // 4. Initor flatpickr global — idempoten, ikut memindai ulang konten hasil muat AJAX (wizard/modal).
+    function initFlatpickr(root) {
+        if (typeof window.flatpickr === 'undefined') {
+            return;
+        }
+        var scope = (root && root.querySelectorAll) ? root : document;
+        scope.querySelectorAll('.flatpickr-datetime').forEach(function (el) {
+            if (el._flatpickr) {
+                return;
+            }
+            window.flatpickr(el, {
+                dateFormat: 'Y-m-d H:i',
+                enableTime: true,
+                time_24hr: true,
+                allowInput: true,
+            });
+        });
+        scope.querySelectorAll('.flatpickr-date').forEach(function (el) {
+            if (el._flatpickr) {
+                return;
+            }
+            window.flatpickr(el, {
+                dateFormat: 'Y-m-d',
+                allowInput: true,
+            });
+        });
+    }
+    window.initFlatpickr = initFlatpickr;
+    $(function () { initFlatpickr(); });
+    $(document).ajaxComplete(function () { initFlatpickr(); });
 
     // 1. Spinner pada container menuoption saat memuat tombol aksi baris tabel
     $.ajaxPrefilter(function (options) {
@@ -39,11 +71,30 @@
         });
     });
 
+    // 4. Proteksi double-submit tombol AJAX action-link/JS (FASE 3 audit sewa):
+    //    cegah double-click pada tombol yang memicu request AJAX (confirm/cancel/payment)
+    $(document).on('click', '.btn-confirm, .btn-cancel, .btn-waive, .btn-pay, .btnReturn, .btnInvoice', function (e) {
+        var btn = $(this);
+        if (btn.data('ajax-busy')) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return;
+        }
+        btn.data('ajax-busy', true).addClass('disabled').attr('aria-disabled', 'true');
+        // release saat request selesai (ajaxStop) atau 8 detik sebagai pengaman
+        var release = function () { btn.data('ajax-busy', false).removeClass('disabled').removeAttr('aria-disabled'); };
+        $(document).one('ajaxStop', release);
+        setTimeout(function () {
+            btn.off('ajaxStop', release);
+            release();
+        }, 8000);
+    });
+
     $(document).ajaxStop(function () {
         $('i.app-icon-loading').each(function () {
-            var $i = $(this), orig = $i.data('origClass');
-            if (orig !== undefined) {
-                $i.attr('class', orig);
+            var $i = $(this);
+            if ($i.data('origClass')) {
+                $i.attr('class', $i.data('origClass'));
                 $i.removeData('origClass');
             }
         });

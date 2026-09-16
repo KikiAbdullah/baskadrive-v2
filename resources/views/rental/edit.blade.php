@@ -32,25 +32,40 @@
                                     </p>
                                 </div>
                                 <div class="col-md-6">
+                                    @php
+                                        // Harus SAMA dengan state machine RentalController::update()
+                                        $allowedTransitions = [
+                                            'reserved' => ['reserved', 'ongoing'],
+                                            'ongoing' => ['ongoing'],
+                                            'completed' => ['completed'],
+                                            'cancelled' => ['cancelled'],
+                                            'overdue' => ['overdue', 'ongoing'],
+                                        ];
+                                        $statusLabels = ['reserved' => 'Reservasi', 'ongoing' => 'Berjalan', 'completed' => 'Selesai', 'cancelled' => 'Dibatalkan', 'overdue' => 'Terlambat'];
+                                        $nextStatuses = $allowedTransitions[$rental->status] ?? [$rental->status];
+                                    @endphp
                                     <label class="form-label">Status <span class="text-danger">*</span></label>
                                     <select class="form-select" name="status" required>
-                                        @foreach(['reserved' => 'Reservasi', 'ongoing' => 'Berjalan', 'completed' => 'Selesai', 'cancelled' => 'Dibatalkan'] as $val => $lbl)
-                                            <option value="{{ $val }}" {{ $rental->status == $val ? 'selected' : '' }}>{{ $lbl }}</option>
+                                        @foreach($nextStatuses as $val)
+                                            <option value="{{ $val }}" {{ $rental->status == $val ? 'selected' : '' }}>{{ $statusLabels[$val] ?? $val }}</option>
                                         @endforeach
                                     </select>
+                                    @if(in_array($rental->status, ['ongoing', 'completed', 'cancelled'], true))
+                                        <div class="form-text">Perubahan status resmi memakai aksi Pengembalian/Pembatalan, bukan form ini.</div>
+                                    @endif
                                 </div>
                             </div>
 
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Tanggal Mulai Sewa <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control datepicker" name="rental_start_date"
-                                        value="{{ $rental->rental_start_date?->format('Y-m-d') }}" required>
+                                    <input type="text" class="form-control flatpickr-datetime" name="rental_start_date" autocomplete="off"
+                                        value="{{ $rental->rental_start_date?->format('Y-m-d H:i') }}" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Tanggal Selesai Sewa <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control datepicker" name="rental_end_date"
-                                        value="{{ $rental->rental_end_date?->format('Y-m-d') }}" required>
+                                    <input type="text" class="form-control flatpickr-datetime" name="rental_end_date" autocomplete="off"
+                                        value="{{ $rental->rental_end_date?->format('Y-m-d H:i') }}" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Lokasi Penjemputan</label>
@@ -147,18 +162,6 @@
 @section('customjs')
     <script>
         $('.select2').select2();
-        if ($.fn.datepicker) {
-            $('.datepicker').each(function() {
-                if (!$(this).data('datepicker')) {
-                    $(this).datepicker({
-                        format: 'yyyy-mm-dd',
-                        autoclose: true,
-                        todayHighlight: true,
-                        orientation: 'bottom auto'
-                    });
-                }
-            });
-        }
     </script>
 @endsection
 

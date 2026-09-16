@@ -23,11 +23,19 @@ class PermissionSeeder extends Seeder
         ],
 
         // ===========================================
-        // MODUL OPERASIONAL (audit Setup S-01: gate per modul)
+        // MODUL OPERASIONAL (audit Setup S-01: gate per modul;
+        // audit Sewa §6: permission tulis & finansial terpisah)
         // ===========================================
         'rental' => [
             'rental_view',
+            'rental_add',
+            'rental_edit',
+            'rental_confirm',
+            'rental_return',
             'rental_cancel',
+            'rental_export',
+            'fine_add',
+            'fine_pay',
             'fine_waive',
         ],
 
@@ -37,6 +45,9 @@ class PermissionSeeder extends Seeder
 
         'finance' => [
             'finance_view',
+            'finance_invoice_add',
+            'finance_payment_add',
+            'finance_refund_add',
         ],
 
         'accounting' => [

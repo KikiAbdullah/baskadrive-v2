@@ -480,7 +480,7 @@
                             </div>
                             <div class="card-body">
                                 <label class="form-label">Tanggal Tutup Buku</label>
-                                <input type="date" class="form-control" name="accounting_closing_date"
+                                <input type="text" class="form-control flatpickr-date" name="accounting_closing_date" autocomplete="off"
                                     value="{{ old('accounting_closing_date', $settings['accounting_closing_date']) }}">
                                 <div class="form-text">Transaksi (sewa, pembayaran, jurnal) bertanggal sebelum tutup buku akan dikunci. Kosongkan bila belum ada.</div>
                             </div>

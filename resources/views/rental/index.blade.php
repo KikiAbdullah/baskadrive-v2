@@ -46,10 +46,18 @@
             </div>
             <div class="d-flex align-content-center flex-wrap gap-4">
                 <span class="menuoption"></span>
-                <a href="{{ route('rental.create') }}" class="action-link-icon-text">
-                    <i class="ri-add-line"></i>
-                    <span class="fw-semibold text-uppercase">Buat Sewa Baru</span>
-                </a>
+                @can('rental_add')
+                    <a href="{{ route('rental.create') }}" class="action-link-icon-text">
+                        <i class="ri-add-line"></i>
+                        <span class="fw-semibold text-uppercase">Buat Sewa Baru</span>
+                    </a>
+                @endcan
+                @can('rental_export')
+                    <a href="{{ route('rental.export', array_filter(['status' => $status ?? 'all'])) }}" class="action-link-icon-text" id="btnExportRental">
+                        <i class="ri-download-2-line"></i>
+                        <span class="fw-semibold text-uppercase">Export CSV</span>
+                    </a>
+                @endcan
             </div>
         </div>
 
@@ -183,7 +191,7 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         $.ajax({
-                            url: '{{ url('rental') }}/' + id + '/confirm',
+                            url: '{{ route('rental.confirm', ['id' => '__ID__']) }}'.replace('__ID__', id),
                             type: 'PUT',
                             data: {
                                 _token: '{{ csrf_token() }}'
@@ -197,7 +205,13 @@
                                         text: res.msg,
                                         didClose: () => dtable.ajax.reload(null, false)
                                     });
+                                } else {
+                                    Swal.fire({ icon: 'error', title: 'Gagal', text: res.msg || 'Aksi ditolak.' });
                                 }
+                            },
+                            error: function(xhr) {
+                                const msg = (xhr.responseJSON && (xhr.responseJSON.message || xhr.responseJSON.msg)) || 'Terjadi kesalahan pada server.';
+                                Swal.fire({ icon: 'error', title: 'Error', text: msg });
                             }
                         });
                     }
@@ -217,7 +231,7 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         $.ajax({
-                            url: '{{ url('rental') }}/' + id + '/cancel',
+                            url: '{{ route('rental.cancel', ['id' => '__ID__']) }}'.replace('__ID__', id),
                             type: 'PUT',
                             data: {
                                 _token: '{{ csrf_token() }}'
@@ -231,7 +245,13 @@
                                         text: res.msg,
                                         didClose: () => dtable.ajax.reload(null, false)
                                     });
+                                } else {
+                                    Swal.fire({ icon: 'error', title: 'Gagal', text: res.msg || 'Aksi ditolak.' });
                                 }
+                            },
+                            error: function(xhr) {
+                                const msg = (xhr.responseJSON && (xhr.responseJSON.message || xhr.responseJSON.msg)) || 'Terjadi kesalahan pada server.';
+                                Swal.fire({ icon: 'error', title: 'Error', text: msg });
                             }
                         });
                     }

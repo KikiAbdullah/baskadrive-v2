@@ -2,32 +2,50 @@
 
 @section('customcss')
 <style>
-    .car-diagram {
+    .car-view-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: .75rem;
+    }
+    @@media (max-width: 575.98px) {
+        .car-view-grid { grid-template-columns: 1fr; }
+    }
+    .car-view { margin: 0; }
+    .car-view figcaption {
+        font-size: .75rem; font-weight: 600; text-transform: uppercase;
+        letter-spacing: .4px; color: #697a8d; margin-bottom: .25rem; text-align: center;
+    }
+    .car-view-frame {
         position: relative;
         width: 100%;
-        max-width: 500px;
-        height: 220px;
-        margin: 0 auto;
+        min-height: 150px;
+        aspect-ratio: 4 / 3;
+        margin: 0;
         background: #f8f9fa;
         border: 2px solid #d9dee3;
         border-radius: 12px;
         overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         cursor: crosshair;
+        user-select: none;
+        touch-action: none;
     }
-    .car-diagram .car-body {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 70%;
-        height: 55%;
-        border: 2px solid #3b4055;
-        border-radius: 18px;
-        background: #fff;
+    .car-view-frame img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        -webkit-user-drag: none;
+        user-select: none;
     }
-    .car-diagram .wheel { position: absolute; width: 14%; height: 22%; background: #3b4055; border-radius: 4px; }
-    .car-diagram .wheel.fl { top: 12%; left: 18%; } .car-diagram .wheel.fr { top: 12%; right: 18%; }
-    .car-diagram .wheel.rl { bottom: 12%; left: 18%; } .car-diagram .wheel.rr { bottom: 12%; right: 18%; }
+    .car-view-frame.img-missing::after {
+        content: "Foto " attr(data-view-label) " belum tersedia";
+        color: #adb5bd;
+        font-size: .8rem;
+        text-align: center;
+        padding: 0 .5rem;
+    }
     .damage-point {
         position: absolute;
         width: 16px; height: 16px;
@@ -62,6 +80,8 @@
         @include('layouts.alert')
         @if($inspection)
             <div class="alert alert-info"><i class="ri-information-line me-1"></i> Inspeksi terakhir: {{ $inspection->created_at->format('d M Y H:i') }} oleh {{ $inspection->creator->name ?? '-' }}</div>
+        @elseif(!empty($inherited))
+            <div class="alert alert-warning py-2 small"><i class="ri-history-line me-1"></i> Kolom di bawah <strong>dibawa dari inspeksi kendaraan terakhir</strong> ({{ $inherited->created_at?->format('d M Y H:i') ?? '-' }}) sebagai kondisi awal. Sesuaikan titik/catatan dengan kondisi saat serah terima ini.</div>
         @endif
         <form method="POST" action="{{ route('rental.detail.handover.store', [$rental->rental_id, $type]) }}">
             @csrf
@@ -72,30 +92,31 @@
                         <div class="card-body">
                             <div class="mb-3">
                                 <label class="form-label">Odometer (KM)</label>
-                                <input type="number" name="odometer" value="{{ old('odometer', $inspection->odometer ?? $rental->vehicle->mileage) }}" class="form-control">
+                                <input type="number" name="odometer" value="{{ old('odometer', $inspection->odometer ?? $rental->vehicle->mileage) }}" class="form-control {{ $errors->has('odometer') ? 'is-invalid' : '' }}">
+                                @error('odometer')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Level BBM</label>
                                 <select name="fuel_level" class="form-select">
                                     @foreach(['full'=>'Full','three_quarter'=>'3/4','half'=>'1/2','quarter'=>'1/4','empty'=>'Empty'] as $k=>$v)
-                                        <option value="{{ $k }}" {{ old('fuel_level', $inspection->fuel_level ?? '') == $k ? 'selected' : '' }}>{{ $v }}</option>
+                                        <option value="{{ $k }}" {{ old('fuel_level', $seed->fuel_level ?? '') == $k ? 'selected' : '' }}>{{ $v }}</option>
                                     @endforeach
                                 </select>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Catatan Eksterior</label>
-                                <textarea name="exterior_notes" rows="2" class="form-control" placeholder="Baret, penyok, dll.">{{ old('exterior_notes', $inspection->exterior_notes ?? '') }}</textarea>
+                                <textarea name="exterior_notes" rows="2" class="form-control" placeholder="Baret, penyok, dll.">{{ old('exterior_notes', $seed->exterior_notes ?? '') }}</textarea>
                             </div>
                             <div class="mb-0">
                                 <label class="form-label">Catatan Interior</label>
-                                <textarea name="interior_notes" rows="2" class="form-control" placeholder="Kebersihan, bau, dll.">{{ old('interior_notes', $inspection->interior_notes ?? '') }}</textarea>
+                                <textarea name="interior_notes" rows="2" class="form-control" placeholder="Kebersihan, bau, dll.">{{ old('interior_notes', $seed->interior_notes ?? '') }}</textarea>
                             </div>
                         </div>
                     </div>
                     <div class="card mb-3">
                         <div class="card-header"><h6 class="mb-0">Kelengkapan</h6></div>
                         <div class="card-body">
-                            @php $check = old('checklist', $inspection->checklist ?? []); @endphp
+                            @php $check = old('checklist', $seed->checklist ?? []); @endphp
                             @foreach(['STNK','Dongkrak','Ban Serep','Kunci Roda','Segitiga Pengaman','P3K','APAR','Karpet','Toolkit','Payung'] as $item)
                                 <div class="form-check mb-2">
                                     <input class="form-check-input" type="checkbox" name="checklist[]" value="{{ $item }}" id="chk_{{ Str::slug($item) }}" {{ in_array($item, (array)$check) ? 'checked' : '' }}>
@@ -108,16 +129,28 @@
                 <div class="col-md-8">
                     <div class="card mb-3">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0">Diagram Bodi — Klik untuk tandai kerusakan</h6>
+                            <h6 class="mb-0">Foto Bodi — Klik untuk tandai kerusakan</h6>
                             <button type="button" class="btn btn-sm btn-outline-secondary" id="clearPoints">Hapus Semua</button>
                         </div>
                         <div class="card-body">
-                            <div class="car-diagram" id="carDiagram">
-                                <div class="car-body"></div>
-                                <div class="wheel fl"></div><div class="wheel fr"></div><div class="wheel rl"></div><div class="wheel rr"></div>
+                            @php
+                                $carViews = ['depan' => 'Depan', 'belakang' => 'Belakang', 'kiri' => 'Kiri', 'kanan' => 'Kanan'];
+                                $vmodel = $rental->vehicle->model ?? null;
+                            @endphp
+                            <div class="car-view-grid">
+                                @foreach($carViews as $vk => $vl)
+                                    @php $sidePhoto = $vmodel && !empty($vmodel->{'photo_' . $vk}) ? asset('storage/vehicle_model/' . $vmodel->{'photo_' . $vk}) : asset('assets/img/car-placeholder/' . $vk . '.jpg'); @endphp
+                                    <figure class="car-view" data-view="{{ $vk }}">
+                                        <figcaption>{{ $vl }}</figcaption>
+                                        <div class="car-view-frame" data-view="{{ $vk }}" data-view-label="{{ $vl }}">
+                                            <img src="{{ $sidePhoto }}" alt="Sisi {{ $vl }}" draggable="false"
+                                                onerror="this.style.display='none'; this.closest('.car-view-frame').classList.add('img-missing');">
+                                        </div>
+                                    </figure>
+                                @endforeach
                             </div>
-                            <small class="text-muted">Klik pada diagram untuk menandai titik goresan/penyok. Klik titik untuk hapus.</small>
-                            <input type="hidden" name="body_damage_points" id="bodyDamagePoints" value="{{ old('body_damage_points', isset($inspection->body_damage_points) ? json_encode($inspection->body_damage_points) : '') }}">
+                            <small class="text-muted">Klik pada foto untuk menandai titik goresan/penyok pada sisi terkait. Klik titik merah untuk menghapus (dengan konfirmasi).</small>
+                            <input type="hidden" name="body_damage_points" id="bodyDamagePoints" value="{{ old('body_damage_points', !empty($seed->body_damage_points) ? json_encode($seed->body_damage_points) : '') }}">
                             <div id="pointsList" class="mt-2"></div>
                         </div>
                     </div>
@@ -141,31 +174,115 @@
 <script>
     let points = [];
     try { points = JSON.parse($('#bodyDamagePoints').val() || '[]'); } catch(e) { points = []; }
-    function renderPoints() {
-        $('#carDiagram .damage-point').remove();
-        $('#pointsList').empty();
-        points.forEach((p, i) => {
-            const el = $(`<div class="damage-point" data-idx="${i+1}" style="left:${p.x}%;top:${p.y}%"></div>`);
-            el.on('click', function(e){ e.stopPropagation(); points.splice(i,1); sync(); });
-            $('#carDiagram').append(el);
-            $('#pointsList').append(`<span class="badge bg-danger me-1">${i+1}. ${p.note || p.x.toFixed(0)+','+p.y.toFixed(0)} <a href="#" data-i="${i}" class="text-white ms-1 rm-point">x</a></span>`);
+    if (!Array.isArray(points)) points = [];
+
+    const esc = (s) => $('<div>').text(s ?? '').html();
+    const VIEW_LABEL = { depan: 'Depan', belakang: 'Belakang', kiri: 'Kiri', kanan: 'Kanan' };
+
+    function confirmRemove(i) {
+        const p = points[i];
+        if (!p) return;
+        const detail = p.note ? p.note : (p.x.toFixed(0) + '%,' + p.y.toFixed(0) + '%');
+        Swal.fire({
+            icon: 'question',
+            title: 'Hapus titik ke-' + (i + 1) + '?',
+            html: '<div class="text-start small">Sisi <strong>' + esc(VIEW_LABEL[p.view] || p.view) + '</strong><br>Keterangan: ' + esc(detail) + '</div>',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, hapus',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#d33',
+            reverseButtons: true,
+        }).then(function (r) {
+            if (r.isConfirmed) { points.splice(i, 1); sync(); }
         });
-        $('#pointsList .rm-point').on('click', function(e){ e.preventDefault(); points.splice($(this).data('i'),1); sync(); });
     }
+
+    function renderPoints() {
+        $('.car-view-frame .damage-point').remove();
+        $('#pointsList').empty();
+
+        points.forEach((p, i) => {
+            const frame = $('.car-view-frame[data-view="' + p.view + '"]');
+            if (!frame.length) return;
+            const el = $(`<div class="damage-point" data-idx="${i+1}" title="Klik untuk hapus" style="left:${p.x}%;top:${p.y}%"></div>`);
+            el.on('click', function(e) { e.stopPropagation(); confirmRemove(i); });
+            frame.append(el);
+        });
+
+        const groups = {};
+        points.forEach((p, i) => { (groups[p.view] = groups[p.view] || []).push(i); });
+        Object.keys(groups).forEach(function(v) {
+            const badges = groups[v].map(function(i) {
+                const p = points[i];
+                return `<span class="badge bg-danger me-1 mb-1">${esc((i + 1) + '. ' + (p.note || (p.x.toFixed(0) + ',' + p.y.toFixed(0))))} <a href="#" data-i="${i}" class="text-white ms-1 rm-point">x</a></span>`;
+            }).join('');
+            $('#pointsList').append(`<div class="mb-1"><span class="small text-muted me-1">${esc(VIEW_LABEL[v] || v)}:</span>${badges}</div>`);
+        });
+
+        $('#pointsList .rm-point').on('click', function(e) { e.preventDefault(); confirmRemove($(this).data('i')); });
+    }
+
     function sync() {
         $('#bodyDamagePoints').val(JSON.stringify(points));
         renderPoints();
     }
-    $('#carDiagram').on('click', function(e){
-        const rect = this.getBoundingClientRect();
-        const x = ((e.clientX - rect.left) / rect.width * 100).toFixed(1);
-        const y = ((e.clientY - rect.top) / rect.height * 100).toFixed(1);
-        const note = prompt('Keterangan kerusakan di titik '+x+'%,'+y+'% (opsional):', '');
-        if (note === null) return;
-        points.push({x: parseFloat(x), y: parseFloat(y), note: note});
-        sync();
+
+    function pointFromEvent(e, frame) {
+        const rect = frame.getBoundingClientRect();
+        const cx = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+        const cy = e.clientY ?? (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+        return {
+            x: Math.min(100, Math.max(0, (cx - rect.left) / rect.width * 100)),
+            y: Math.min(100, Math.max(0, (cy - rect.top) / rect.height * 100)),
+        };
+    }
+
+    function askAndAdd(e, frame) {
+        e.preventDefault();
+        const view = frame.getAttribute('data-view');
+        const pos = pointFromEvent(e, frame);
+        const x = parseFloat(pos.x.toFixed(1));
+        const y = parseFloat(pos.y.toFixed(1));
+        Swal.fire({
+            icon: 'question',
+            title: 'Titik kerusakan — ' + (VIEW_LABEL[view] || view),
+            html: 'Posisi <strong>' + x + '%, ' + y + '%</strong>.<br><small class="text-muted">Isi keterangan (opsional) lalu Tambah, atau Batal untuk tidak menambah titik.</small>',
+            input: 'text',
+            inputPlaceholder: 'Keterangan kerusakan (cth: baret pintu, penyok bumper)',
+            showCancelButton: true,
+            confirmButtonText: 'Tambah',
+            cancelButtonText: 'Batal',
+            reverseButtons: true,
+            allowOutsideClick: false,
+        }).then(function (r) {
+            if (!r.isConfirmed) return;
+            points.push({ view: view, x: x, y: y, note: (r.value || '').trim() });
+            sync();
+        });
+    }
+
+    $('.car-view-frame').each(function() {
+        const frame = this;
+        $(frame).on('click', function(e) { askAndAdd(e, frame); });
+        $(frame).on('touchend', function(e) {
+            if (e.cancelable) e.preventDefault();
+            askAndAdd(e.originalEvent || e, frame);
+        });
     });
-    $('#clearPoints').on('click', function(){ points=[]; sync(); });
+
+    $('#clearPoints').on('click', function() {
+        if (!points.length) return;
+        Swal.fire({
+            icon: 'warning',
+            title: 'Hapus semua titik?',
+            text: 'Semua ' + points.length + ' tanda kerusakan akan dihapus.',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, hapus semua',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#d33',
+            reverseButtons: true,
+        }).then(function(r) { if (r.isConfirmed) { points = []; sync(); } });
+    });
     renderPoints();
 </script>
 @endsection

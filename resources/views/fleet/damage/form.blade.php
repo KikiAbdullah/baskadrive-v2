@@ -46,7 +46,7 @@
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Tanggal Lapor <span class="text-danger">*</span></label>
-                                    <input type="date" class="form-control datepicker" name="reported_date"
+                                    <input type="text" class="form-control flatpickr-date" name="reported_date" autocomplete="off"
                                         value="{{ date('Y-m-d') }}" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -99,18 +99,7 @@
 @section('customjs')
     <script>
         $('.select2').select2();
-        if ($.fn.datepicker) {
-            $('.datepicker').each(function() {
-                if (!$(this).data('datepicker')) {
-                    $(this).datepicker({
-                        format: 'yyyy-mm-dd',
-                        autoclose: true,
-                        todayHighlight: true,
-                        orientation: 'bottom auto'
-                    });
-                }
-            });
-        }
+        if (window.initFlatpickr) { window.initFlatpickr(); }
     </script>
 @endsection
 

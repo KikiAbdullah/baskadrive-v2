@@ -36,16 +36,16 @@ class DashboardController extends Controller
         };
 
         $stats = [
-            'revenueToday' => Rental::whereIn('status', ['ongoing', 'completed'])
+            'revenueToday' => Rental::whereIn('status', ['ongoing', 'completed', 'overdue'])
                 ->whereBetween('created_at', [$periodStart, $periodEnd])->sum('total_amount'),
-            'ongoingCount' => Rental::where('status', 'ongoing')->count(),
+            'ongoingCount' => Rental::whereIn('status', ['ongoing', 'overdue'])->count(),
             'reservedCount' => Rental::where('status', 'reserved')->count(),
             'availableVehicles' => Vehicle::where('status', 'available')->count(),
             'totalVehicles' => Vehicle::count(),
         ];
 
         $upcomingReturns = Rental::with(['customer', 'vehicle'])
-            ->where('status', 'ongoing')
+            ->whereIn('status', ['ongoing', 'overdue'])
             ->whereBetween('rental_end_date', [$today, $today->copy()->addDays(7)])
             ->orderBy('rental_end_date')
             ->limit(10)

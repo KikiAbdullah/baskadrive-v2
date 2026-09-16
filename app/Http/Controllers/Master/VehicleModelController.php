@@ -81,6 +81,10 @@ class VehicleModelController extends Controller
             'insurance_rate' => 'nullable|numeric|between:0,100',
             'deposit_amount' => 'nullable|numeric|min:0',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'photo_depan' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'photo_belakang' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'photo_kiri' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'photo_kanan' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'is_active' => 'nullable|boolean',
         ], [
             'model_name.required' => 'Nama model wajib diisi.',
@@ -91,28 +95,38 @@ class VehicleModelController extends Controller
             'insurance_rate.between' => 'Rate asuransi harus di antara 0 s.d. 100%.',
         ]);
 
-        if ($request->hasFile('photo')) {
-            $filename = $this->saveFoto($request->file('photo'), 'vehicle_model');
-            if ($filename) $data['photo'] = $filename;
-        } else {
-            unset($data['photo']);
+        $photoFields = ['photo', 'photo_depan', 'photo_belakang', 'photo_kiri', 'photo_kanan'];
+        foreach ($photoFields as $field) {
+            if ($request->hasFile($field)) {
+                $filename = $this->saveFoto($request->file($field), 'vehicle_model');
+                if ($filename) {
+                    $data[$field] = $filename;
+                }
+            } else {
+                unset($data[$field]);
+            }
         }
+
         return $data;
     }
 
     public function customUpdate($data, $model, array $originalAttributes = [])
     {
         // hapus foto LAMA (bukan yang baru) saat upload menggantikan (M-02)
-        $oldPhoto = $originalAttributes['photo'] ?? null;
-        if (isset($data['photo']) && $oldPhoto && $data['photo'] !== $oldPhoto) {
-            $this->delImage($oldPhoto, 'vehicle_model');
+        foreach (['photo', 'photo_depan', 'photo_belakang', 'photo_kiri', 'photo_kanan'] as $field) {
+            $oldPhoto = $originalAttributes[$field] ?? null;
+            if (isset($data[$field]) && $oldPhoto && $data[$field] !== $oldPhoto) {
+                $this->delImage($oldPhoto, 'vehicle_model');
+            }
         }
     }
 
     public function customDestroy($model)
     {
-        if ($model->photo) {
-            $this->delImage($model->photo, 'vehicle_model');
+        foreach (['photo', 'photo_depan', 'photo_belakang', 'photo_kiri', 'photo_kanan'] as $field) {
+            if ($model->$field) {
+                $this->delImage($model->$field, 'vehicle_model');
+            }
         }
     }
 }

@@ -39,13 +39,13 @@
 <div class="row mb-3">
     <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Berlaku Dari</label>
     <div class="col-lg-9">
-        <input type="date" name="valid_from" value="{{ $item->valid_from ?? old('valid_from') }}" class="form-control" />
+        <input type="text" name="valid_from" value="{{ $item->valid_from?->format('Y-m-d') ?? old('valid_from') }}" class="form-control flatpickr-date" autocomplete="off" />
     </div>
 </div>
 <div class="row mb-3">
     <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Berlaku Sampai</label>
     <div class="col-lg-9">
-        <input type="date" name="valid_to" value="{{ $item->valid_to ?? old('valid_to') }}" class="form-control" />
+        <input type="text" name="valid_to" value="{{ $item->valid_to?->format('Y-m-d') ?? old('valid_to') }}" class="form-control flatpickr-date" autocomplete="off" />
     </div>
 </div>
 <div class="row mb-3">

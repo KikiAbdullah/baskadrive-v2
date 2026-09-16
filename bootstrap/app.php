@@ -34,4 +34,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('app:cleanup-temp')->dailyAt('02:00');
         $schedule->command('fleet:check-maintenance')->dailyAt('06:30');
         $schedule->command('rental:send-reminders')->dailyAt('08:00');
+        // FASE 3 audit sewa: sweep jatuh tempo + proses antrean tanpa worker khusus
+        $schedule->command('rentals:mark-overdue')->everyTenMinutes();
+        $schedule->command('queue:work --stop-when-empty --max-time=30')
+            ->everyMinute()
+            ->withoutOverlapping();
     })->create();

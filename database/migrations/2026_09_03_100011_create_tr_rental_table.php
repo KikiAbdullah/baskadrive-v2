@@ -43,6 +43,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
+            $table->softDeletes();
 
             $table->foreign('customer_id')->references('customer_id')->on('m_customer')->restrictOnDelete();
             $table->foreign('vehicle_id')->references('vehicle_id')->on('m_vehicle')->restrictOnDelete();

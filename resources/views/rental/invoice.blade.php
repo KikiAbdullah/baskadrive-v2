@@ -50,8 +50,9 @@
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Tanggal Jatuh Tempo <span class="text-danger">*</span></label>
-                                    <input type="date" class="form-control datepicker" name="due_date"
-                                        value="{{ now()->addDays(7)->format('Y-m-d') }}" required>
+                                    <input type="text" class="form-control flatpickr-date {{ $errors->has('due_date') ? 'is-invalid' : '' }}" name="due_date" autocomplete="off"
+                                        value="{{ old('due_date', now()->addDays((int) (App\Support\AppSettings::get('invoice_due_days') ?: 7))->toDateString()) }}" required>
+                                    @error('due_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
                                 <div class="col-12 mb-3">
                                     <label class="form-label">Catatan</label>
@@ -73,16 +74,6 @@
 @endsection
 
 @section('customjs')
-    <script>
-        if ($.fn.datepicker) {
-            $('.datepicker').datepicker({
-                format: 'yyyy-mm-dd',
-                autoclose: true,
-                todayHighlight: true,
-                orientation: 'bottom auto'
-            });
-        }
-    </script>
 @endsection
 
 @section('appmodal')

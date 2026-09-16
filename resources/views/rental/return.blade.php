@@ -21,12 +21,15 @@
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Tanggal & Waktu Pengembalian <span class="text-danger">*</span></label>
-                                    <input type="datetime-local" class="form-control" name="return_date"
-                                        value="{{ now()->format('Y-m-d\TH:i') }}" required>
+                                    <input type="text" class="form-control flatpickr-datetime {{ $errors->has('return_date') ? 'is-invalid' : '' }}" name="return_date" autocomplete="off"
+                                        value="{{ old('return_date', now()->format('Y-m-d H:i')) }}" required>
+                                    @error('return_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Odometer Akhir (KM)</label>
-                                    <input type="number" class="form-control" name="return_mileage">
+                                    <input type="number" class="form-control {{ $errors->has('return_mileage') ? 'is-invalid' : '' }}" name="return_mileage"
+                                        value="{{ old('return_mileage') }}">
+                                    @error('return_mileage')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Level Bahan Bakar</label>
@@ -40,11 +43,13 @@
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Kondisi Kendaraan <span class="text-danger">*</span></label>
-                                    <select class="form-select" name="vehicle_condition" required>
-                                        <option value="good">Baik</option>
-                                        <option value="minor_damage">Kerusakan Ringan</option>
-                                        <option value="damage">Kerusakan Berat</option>
+                                    <select class="form-select {{ $errors->has('vehicle_condition') ? 'is-invalid' : '' }}" name="vehicle_condition" required>
+                                        <option value="excellent" {{ old('vehicle_condition') == 'excellent' ? 'selected' : '' }}>Sangat Baik</option>
+                                        <option value="good" {{ !old('vehicle_condition') || old('vehicle_condition') == 'good' ? 'selected' : '' }}>Baik</option>
+                                        <option value="fair" {{ old('vehicle_condition') == 'fair' ? 'selected' : '' }}>Cukup (rusak ringan)</option>
+                                        <option value="damaged" {{ old('vehicle_condition') == 'damaged' ? 'selected' : '' }}>Rusak Berat</option>
                                     </select>
+                                    @error('vehicle_condition')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Biaya Tambahan (Rp)</label>

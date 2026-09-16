@@ -99,7 +99,7 @@
     function loadStep(step) {
         Swal.fire({ text: 'Loading...', showConfirmButton: false, allowOutsideClick: false });
         $.ajax({
-            url: '{{ url("rental/create/step") }}/' + step,
+            url: @json(route('rental.create.step', ['step' => '__STEP__'])).replace('__STEP__', step),
             type: 'GET',
             dataType: 'JSON',
             success: function(response) {
@@ -230,17 +230,8 @@
     }
 
     function initDatepicker() {
-        if ($.fn.datepicker) {
-            $('.datepicker').each(function() {
-                if (!$(this).data('datepicker')) {
-                    $(this).datepicker({
-                        format: 'yyyy-mm-dd',
-                        autoclose: true,
-                        todayHighlight: true,
-                        orientation: 'bottom auto'
-                    });
-                }
-            });
+        if (window.initFlatpickr) {
+            window.initFlatpickr(document.getElementById('wizardContent'));
         }
     }
 

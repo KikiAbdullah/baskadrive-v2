@@ -8,8 +8,8 @@
                 <p class="mb-6">{{ $subtitle }} &mdash; {{ \Carbon\Carbon::parse($start)->format('d/m/Y') }} s.d {{ \Carbon\Carbon::parse($end)->format('d/m/Y') }}</p>
             </div>
             <form method="GET" class="d-flex align-items-center gap-2">
-                <input type="date" name="start_date" class="form-control form-control-sm" value="{{ $start }}" style="width:150px">
-                <input type="date" name="end_date" class="form-control form-control-sm" value="{{ $end }}" style="width:150px">
+                <input type="text" name="start_date" class="form-control form-control-sm flatpickr-date" value="{{ $start }}" autocomplete="off" style="width:150px">
+                <input type="text" name="end_date" class="form-control form-control-sm flatpickr-date" value="{{ $end }}" autocomplete="off" style="width:150px">
                 <button type="submit" class="btn btn-sm btn-primary"><i class="ri-filter-3-line me-1"></i>Tampilkan</button>
             </form>
         </div>

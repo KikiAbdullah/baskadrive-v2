@@ -109,7 +109,17 @@
                         <span class="badge bg-label-primary">Live</span>
                     </div>
                     <div class="card-body">
+                        <div id="mapLoading" class="text-muted small py-2"><span class="spinner-border spinner-border-sm me-2" role="status"></span> Memuat data armada…</div>
                         <div id="fleetMap"></div>
+                        <div id="mapError" class="alert alert-warning py-2 small mt-2 d-none" role="alert">
+                            Gagal memuat posisi armada. Coba muat ulang halaman.
+                        </div>
+                        <div class="d-flex flex-wrap gap-3 mt-2 small">
+                            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#28c76f;"></span> Tersedia</span>
+                            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#666cff;"></span> Disewa</span>
+                            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#03a9f4;"></span> Reservasi</span>
+                            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ff9f40;"></span> Maintenance</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -120,6 +130,9 @@
                     </div>
                     <div class="card-body">
                         <div id="rentalCalendar"></div>
+                        <div id="calendarError" class="alert alert-warning py-2 small mt-2 d-none" role="alert">
+                            Gagal memuat jadwal sewa — <a href="{{ route('rental.index') }}" class="alert-link">lihat daftar sewa</a>.
+                        </div>
                     </div>
                 </div>
             </div>
@@ -180,7 +193,9 @@
     <script src="{{ asset('assets') }}/vendor/libs/fullcalendar/fullcalendar.js"></script>
     <script>
         $(function() {
-            // Peta Armada interaktif (audit 2.1)
+            const esc = (s) => $('<div>').text(s ?? '').html();
+
+            // Peta Armada interaktif (audit 2.1) + loading/error state (Fase 3)
             var map = L.map('fleetMap').setView([-6.2, 106.9], 10);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap contributors',
@@ -189,29 +204,38 @@
 
             var statusColor = { available: '#28c76f', rented: '#666cff', reserved: '#03a9f4', maintenance: '#ff9f40' };
 
-            $.getJSON('{{ route('dashboard.fleet-map') }}', function(res) {
-                if (!res.status) return;
-                var bounds = [];
-                res.data.forEach(function(v) {
-                    var marker = L.circleMarker([v.lat, v.lng], {
-                        radius: 8,
-                        color: statusColor[v.status] || '#82868b',
-                        fillColor: statusColor[v.status] || '#82868b',
-                        fillOpacity: 0.85,
-                        weight: 2
-                    }).addTo(map);
-                    marker.bindPopup(
-                        '<strong>' + v.plate + '</strong><br>' + v.name +
-                        '<br>Status: ' + v.status +
-                        (v.location ? '<br>Lokasi: ' + v.location : '') +
-                        (v.rental ? '<br>Sewa: ' + v.rental : '')
-                    );
-                    bounds.push([v.lat, v.lng]);
+            $.getJSON('{{ route('dashboard.fleet-map') }}')
+                .done(function(res) {
+                    $('#mapLoading').remove();
+                    if (!res || !res.status || !Array.isArray(res.data)) {
+                        $('#mapError').removeClass('d-none');
+                        return;
+                    }
+                    var bounds = [];
+                    res.data.forEach(function(v) {
+                        var marker = L.circleMarker([v.lat, v.lng], {
+                            radius: 8,
+                            color: statusColor[v.status] || '#82868b',
+                            fillColor: statusColor[v.status] || '#82868b',
+                            fillOpacity: 0.85,
+                            weight: 2
+                        }).addTo(map);
+                        marker.bindPopup(
+                            '<strong>' + esc(v.plate) + '</strong><br>' + esc(v.name) +
+                            '<br>Status: ' + esc(v.status) +
+                            (v.location ? '<br>Lokasi: ' + esc(v.location) : '') +
+                            (v.rental ? '<br>Sewa: ' + esc(v.rental) : '')
+                        );
+                        bounds.push([v.lat, v.lng]);
+                    });
+                    if (bounds.length) map.fitBounds(bounds, { padding: [24, 24], maxZoom: 14 });
+                })
+                .fail(function() {
+                    $('#mapLoading').remove();
+                    $('#mapError').removeClass('d-none');
                 });
-                if (bounds.length) map.fitBounds(bounds, { padding: [24, 24], maxZoom: 14 });
-            });
 
-            // Kalender Sewa (audit 2.1)
+            // Kalender Sewa (audit 2.1) + handler gagal (Fase 3)
             var CalendarClass = (window.FullCalendar && window.FullCalendar.Calendar) || window.Calendar;
             var calendarEl = document.getElementById('rentalCalendar');
             if (CalendarClass && calendarEl) {
@@ -219,7 +243,12 @@
                     initialView: 'dayGridMonth',
                     height: 340,
                     headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
-                    events: '{{ route('dashboard.calendar') }}',
+                    eventSources: [{
+                        url: '{{ route('dashboard.calendar') }}',
+                        failure: function() {
+                            $('#calendarError').removeClass('d-none');
+                        }
+                    }],
                     eventDidMount: function(info) {
                         info.el.style.cursor = 'pointer';
                     }

@@ -13,11 +13,11 @@
     <div class="row">
         <div class="col-md-6 mb-3">
             <label class="form-label">Tanggal Mulai Sewa <span class="text-danger">*</span></label>
-            <input type="text" class="form-control datepicker" name="rental_start_date" id="rental_start_date" value="{{ $data['rental_start_date'] ?? '' }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
+            <input type="text" class="form-control flatpickr-datetime" name="rental_start_date" id="rental_start_date" value="{{ $data['rental_start_date'] ?? '' }}" placeholder="YYYY-MM-DD HH:MM" autocomplete="off" required>
         </div>
         <div class="col-md-6 mb-3">
             <label class="form-label">Tanggal Selesai Sewa <span class="text-danger">*</span></label>
-            <input type="text" class="form-control datepicker" name="rental_end_date" id="rental_end_date" value="{{ $data['rental_end_date'] ?? '' }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
+            <input type="text" class="form-control flatpickr-datetime" name="rental_end_date" id="rental_end_date" value="{{ $data['rental_end_date'] ?? '' }}" placeholder="YYYY-MM-DD HH:MM" autocomplete="off" required>
         </div>
     </div>
 
@@ -56,14 +56,20 @@
     </div>
 
     {{-- PPN: ON/OFF + persen (default dari Pengaturan Umum) --}}
+    @php
+        // precedence diperbaiki (awalnya && dan || tercampur tanpa kurung)
+        $taxOn = (isset($data['tax_percent']))
+            ? (float) $data['tax_percent'] > 0
+            : (bool) ($settings['tax_enabled'] ?? true);
+    @endphp
     <div class="row">
         <div class="col-md-6 mb-3">
             <div class="form-check form-switch mt-3">
-                <input class="form-check-input" type="checkbox" id="tax_enabled" name="tax_enabled" value="1" {{ ($settings['tax_enabled'] ?? true) && !isset($data['tax_percent']) || (isset($data['tax_percent']) && $data['tax_percent'] > 0) ? 'checked' : '' }}>
+                <input class="form-check-input" type="checkbox" id="tax_enabled" name="tax_enabled" value="1" {{ $taxOn ? 'checked' : '' }}>
                 <label class="form-check-label" for="tax_enabled">Kenakan PPN</label>
             </div>
         </div>
-        <div class="col-md-6 mb-3" id="taxPercentSection" style="display: {{ ($settings['tax_enabled'] ?? true) && !isset($data['tax_percent']) || (isset($data['tax_percent']) && $data['tax_percent'] > 0) ? 'block' : 'none' }};">
+        <div class="col-md-6 mb-3" id="taxPercentSection" style="display: {{ $taxOn ? 'block' : 'none' }};">
             <label class="form-label">Persentase PPN (%) <span class="text-danger">*</span></label>
             <div class="input-group">
                 <input type="number" step="0.01" min="0" max="100" class="form-control" name="tax_percent_input" id="tax_percent_input"

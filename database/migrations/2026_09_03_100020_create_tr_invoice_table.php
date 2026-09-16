@@ -24,6 +24,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
+            $table->softDeletes();
 
             $table->foreign('rental_id')->references('rental_id')->on('tr_rental')->cascadeOnDelete();
 

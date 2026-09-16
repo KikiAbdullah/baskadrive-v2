@@ -223,7 +223,7 @@
                             </div>
                         @endif
                         <div class="info-row">
-                            <span class="info-label">Pajak (11%)</span>
+                            <span class="info-label">Pajak ({{ rtrim(rtrim(number_format($rental->tax_percent ?? 11, 2, ',', '.'), '0'), ',') }}%)</span>
                             <span class="info-value">Rp {{ number_format($rental->tax_amount ?? 0, 0, ',', '.') }}</span>
                         </div>
                         <div class="info-row">
@@ -270,7 +270,11 @@
                                         @foreach($rental->payments as $payment)
                                             <tr>
                                                 <td>{{ $payment->created_at?->format('d/m/Y') ?? '-' }}</td>
-                                                <td class="text-end">Rp {{ number_format($payment->amount ?? 0, 0, ',', '.') }}</td>
+                                                <td class="text-end">Rp {{ number_format($payment->amount ?? 0, 0, ',', '.') }}
+                                                    @if($payment->status === 'refunded')
+                                                        <span class="badge bg-label-info ms-1">Refunded</span>
+                                                    @endif
+                                                </td>
                                             </tr>
                                         @endforeach
                                     </tbody>
@@ -279,6 +283,75 @@
                         @else
                             <p class="text-muted small mb-0 mt-2">Belum ada pembayaran.</p>
                         @endif
+
+                        @can('finance_payment_add')
+                            @if($rental->payment_status !== 'paid' && ! in_array($rental->status, ['cancelled'], true))
+                                <hr class="my-2">
+                                <form class="js-async-form" method="POST" action="{{ route('rental.detail.payment.store', $rental->rental_id) }}">
+                                    @csrf
+                                    <div class="row g-2">
+                                        <div class="col-7">
+                                            <input type="number" min="0.01" step="0.01" class="form-control form-control-sm" name="amount"
+                                                placeholder="Jumlah (sisa: Rp {{ number_format(max(0, ($rental->total_amount ?? 0) - $rental->payments->where('status', 'completed')->sum('amount')), 0, ',', '.') }})" required>
+                                        </div>
+                                        <div class="col-5">
+                                            <select class="form-select form-select-sm" name="payment_method" required>
+                                                <option value="cash">Tunai</option>
+                                                <option value="bank_transfer">Transfer</option>
+                                                <option value="credit_card">Kartu Kredit</option>
+                                                <option value="debit_card">Kartu Debit</option>
+                                                <option value="e_wallet">E-Wallet</option>
+                                                <option value="other">Lainnya</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-7">
+                                            <input type="text" class="form-control form-control-sm" name="reference_number" placeholder="No. referensi (opsional)">
+                                        </div>
+                                        <div class="col-5 d-grid">
+                                            <button type="submit" class="btn btn-sm btn-primary">Catat Pembayaran</button>
+                                        </div>
+                                    </div>
+                                </form>
+                            @endif
+                        @endcan
+
+                        @can('finance_refund_add')
+                            @if($rental->payments->where('status', 'completed')->count())
+                                <hr class="my-2">
+                                <details>
+                                    <summary class="text-muted small mb-2">Refund</summary>
+                                    <form class="js-async-form" method="POST" action="{{ route('rental.detail.refund.store', $rental->rental_id) }}">
+                                        @csrf
+                                        <div class="mb-2">
+                                            <select class="form-select form-select-sm" name="payment_id" required>
+                                                <option value="">Pilih pembayaran…</option>
+                                                @foreach($rental->payments->where('status', 'completed') as $payment)
+                                                    <option value="{{ $payment->payment_id }}">
+                                                        PAY-{{ str_pad($payment->payment_id, 5, '0', STR_PAD_LEFT) }} — Rp {{ number_format($payment->amount, 0, ',', '.') }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="row g-2">
+                                            <div class="col-6">
+                                                <input type="number" min="0.01" step="0.01" class="form-control form-control-sm" name="amount" placeholder="Nominal" required>
+                                            </div>
+                                            <div class="col-6">
+                                                <select class="form-select form-select-sm" name="refund_type" required>
+                                                    <option value="deposit_return">Deposit Kembali</option>
+                                                    <option value="overpayment">Kelebihan Bayar</option>
+                                                    <option value="cancellation">Pembatalan</option>
+                                                    <option value="damage_deposit">Deposit Kerusakan</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-12 d-grid">
+                                                <button type="submit" class="btn btn-sm btn-outline-warning">Proses Refund</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </details>
+                            @endif
+                        @endcan
                     </div>
                 </div>
 
@@ -295,12 +368,45 @@
                                         <br>
                                         <span class="badge bg-label-{{ $ext->status == 'approved' ? 'success' : ($ext->status == 'pending' ? 'warning' : 'danger') }}">{{ ucfirst($ext->status) }}</span>
                                     </span>
-                                    <span class="info-value">Rp {{ number_format($ext->additional_total ?? 0, 0, ',', '.') }}</span>
+                                    <span class="info-value text-end">
+                                        Rp {{ number_format($ext->additional_total ?? 0, 0, ',', '.') }}
+                                        @if($ext->status === 'pending' && auth()->user()->can('rental_edit'))
+                                            <br>
+                                            <button type="button" class="btn btn-xs btn-outline-success mt-1 js-ext-approve"
+                                                data-url="{{ route('rental.detail.extension.approve', [$rental->rental_id, $ext->extension_id]) }}">Setujui</button>
+                                            <button type="button" class="btn btn-xs btn-outline-danger mt-1 js-ext-reject"
+                                                data-url="{{ route('rental.detail.extension.reject', [$rental->rental_id, $ext->extension_id]) }}">Tolak</button>
+                                        @endif
+                                    </span>
                                 </div>
                             @endforeach
                         </div>
                     </div>
                 @endif
+
+                @can('rental_edit')
+                    @if(in_array($rental->status, ['reserved', 'ongoing', 'overdue'], true))
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="ri-calendar-plus-line me-1"></i> Ajukan Perpanjangan</h6>
+                            </div>
+                            <div class="card-body">
+                                <form class="js-async-form" method="POST" action="{{ route('rental.detail.extension.store', $rental->rental_id) }}">
+                                    @csrf
+                                    <div class="mb-2">
+                                        <label class="form-label small">Perpanjang s/d <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control form-control-sm flatpickr-datetime" name="new_end_date" autocomplete="off" required
+                                            min="{{ now()->toDateTimeString() }}" value="{{ $rental->rental_end_date?->format('Y-m-d H:i') }}">
+                                    </div>
+                                    <div class="mb-2">
+                                        <input type="text" class="form-control form-control-sm" name="notes" placeholder="Catatan (opsional)">
+                                    </div>
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Kirim Permintaan</button>
+                                </form>
+                            </div>
+                        </div>
+                    @endif
+                @endcan
 
                 @if($rental->fines && $rental->fines->count())
                     <div class="card mb-3">
@@ -310,19 +416,146 @@
                         <div class="card-body">
                             @foreach($rental->fines as $fine)
                                 <div class="info-row">
-                                    <span class="info-label">{{ $fine->reason ?? '-' }}</span>
-                                    <span class="info-value">Rp {{ number_format($fine->amount ?? 0, 0, ',', '.') }}</span>
+                                    <span class="info-label">
+                                        {{ $fine->description ?? '-' }}
+                                        @php $fineBadge = ['unpaid' => 'danger', 'paid' => 'success', 'waived' => 'secondary'][$fine->status] ?? 'secondary'; @endphp
+                                        <span class="badge bg-label-{{ $fineBadge }} ms-1">{{ ucfirst($fine->status ?? '-') }}</span>
+                                    </span>
+                                    <span class="info-value text-end">
+                                        Rp {{ number_format($fine->amount ?? 0, 0, ',', '.') }}
+                                        @if($fine->status === 'unpaid')
+                                            @can('fine_pay')
+                                                <br>
+                                                <button type="button" class="btn btn-xs btn-outline-success mt-1 js-fine-pay"
+                                                    data-url="{{ route('rental.detail.fine.pay', [$rental->rental_id, $fine->fine_id]) }}">Bayar</button>
+                                            @endcan
+                                            @can('fine_waive')
+                                                <button type="button" class="btn btn-xs btn-outline-secondary mt-1 js-fine-waive"
+                                                    data-url="{{ route('rental.detail.fine.waive', [$rental->rental_id, $fine->fine_id]) }}">Bebaskan</button>
+                                            @endcan
+                                        @endif
+                                    </span>
                                 </div>
                             @endforeach
                         </div>
                     </div>
                 @endif
+
+                @can('fine_add')
+                    @if($rental->status !== 'cancelled')
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="ri-add-line me-1"></i> Tambah Denda</h6>
+                            </div>
+                            <div class="card-body">
+                                <form class="js-async-form" method="POST" action="{{ route('rental.detail.fine.store', $rental->rental_id) }}">
+                                    @csrf
+                                    <div class="mb-2">
+                                        <select class="form-select form-select-sm" name="fine_type" required>
+                                            @foreach(['late_return' => 'Terlambat', 'damage' => 'Kerusakan', 'cleaning' => 'Pembersihan', 'fuel' => 'Bahan Bakar', 'lost_item' => 'Barang Hilang', 'other' => 'Lainnya'] as $ft => $fl)
+                                                <option value="{{ $ft }}">{{ $fl }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <input type="text" class="form-control form-control-sm" name="description" placeholder="Deskripsi denda" required maxlength="500">
+                                    </div>
+                                    <div class="row g-2">
+                                        <div class="col-7">
+                                            <input type="number" min="0" step="0.01" class="form-control form-control-sm" name="amount" placeholder="Nominal (Rp)" required>
+                                        </div>
+                                        <div class="col-5 d-grid">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">Tambah</button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    @endif
+                @endcan
             </div>
         </div>
     </div>
 @endsection
 
 @section('customjs')
+    <script>
+        $(function() {
+            const token = '{{ csrf_token() }}';
+
+            function actionDone(res) {
+                Swal.fire({
+                    icon: res.status ? 'success' : 'error',
+                    title: res.status ? 'Berhasil' : 'Gagal',
+                    text: res.msg || '',
+                    timer: 1600,
+                    showConfirmButton: false,
+                }).then(() => location.reload());
+            }
+
+            function actionFail(xhr) {
+                const msg = (xhr.responseJSON && (xhr.responseJSON.message || xhr.responseJSON.msg))
+                    || (xhr.status === 403 ? 'Anda tidak memiliki izin untuk aksi ini.' : 'Terjadi kesalahan pada server.');
+                Swal.fire({ icon: 'error', title: 'Error', text: msg });
+            }
+
+            // Form async generik (perpanjangan, pembayaran, refund, denda)
+            $('body').on('submit', '.js-async-form', function(e) {
+                e.preventDefault();
+                const form = $(this);
+                if (form.data('busy')) return;
+                form.data('busy', true).find('button[type=submit]').prop('disabled', true);
+
+                $.ajax({
+                    url: form.attr('action'),
+                    type: 'POST',
+                    data: form.serialize() + '&_token=' + encodeURIComponent(token),
+                    dataType: 'JSON',
+                    success: actionDone,
+                    error: function(xhr) {
+                        form.data('busy', false).find('button[type=submit]').prop('disabled', false);
+                        actionFail(xhr);
+                    },
+                });
+            });
+
+            // Aksi PUT sederhana dengan konfirmasi (approve/reject denda & perpanjangan)
+            function putAction(url, confirmTitle, confirmText, icon) {
+                Swal.fire({
+                    icon: icon || 'question',
+                    title: confirmTitle,
+                    text: confirmText || '',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, Lanjutkan',
+                    cancelButtonText: 'Batal',
+                    reverseButtons: true,
+                }).then((result) => {
+                    if (!result.isConfirmed) return;
+                    $.ajax({
+                        url: url,
+                        type: 'PUT',
+                        data: { _token: token },
+                        dataType: 'JSON',
+                        success: actionDone,
+                        error: actionFail,
+                    });
+                });
+            }
+
+            $('body').on('click', '.js-ext-approve', function() {
+                putAction($(this).data('url'), 'Setujui perpanjangan?', 'Total & tanggal sewa akan diperbarui.');
+            });
+            $('body').on('click', '.js-ext-reject', function() {
+                putAction($(this).data('url'), 'Tolak perpanjangan?', '', 'warning');
+            });
+            $('body').on('click', '.js-fine-pay', function() {
+                putAction($(this).data('url'), 'Bayar denda?', 'Catat pembayaran denda tunai.', 'question');
+            });
+            $('body').on('click', '.js-fine-waive', function() {
+                putAction($(this).data('url'), 'Bebaskan denda?', 'Denda akan dihapus dari tagihan.', 'warning');
+            });
+        });
+    </script>
 @endsection
 
 @section('appmodal')

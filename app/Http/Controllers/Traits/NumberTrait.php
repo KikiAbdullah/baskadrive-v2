@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 trait NumberTrait
 {
     /**
-     * Query dasar penomoran: denganTrashed HANYA bila model memakai SoftDeletes,
+     * Query dasar penomoran: denganTrashed HANYA bila model memakai trait SoftDeletes,
      * agar gen_number tidak fatal pada model non-soft-delete (Rental/Invoice/Claim).
      * Menerima instance model maupun fully-qualified class name.
      */
@@ -21,8 +21,32 @@ trait NumberTrait
             : $class::query();
     }
 
+    /**
+     * FASE 3 audit sewa: serialisasi penomoran. Lock baris terakhir tabel (FOR UPDATE)
+     * sehingga dua request paralel yang membuat nomor (RNT/INV/CLM) bergantian membaca MAX.
+     * Pada tabel kosong lock tidak terjadi — nomor tetap aman karena unique constraint
+     * + transaction milik caller. SQLite (mode test) mengabaikan FOR UPDATE secara aman.
+     */
+    protected function lockNumberingRow($model): void
+    {
+        $class = is_object($model) ? get_class($model) : $model;
+        $instance = new $class;
+
+        try {
+            \DB::table($instance->getTable())
+                ->orderByDesc($instance->getKeyName())
+                ->lockForUpdate()
+                ->limit(1)
+                ->pluck($instance->getKeyName());
+        } catch (\Throwable $e) {
+            // driver tanpa dukungan lock (sqlite) -> lewati, jangan gagalkan bisnis
+        }
+    }
+
+
     public function gen_number_with_where_in($model, $column, $prefix, $date, $field_date, $every_month = false, $whereCol, $whereVal)
     {
+        $this->lockNumberingRow($model);
         $year = '';
         $month = '';
         if (! empty($date)) {
@@ -58,6 +82,7 @@ trait NumberTrait
 
     public function gen_number_with_where($model, $column, $prefix, $date, $field_date, $every_month = false, $whereCol, $whereVal)
     {
+        $this->lockNumberingRow($model);
         $year = '';
         $month = '';
         if (! empty($date)) {
@@ -93,6 +118,7 @@ trait NumberTrait
 
     public function gen_number($model, $column, $prefix, $date, $field_date, $every_month = false)
     {
+        $this->lockNumberingRow($model);
         $year = '';
         $month = '';
         if (! empty($date)) {
@@ -159,6 +185,7 @@ trait NumberTrait
 
     public function gen_number_classic($modelx, $where, $whereYear, $colYear, $prefix)
     {
+        $this->lockNumberingRow($modelx);
         $model = $this->genBaseQuery($modelx);
         if (! empty($where)) {
             $model->where($where);
