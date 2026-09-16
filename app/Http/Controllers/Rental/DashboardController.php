@@ -84,7 +84,9 @@ class DashboardController extends Controller
                 $query->where('rental_start_date', '<=', Carbon::parse($end));
             }
 
-            $rentals = $query->get()->map(function ($r) {
+            $canViewRental = auth()->user()?->can('rental_view');
+
+            $rentals = $query->get()->map(function ($r) use ($canViewRental) {
                 $color = match ($r->status) {
                     'reserved' => '#03a9f4',
                     'ongoing' => '#28c76f',
@@ -93,14 +95,20 @@ class DashboardController extends Controller
                     default => '#82868b',
                 };
 
-                return [
+                $event = [
                     'id' => $r->rental_id,
                     'title' => ($r->vehicle?->license_plate ?? '?') . ' - ' . ($r->customer?->full_name ?? '?'),
                     'start' => $r->rental_start_date?->toDateString(),
                     'end' => $r->rental_end_date?->toDateString(),
                     'color' => $color,
-                    'url' => route('rental.show', $r->rental_id),
                 ];
+                // Hanya buat event bisa diklik bila user punya hak akses modul Sewa
+                // (VIEWER hanya dashboard/report -> hindari link rental.show 403).
+                if ($canViewRental) {
+                    $event['url'] = route('rental.show', $r->rental_id);
+                }
+
+                return $event;
             });
 
             return response()->json($rentals);

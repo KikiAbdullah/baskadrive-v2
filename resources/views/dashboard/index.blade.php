@@ -131,13 +131,14 @@
                     <div class="card-body">
                         <div id="rentalCalendar"></div>
                         <div id="calendarError" class="alert alert-warning py-2 small mt-2 d-none" role="alert">
-                            Gagal memuat jadwal sewa — <a href="{{ route('rental.index') }}" class="alert-link">lihat daftar sewa</a>.
+                            Gagal memuat jadwal sewa — @can('rental_view')<a href="{{ route('rental.index') }}" class="alert-link">lihat daftar sewa</a>@else hubungi admin untuk akses modul Sewa@endcan.
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
+        @can('rental_view')
         <div class="row g-6">
             <div class="col-lg-6">
                 <div class="card">
@@ -185,6 +186,7 @@
                 </div>
             </div>
         </div>
+        @endcan
     </div>
 @endsection
 

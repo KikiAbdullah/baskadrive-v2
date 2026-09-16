@@ -6,7 +6,7 @@
 **Metode:** Static review + probe route/middleware + validasi enum DB vs controller  
 **Legenda:** `[X]` = sudah diperbaiki — `[ ]` = temuan terbuka (belum diperbaiki)
 
-> Temuan baru pasca perbaikan M-01..M-20 & S-01..S-04. **Status tersinkron dengan kode per 16/09/2026** (`php artisan test` → 34/34 PASS). FASE 1–3 tuntas; tersisa **6 temuan prioritas-rendah terbuka** (UX/polish + 1 tech-debt): fallback Safari `return`, `prompt()` handover, `target=_blank` `_step-1`, link rental→VIEWER 403 di Dashboard, `invoice.print` redirect-only, dan trigger kendaraan untuk `reserved`/`overdue`.
+> Temuan pasca perbaikan M-01..M-20 & S-01..S-04. **Tuntas 100% — tersinkron dengan kode 16/09/2026** (`php artisan test` → 34/34 PASS). FASE 1–3 selesai **dan 6 sisa polish/tech-debt ikut dibereskan**: `datetime-local`→flatpickr (hilangkan isu Safari), `prompt()`→SweetAlert, `target=_blank`→modal quick-create AJAX, link rental Dashboard di-gate `rental_view`, `invoicePrint` render PDF langsung, dan trigger kendaraan menangani `reserved`/`overdue`. Detail di §7–§10.
 
 ---
 
@@ -27,14 +27,14 @@
 
 ## 1. RINGKASAN EKSEKUTIF
 
-Alur sewa inti (wizard → reserved → confirm → ongoing → return → completed, plus invoice/payment) **berjalan**. **FASE 1, 2, dan 3 TUNTAS 15/15 task** (integritas, finansial, permission, UX, race, scheduler, jurnal), terverifikasi **34/34 tes** (suite lama + `test_mark_overdue_sweep`). **Disinkronkan dengan kode 16/09/2026**: tersisa **6 polish/tech-debt prioritas-rendah** berstatus `[ ]` (rincian di §10) — tidak memengaruhi integritas data/finansial.
+Alur sewa inti (wizard → reserved → confirm → ongoing → return → completed, plus invoice/payment) **berjalan**. **FASE 1, 2, dan 3 TUNTAS 15/15 task** (integritas, finansial, permission, UX, race, scheduler, jurnal), terverifikasi **34/34 tes** (suite lama + `test_mark_overdue_sweep`). **Dibereskan tuntas 16/09/2026**: 6 sisa polish/tech-debt juga sudah ditutup — tidak ada lagi item `[ ]` terbuka.
 
 | Kategori | Status |
 |---|---|
 | 🔴 Tinggi (integritas data / finansial) | **SELESAI — 6/6 (FASE 1)** |
 | 🟡 Sedang (permission / race / validasi) | **SELESAI — 4/4 (FASE 2)** |
 | 🟢 Rendah (UX / tech-debt) | **SELESAI — 5/5 (FASE 3)** |
-| ⚪ Sisa polish/tech-debt (di luar FASE) | **6 terbuka `[ ]`** — Safari fallback, `prompt()`, `target=_blank`, VIEWER 403 link, `invoice.print`, trigger `reserved/overdue` |
+| ⚪ Sisa polish/tech-debt (di luar FASE) | **SELESAI — 6/6 (16/09/2026)** — flatpickr, SweetAlert, quick-create modal, gate link Dashboard, `invoicePrint` PDF, trigger `reserved/overdue` |
 
 ---
 
@@ -55,7 +55,7 @@ Alur sewa inti (wizard → reserved → confirm → ongoing → return → compl
 | `rental/button_option` | `getButtonOption` 479 | Tombol aksi baris |
 | `dashboard/index` | `DashboardController:index` 19 | Peta armada + kalender sewa |
 
-**13 file view rental** semua ter-referensi; **10 route rental orphan** (lihat §8).
+**13 file view rental** semua ter-referensi; rute yang dulu yatim (export, search-customer, extension, fine, payment, refund, invoice.print) **kini semuanya terhubung** (lihat §8).
 
 ---
 
@@ -155,12 +155,12 @@ CSRF ✅. **Double-submit** — **TUNTAS (FASE 2-8 diverifikasi)**: form native 
 
 **Baik:** `container-xxl`, `flex-column flex-md-row`, `table-responsive`, tab `flex-wrap`, `card h-100`.
 
-**Status temuan (verifikasi 16/09/2026 terhadap kode):**
-* `[X]` Tidak ada `is-invalid`/`@error` di `return`, `handover`, `invoice` — hanya `create` pakai Swal. **DIVERIFIKASI TUNTAS**: `is-invalid`/`@error` ada di `return.blade.php` (`return_date`, `return_mileage`, `vehicle_condition`), `handover.blade.php` (`odometer`), `invoice.blade.php` (`due_date`).
-* `[X]` ~~`edit.blade.php` datetime kehilangan jam~~ (`datetime-local` preserve jam, lihat 3.3). ~~`_step-3:62` precedence `&&` vs `||` pada toggle `taxPercentSection`~~ → **DIVERIFIKASI TUNTAS**: variabel `$taxOn` terpusat (`_step-3.blade.php:59-64`, ternary benar). ~~`_step-4:11` query DB di view (N+1)~~ → **DIVERIFIKASI TUNTAS**: `renderStep` mengirim `stepCustomer/stepVehicle/stepPickupLoc/stepReturnLoc/stepDriver/stepPromo`, view tidak query lagi (`_step-4.blade.php:11-22`). **Sisa terbuka**: `return.blade.php:24` `datetime-local` tanpa fallback Safari **[ ]**.
-* `[X]` `handover.blade.php` diagram — **DIVERIFIKASI**: kini responsif (`width:100%; max-width:500px; aspect-ratio`; `touch-action:none` + handler `touchend`, bukan lagi fixed 500×220 desktop-only) & XSS badge ditutup helper `esc()` (`handover.blade.php:146,154`). **Sisa terbuka**: input keterangan titik masih pakai `prompt()` blocking (`:174`) **[ ]**.
-* `[X]` `_step-1` kartu pelanggan — **DIVERIFIKASI**: `role=button`/`tabindex=0`/`aria-pressed` + handler keyboard Enter/Space (`_step-1.blade.php:29,83-88`) → keyboard-accessible. **Sisa terbuka**: link `target=_blank` ke `master.customer.create` masih memutus flow wizard (`_step-1.blade.php:20`) **[ ]**.
-* `[X]` Dashboard map/kalender — **DIVERIFIKASI**: skeleton `#mapLoading`, `#mapError` + `#calendarError` (handler `failure`), legend 4 warna, popup di-`esc()` (`dashboard/index.blade.php:112-135,205-236`). **Sisa terbuka**: `upcomingReturns`/`upcomingPickups` & link kalender tetap menaruh `rental.show` ke VIEWER (tak punya `rental_view` → 403); belum di-`@can('rental_view')` **[ ]**.
+**Status temuan — TUNTAS 100% (16/09/2026):**
+* `[X]` Tidak ada `is-invalid`/`@error` di `return`, `handover`, `invoice` — hanya `create` pakai Swal. **TUNTAS**: `is-invalid`/`@error` ada di `return.blade.php` (`return_date`, `return_mileage`, `vehicle_condition`), `handover.blade.php` (`odometer`), `invoice.blade.php` (`due_date`).
+* `[X]` ~~`edit.blade.php` datetime kehilangan jam~~. ~~`_step-3` precedence `&&` vs `||` pada `taxPercentSection`~~ → `$taxOn` terpusat. ~~`_step-4` query DB di view (N+1)~~ → `renderStep` kirim `stepCustomer/stepVehicle/...`. ~~`return.blade.php` `datetime-local` tanpa fallback Safari~~ → **TUNTAS (16/09)**: seluruh form tanggal kini `type="text"` + **flatpickr** (`.flatpickr-datetime`/`.flatpickr-date`) via initor global `app-enhancements.js` — tak lagi bergantung widget `datetime-local` Safari.
+* `[X]` `handover.blade.php` — **TUNTAS (16/09)**: diagram CSS diganti **4 panel foto sisi** (depan/belakang/kiri/kanan, responsif+touch, pakai foto `VehicleModel` → fallback placeholder), titik kerusakan per-sisi `{view,x,y,note}`, XSS `esc()`, dan input keterangan/tambah/hapus kini via **SweetAlert** (`prompt()` blocking dihapus).
+* `[X]` `_step-1` kartu pelanggan — keyboard-accessible (`role=button`/`tabindex`/`aria-pressed`+Enter/Space). ~~link `target=_blank` memutus flow wizard~~ → **TUNTAS (16/09)**: diganti **modal quick-create** (AJAX `master.customer.store`) lalu `loadStep(1)` me-refresh daftar — tetap di dalam wizard, disembunyikan bila tanpa `master_add`.
+* `[X]` Dashboard map/kalender — skeleton/error/legend/escape. ~~link `rental.show`/`rental.index` ke VIEWER → 403~~ → **TUNTAS (16/09)**: dua kartu "Terdekat" & link kalender di-*gate* `@can('rental_view')`; `DashboardController::calendar` hanya menyisipkan `url` event bila user punya `rental_view`.
 
 ---
 
@@ -174,7 +174,7 @@ CSRF ✅. **Double-submit** — **TUNTAS (FASE 2-8 diverifikasi)**: form native 
 | [X] | `fine.store/pay` | **FIXED** — form tambah denda + tombol Bayar (unpaid) & Bebaskan di `show.blade.php` (`js-fine-pay/waive`, gate `fine_add/pay/waive`) |
 | [X] | `payment.store` | **TERHUBUNG** — form "Catat Pembayaran" (`js-async-form`) di card Pembayaran `show.blade.php:287-316` | Ter-gate `finance_payment_add` |
 | [X] | `refund.store` | **TERHUBUNG** — form Refund (`js-async-form`, `<details>`) di `show.blade.php:318-354` | Ter-gate `finance_refund_add` |
-| [ ] | `invoice.print` | Hanya redirect (`RentalController::invoicePrint`) | Tech debt kecil — sengaja delegasi ke `finance.invoice.print`, dibiarkan |
+| [X] | `invoice.print` | **TUNTAS (16/09)** — `RentalController::invoicePrint` kini render PDF `finance.invoice.print` langsung via `PdfDocument::download` (bukan redirect lagi) | Memakai relasi invoice+rental yang sama spt FinanceController |
 | [X] | URL hardcode | **TUNTAS** — `create.blade.php:102` `@json(route('rental.create.step', …))`, `index:194,234` pakai `route('rental.confirm'/'rental.cancel')` | Tidak ada lagi path string mentah |
 | [X] | `_step-2:56` HTML concat tanpa escape | **TUNTAS** — helper `esc()` diterapkan pada seluruh nilai kendaraan (`_step-2.blade.php:51` dst) | FASE 3-13 |
 
@@ -189,7 +189,7 @@ CSRF ✅. **Double-submit** — **TUNTAS (FASE 2-8 diverifikasi)**: form native 
 | [X] | Status `overdue` | **TUNTAS (FASE 3-12)** — command `rentals:mark-overdue` (`MarkOverdueRentals.php`, grace `overdue_grace_minutes`) + scheduler `everyTenMinutes()` di `bootstrap/app.php:38`; teruji `test_mark_overdue_sweep_flags_late_rentals` (idempoten, kendaraan tak disentuh) | trigger membiarkan `overdue` → armada tetap `rented` |
 | [X] | WA `sendRentalWA` silent-fail | **TUNTAS (FASE 3-12)** — `sendRentalWA` kini `SendWhatsAppNotification::dispatch` (job queue tries 3, backoff 30/120s, `failed()`→`Log::error`) — bukan lagi `try{}catch{}` kosong; scheduler `queue:work --stop-when-empty` tiap menit (`app.php:39`) | `RentalController.php:1588`, `app/Jobs/SendWhatsAppNotification.php` |
 | [X] | Promo quota preview | `calculateTotal` memakai `usablePromo(lock:false)` — preview & eksekusi konsisten |
-| [ ] | Vehicle status trigger | **masih terbuka** — `trg_rental_after_update_vehicle_status` hanya tangani `ongoing→rented` & `completed/cancelled→available`; `reserved`/`overdue` TIDAK ditangani trigger. Tertutup sebagian oleh update eksplisit di `store` (`reserved`) & `returnStore`. Revisi trigger MySQL = perubahan schema (butuh migrasi baru) | `100026_create_rental_erp_function_and_triggers.php:50-62` |
+| [X] | Vehicle status trigger | **TUNTAS (16/09)** — migrasi baru `2026_09_16_000100_update_rental_vehicle_status_trigger.php` mendefinisikan ulang `trg_rental_after_update_vehicle_status`: `reserved→reserved`, `ongoing/overdue→rented` (overdue TETAP rented, armada tak dibebaskan), `completed/cancelled→available`; guard `NOT IN` mencegah penulisan ulang. Guard driver: tetap no-op di SQLite (test tak terpengaruh) | `bootstrap` migrasi; terverifikasi `php artisan migrate` |
 
 ---
 
@@ -220,19 +220,30 @@ CSRF ✅. **Double-submit** — **TUNTAS (FASE 2-8 diverifikasi)**: form native 
   [X] 14. UI extension (form+approve/reject), fine (tambah+bayar/waive), payment, refund — card baru di `show.blade.php` + handler async `js-async-form`; tombol Export di `index` header (`can:rental_export`)
   [X] 15. Dashboard: skeleton loader, legend 4 warna, error UI map+kalender (handler `.fail()`/`failure`), popup di-escape
 
-### Verifikasi batch 15/09/2026 (sore + FASE 3)
-- `php artisan view:cache` + `view:clear` → **berhasil** (semua view kompilasi)
-- `php artisan test` → **34/34 PASS** (33 + `test_mark_overdue_sweep_flags_late_rentals` — idempoten + kendaraan tetap rented)
-- Binder di `Wizard` kini BOM-free; `Rental*` model SoftDeletes aktif → `migrate:fresh --seed` tetap balanced
+[FASE 4 — Sisa Polish & Tech-Debt] — **TUNTAS 6/6 ✅ (16/09/2026)**
+  [X] 16. Semua form tanggal app-wide -> input text + flatpickr (`.flatpickr-datetime` utk jam,
+         `.flatpickr-date` utk tanggal); initor global di app-enhancements.js (siap utk konten
+         AJAX wizard/modal). Menghapus isu fallback Safari `datetime-local` di `return`.
+  [X] 17. Handover: #carDiagram -> 4 panel foto sisi (depan/belakang/kiri/kanan) responsif+touch,
+         pakai foto VehicleModel (fallback car-placeholder); titik {view,x,y,note}; tambah/keterangan/
+         hapus via SweetAlert (`prompt()` dihapus); prefill handover_out dari inspeksi kendaraan terakhir.
+  [X] 18. _step-1: "Pelanggan Baru" -> modal quick-create AJAX (`master.customer.store`) + loadStep(1);
+         `target=_blank` dihapus; disembunyikan bila tanpa `master_add`.
+  [X] 19. Dashboard: kartu Pengembalian/Penjemputan Terdekat & link kalender di-gate `@can('rental_view')`;
+         `DashboardController::calendar` hanya set `event.url` bila punya `rental_view` -> VIEWER tak lagi 403.
+  [X] 20. `RentalController::invoicePrint` render PDF `finance.invoice.print` langsung (`PdfDocument::download`).
+  [X] 21. Migrasi trigger `trg_rental_after_update_vehicle_status` tangani `reserved`/`overdue`
+         (overdue TETAP rented); no-op di SQLite (test tak terpengaruh).
+```
 
-### Sisa temuan TERBUKA `[ ]` (prioritas rendah — bukan blocker, belum diverifikasi sebagai "harus")
-- [ ] UX: `return.blade.php:24` `datetime-local` tanpa fallback Safari (§7).
-- [ ] UX: `handover.blade.php:174` input keterangan titik masih `prompt()` blocking (§7).
-- [ ] UX: `_step-1.blade.php:20` link `target=_blank` memutus flow wizard (§7).
-- [ ] UX: `dashboard/index.blade.php` link `rental.show`/`upcomingReturns` belum di-`@can('rental_view')` → VIEWER 403 (§7).
-- [ ] Tech-debt kecil: `RentalController::invoicePrint` hanya redirect (by-design) (§8).
-- [ ] DB trigger `trg_rental_after_update_vehicle_status` tak tangani `reserved`/`overdue` — butuh migrasi baru (di luar MySQL trigger skip di SQLite) (§9).
+### Verifikasi batch 16/09/2026 (FASE 4 + inspeksi)
+- `php artisan test` → **34/34 PASS** (tanpa regresi; kolom foto model & trigger no-op di SQLite)
+- `php artisan migrate` → `..._add_side_photos...` & `..._update_rental_vehicle_status_trigger` **DONE** (MySQL)
+- `php artisan view:cache` + `node --check app-enhancements.js` → **bersih**
+
+### Sisa temuan terbuka
+- **Tidak ada** — seluruh temuan `[ ]` telah ditutup & diverifikasi 16/09/2026.
 
 ---
 
-> Audit disusun 15/09/2026, **disinkronkan dengan implementasi 16/09/2026** (static review + `php artisan test` 34/34). `[X]` = terverifikasi ada di kode; 6 item `[ ]` di atas tetap terbuka sebagai UX/polish & tech-debt prioritas rendah. File terkait dicatat `path:line` agar presisi tanpa melebar.
+> Audit disusun 15/09/2026, **disinkronkan + dituntaskan 16/09/2026** (static review + `php artisan test` 34/34 + `migrate` MySQL). FASE 1–4 beres; **tidak ada temuan `[ ]` tersisa**. File terkait dicatat `path:line` agar presisi tanpa melebar.

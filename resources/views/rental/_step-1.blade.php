@@ -17,9 +17,11 @@
             </div>
         </div>
         <div class="col-md-6 text-end">
-            <a href="{{ route('master.customer.create') }}" class="btn btn-outline-primary" target="_blank">
-                <i class="ri-add-line"></i> Pelanggan Baru
-            </a>
+            @can('master_add')
+                <button type="button" class="btn btn-outline-primary" id="btnQuickCreateCustomer" data-bs-toggle="modal" data-bs-target="#quickCustomerModal">
+                    <i class="ri-add-line"></i> Pelanggan Baru
+                </button>
+            @endcan
         </div>
     </div>
 
@@ -64,6 +66,54 @@
         </button>
     </div>
 </form>
+
+@can('master_add')
+<div class="modal fade" id="quickCustomerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="ri-user-add-line me-1"></i> Tambah Pelanggan Baru</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="quickCustomerForm">
+                @csrf
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Tipe Pelanggan <span class="text-danger">*</span></label>
+                            <select name="customer_type" class="form-select" required>
+                                <option value="individual">Individu</option>
+                                <option value="corporate">Perusahaan</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nama Depan <span class="text-danger">*</span></label>
+                            <input type="text" name="first_name" class="form-control" required maxlength="50">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nama Belakang</label>
+                            <input type="text" name="last_name" class="form-control" maxlength="50">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Telepon <span class="text-danger">*</span></label>
+                            <input type="text" name="phone" class="form-control" required maxlength="20" placeholder="08xxxxxxxxxx">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control" maxlength="100">
+                        </div>
+                    </div>
+                    <p class="text-muted small mt-2 mb-0">Pelanggan tersimpan langsung &amp; muncul di daftar — tanpa keluar dari wizard.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan Pelanggan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endcan
 
 <script>
     let searchTimer = null;
@@ -153,5 +203,43 @@
                 }
             });
         }, 300);
+    });
+
+    // Quick-create pelanggan tanpa keluar wizard — simpan via AJAX lalu muat ulang daftar step 1.
+    $(document).on('submit', '#quickCustomerForm', function(e) {
+        e.preventDefault();
+        const form = this;
+        const btn = $(form).find('button[type=submit]');
+        if (btn.prop('disabled')) return;
+        btn.prop('disabled', true);
+
+        $.ajax({
+            url: '{{ route("master.customer.store") }}',
+            type: 'POST',
+            data: $(form).serialize(),
+            dataType: 'JSON',
+            success: function(res) {
+                btn.prop('disabled', false);
+                if (res.status) {
+                    const modalEl = document.getElementById('quickCustomerModal');
+                    if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+                    form.reset();
+                    Swal.fire({ icon: 'success', title: 'Tersimpan', text: 'Pelanggan baru ditambahkan.', timer: 1200, showConfirmButton: false });
+                    if (window.loadStep) loadStep(1);
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Gagal', text: res.msg || 'Tidak dapat menyimpan pelanggan.' });
+                }
+            },
+            error: function(xhr) {
+                btn.prop('disabled', false);
+                if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
+                    let msg = '';
+                    $.each(xhr.responseJSON.errors, function(k, v) { msg += v[0] + '<br>'; });
+                    Swal.fire({ icon: 'error', title: 'Periksa isian', html: msg });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'Tidak dapat menyimpan pelanggan.' });
+                }
+            }
+        });
     });
 </script>

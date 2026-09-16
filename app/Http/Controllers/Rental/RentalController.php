@@ -1327,9 +1327,22 @@ class RentalController extends Controller
 
     public function invoicePrint($rental)
     {
-        $invoice = Invoice::where('rental_id', $rental)->firstOrFail();
+        // FASE 3 tech-debt: render PDF invoice langsung (dulu cuma redirect ke finance).
+        $invoice = Invoice::with([
+            'rental.customer',
+            'rental.vehicle.model.brand',
+            'rental.driver',
+            'rental.details',
+            'rental.pickupLocation',
+            'rental.returnLocation',
+            'payments',
+        ])->where('rental_id', $rental)->firstOrFail();
 
-        return redirect()->route('finance.invoice.print', $invoice->invoice_id);
+        return \App\Support\PdfDocument::download(
+            'finance.invoice.print',
+            ['item' => $invoice, 'settings' => \App\Support\AppSettings::all()],
+            'Invoice-' . ($invoice->invoice_number ?? $invoice->invoice_id)
+        );
     }
 
     public function paymentStore(Request $request, $rental)
