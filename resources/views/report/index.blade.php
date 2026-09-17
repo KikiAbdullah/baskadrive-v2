@@ -133,6 +133,8 @@
 @endsection
 
 @php
+    $filters = ['start_date' => $start, 'end_date' => $end, 'status' => request('status', '')];
+
     $exportTypes = [
         'revenue' => 'revenue',
         'fleet' => 'fleet-utilization',
@@ -159,16 +161,18 @@
                 <h4 class="mb-1">{{ $title }}</h4>
                 <p class="mb-0">{{ $subtitle }} — <strong>{{ $tabs[$tab] }}</strong></p>
             </div>
-            <div class="d-flex align-content-center flex-wrap gap-4">
-                <a href="{{ route('report.export', $exportTypes[$tab]) }}" id="btnExportCsv" class="action-link-icon-text">
-                    <i class="ri-download-2-line"></i>
-                    <span class="fw-semibold text-uppercase">Export CSV</span>
-                </a>
-                <a href="{{ route('report.export-pdf', $exportTypes[$tab]) }}" id="btnExportPdf" class="action-link-icon-text">
-                    <i class="ri-file-pdf-2-line"></i>
-                    <span class="fw-semibold text-uppercase">Export PDF</span>
-                </a>
-            </div>
+            @can('report_export')
+                <div class="d-flex align-content-center flex-wrap gap-4">
+                    <a href="{{ route('report.export', array_merge(['type' => $exportTypes[$tab]], $filters)) }}" id="btnExportCsv" class="action-link-icon-text">
+                        <i class="ri-download-2-line"></i>
+                        <span class="fw-semibold text-uppercase">Export CSV</span>
+                    </a>
+                    <a href="{{ route('report.export-pdf', array_merge(['type' => $exportTypes[$tab]], $filters)) }}" id="btnExportPdf" class="action-link-icon-text">
+                        <i class="ri-file-pdf-2-line"></i>
+                        <span class="fw-semibold text-uppercase">Export PDF</span>
+                    </a>
+                </div>
+            @endcan
         </div>
 
         @include('layouts.alert')
@@ -176,7 +180,7 @@
         {{-- ===== TABS ===== --}}
         <div class="rpt-tabs mb-1">
             @foreach($tabs as $key => $label)
-                <a href="{{ route('report.index', ['tab' => $key]) }}"
+                <a href="{{ route('report.index', array_merge(['tab' => $key], $filters)) }}"
                     class="rpt-tab {{ $tab == $key ? 'active' : '' }}">
                     <i class="{{ $tabIcons[$key] }}"></i> {{ $label }}
                 </a>
@@ -186,23 +190,30 @@
         {{-- ===== FILTER BAR ===== --}}
         <div class="card mb-1">
             <div class="card-body py-2">
-                <div class="rpt-filter">
+                <form class="rpt-filter" id="reportFilters" action="{{ route('report.index') }}" method="GET" novalidate>
+                    <input type="hidden" name="tab" value="{{ $tab }}">
                     <i class="ri-filter-3-line text-muted"></i>
                     <strong class="small text-muted">Filter:</strong>
-                    <input type="text" class="form-control form-control-sm flatpickr-date" id="startDate" value="{{ $start }}" autocomplete="off" placeholder="YYYY-MM-DD">
-                    <span class="text-muted small">s/d</span>
-                    <input type="text" class="form-control form-control-sm flatpickr-date" id="endDate" value="{{ $end }}" autocomplete="off" placeholder="YYYY-MM-DD">
+                    <input type="text" class="form-control form-control-sm" id="flatpickr-range" data-range-start="#startDate" data-range-end="#endDate" value="{{ $start }} to {{ $end }}" autocomplete="off" placeholder="YYYY-MM-DD to YYYY-MM-DD" aria-label="Rentang tanggal" aria-describedby="rangeHint filterError" required>
+                    <input type="hidden" id="startDate" name="start_date" value="{{ $start }}">
+                    <input type="hidden" id="endDate" name="end_date" value="{{ $end }}">
                     @if($tab === 'claims')
-                        <select class="form-select form-select-sm w-auto" id="statusFilter">
-                            <option value="">Semua Status</option>
-                            <option value="reported">Laporan</option>
-                            <option value="assessment">Assessment</option>
-                            <option value="repair_in_progress">Diperbaiki</option>
-                            <option value="repaired">Selesai</option>
-                            <option value="claimed_insurance">Diklaim</option>
+                        <select class="form-select form-select-sm w-auto" id="statusFilter" name="status" aria-label="Status kerusakan">
+                            <option value="" @selected($filters['status'] === '')>Semua Status</option>
+                            <option value="reported" @selected($filters['status'] === 'reported')>Laporan</option>
+                            <option value="assessment" @selected($filters['status'] === 'assessment')>Assessment</option>
+                            <option value="repair_in_progress" @selected($filters['status'] === 'repair_in_progress')>Diperbaiki</option>
+                            <option value="repaired" @selected($filters['status'] === 'repaired')>Selesai</option>
+                            <option value="claimed_insurance" @selected($filters['status'] === 'claimed_insurance')>Diklaim</option>
+                            <option value="written_off" @selected($filters['status'] === 'written_off')>Dihapuskan</option>
                         </select>
+                    @else
+                        <input type="hidden" name="status" value="{{ $filters['status'] }}">
                     @endif
-                </div>
+                    <button type="submit" class="btn btn-sm btn-primary">Terapkan Filter</button>
+                </form>
+                <div id="rangeHint" class="small text-muted mt-2">Maksimal 366 hari, termasuk tanggal mulai dan akhir. Klik Terapkan Filter untuk memperbarui seluruh laporan.</div>
+                <div id="filterError" class="small text-danger mt-1" role="alert" hidden></div>
             </div>
         </div>
 
@@ -213,7 +224,7 @@
                     <div class="rpt-stat green">
                         <i class="stat-icon ri-money-dollar-circle-line"></i>
                         <div class="stat-label">Total Pendapatan</div>
-                        <div class="stat-value text-success">Rp {{ number_format($totalRevenue ?? 0, 0, ',', '.') }}</div>
+                        <div class="stat-value text-success">Rp {{ number_format($totalRevenue ?? 0, 2, ',', '.') }}</div>
                     </div>
                 </div>
                 <div class="col-md-4">
@@ -227,7 +238,7 @@
                     <div class="rpt-stat red">
                         <i class="stat-icon ri-error-warning-line"></i>
                         <div class="stat-label">Piutang (Jatuh Tempo)</div>
-                        <div class="stat-value text-danger">Rp {{ number_format($outstanding ?? 0, 0, ',', '.') }}</div>
+                        <div class="stat-value text-danger">Rp {{ number_format($outstanding ?? 0, 2, ',', '.') }}</div>
                     </div>
                 </div>
             </div>
@@ -237,21 +248,21 @@
                     <div class="rpt-stat green">
                         <i class="stat-icon ri-arrow-up-circle-line"></i>
                         <div class="stat-label">Total Pendapatan</div>
-                        <div class="stat-value text-success">Rp {{ number_format($income ?? 0, 0, ',', '.') }}</div>
+                        <div class="stat-value text-success">Rp {{ number_format($income ?? 0, 2, ',', '.') }}</div>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="rpt-stat red">
                         <i class="stat-icon ri-arrow-down-circle-line"></i>
                         <div class="stat-label">Total Beban</div>
-                        <div class="stat-value text-danger">Rp {{ number_format($expense ?? 0, 0, ',', '.') }}</div>
+                        <div class="stat-value text-danger">Rp {{ number_format($expense ?? 0, 2, ',', '.') }}</div>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="rpt-stat {{ ($profit ?? 0) >= 0 ? 'green' : 'red' }}">
                         <i class="stat-icon ri-funds-line"></i>
                         <div class="stat-label">Laba Bersih</div>
-                        <div class="stat-value {{ ($profit ?? 0) >= 0 ? 'text-success' : 'text-danger' }}">Rp {{ number_format($profit ?? 0, 0, ',', '.') }}</div>
+                        <div class="stat-value {{ ($profit ?? 0) >= 0 ? 'text-success' : 'text-danger' }}">Rp {{ number_format($profit ?? 0, 2, ',', '.') }}</div>
                     </div>
                 </div>
             </div>
@@ -266,6 +277,12 @@
                 <div class="card-body">
                     <div id="rptChart"></div>
                 </div>
+            </div>
+        @endif
+
+        @if($tab === 'fleet')
+            <div class="alert alert-info small mb-1">
+                Utilisasi per kendaraan = jumlah rental_days dari sewa yang MULAI dalam periode (semua status), dibagi jumlah hari kalender inklusif dalam periode, dikali 100%, maksimal 100%. Metrik ini bukan okupansi unik atau ketersediaan seluruh armada.
             </div>
         @endif
 
@@ -330,7 +347,8 @@
         const urlAjax = '{{ route('report.data', ['tab' => $tab]) }}';
 
         // ===== Render kolom khusus =====
-        const renderRp = (num) => 'Rp ' + new Intl.NumberFormat('id-ID').format(parseFloat(num || 0));
+        const renderRp = (num) => 'Rp ' + new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(parseFloat(num || 0));
+        const appliedFilters = @json($filters);
 
         $(document).ready(function() {
             @php
@@ -404,11 +422,9 @@
                 "ajax": {
                     url: urlAjax,
                     data: function(d) {
-                        d.start_date = $('#startDate').val();
-                        d.end_date = $('#endDate').val();
-                        @if($tab === 'claims')
-                        d.status = $('#statusFilter').val();
-                        @endif
+                        d.start_date = appliedFilters.start_date;
+                        d.end_date = appliedFilters.end_date;
+                        d.status = appliedFilters.status;
                     }
                 },
                 "columns": columns,
@@ -416,18 +432,41 @@
                 "dom": '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>><"table-responsive"t><"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
             });
 
-            $('#startDate, #endDate, #statusFilter').on('change', function() {
-                dtable.ajax.reload();
-                syncExportLinks();
-                @if(in_array($tab, ['revenue', 'fleet']))
-                loadChart();
-                @endif
+            function parseDate(value) {
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+                const date = new Date(value + 'T00:00:00Z');
+                return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value ? date : null;
+            }
+
+            $('#reportFilters').on('submit', function(event) {
+                const start = parseDate($('#startDate').val());
+                const end = parseDate($('#endDate').val());
+                let error = '';
+
+                if (!start || !end) {
+                    error = 'Masukkan tanggal mulai dan akhir yang valid (YYYY-MM-DD).';
+                } else if (end < start) {
+                    error = 'Tanggal akhir tidak boleh sebelum tanggal mulai.';
+                } else if ((end - start) / 86400000 + 1 > 366) {
+                    error = 'Rentang maksimal 366 hari, termasuk tanggal mulai dan akhir.';
+                }
+
+                $('#filterError').text(error).prop('hidden', !error);
+                $('#flatpickr-range').attr('aria-invalid', error ? 'true' : 'false');
+                if (error) {
+                    event.preventDefault();
+                }
             });
 
             function syncExportLinks() {
-                const qs = '?start_date=' + ($('#startDate').val() || '') + '&end_date=' + ($('#endDate').val() || '');
-                $('#btnExportCsv').attr('href', $('#btnExportCsv').attr('href').split('?')[0] + qs);
-                $('#btnExportPdf').attr('href', $('#btnExportPdf').attr('href').split('?')[0] + qs);
+                const params = new URLSearchParams(appliedFilters);
+                $('#btnExportCsv, #btnExportPdf').each(function() {
+                    const href = $(this).attr('href');
+                    if (!href) return;
+                    const url = new URL(href, window.location.href);
+                    params.forEach((value, key) => url.searchParams.set(key, value));
+                    $(this).attr('href', url.toString());
+                });
             }
             syncExportLinks();
 
@@ -435,11 +474,12 @@
             let chartInstance = null;
             function loadChart() {
                 $.getJSON(urlAjax, {
-                    draw: 1, start: 0, length: 1000,
-                    start_date: $('#startDate').val(),
-                    end_date: $('#endDate').val()
+                    draw: 1, start: 0, length: {{ $tab === 'revenue' ? 13 : 15 }},
+                    start_date: appliedFilters.start_date,
+                    end_date: appliedFilters.end_date,
+                    status: appliedFilters.status
                 }, function(res) {
-                    const rows = res.data || [];
+                    const rows = (res.data || []).slice(0, {{ $tab === 'revenue' ? 13 : 15 }});
                     @if($tab === 'revenue')
                     const cats = rows.map(r => r.period_label).reverse();
                     const series = rows.map(r => parseFloat(r.revenue)).reverse();
@@ -453,7 +493,8 @@
                         chart: { type: type, height: 280, toolbar: { show: false }, sparkline: { enabled: false } },
                         series: [{ name: 'Pendapatan (Rp)', data: series }],
                         xaxis: { categories: cats },
-                        yaxis: { labels: { formatter: v => (v >= 1000000 ? (v / 1000000).toFixed(1) + ' jt' : (v || 0)) } },
+                        yaxis: { labels: { formatter: v => renderRp(v) } },
+                        tooltip: { y: { formatter: v => renderRp(v) } },
                         colors: ['#666cff'],
                         dataLabels: { enabled: false },
                         legend: { show: false }

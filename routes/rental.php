@@ -1,14 +1,5 @@
 <?php
 
-use App\Http\Controllers\Rental\{
-    AccountingController,
-    DashboardController,
-    FinanceController,
-    FleetController,
-    ReportController,
-    RentalController,
-    SystemController,
-};
 use App\Http\Controllers\Master\BrandController;
 use App\Http\Controllers\Master\CoaController;
 use App\Http\Controllers\Master\CustomerController;
@@ -20,6 +11,13 @@ use App\Http\Controllers\Master\PromoController;
 use App\Http\Controllers\Master\VehicleController;
 use App\Http\Controllers\Master\VehicleModelController;
 use App\Http\Controllers\Master\WorkshopController;
+use App\Http\Controllers\Rental\AccountingController;
+use App\Http\Controllers\Rental\DashboardController;
+use App\Http\Controllers\Rental\FinanceController;
+use App\Http\Controllers\Rental\FleetController;
+use App\Http\Controllers\Rental\RentalController;
+use App\Http\Controllers\Rental\ReportController;
+use App\Http\Controllers\Rental\SystemController;
 use Illuminate\Support\Facades\Route;
 
 // ===========================================
@@ -346,8 +344,8 @@ Route::group(['prefix' => 'accounting', 'as' => 'accounting.', 'middleware' => [
 Route::group(['prefix' => 'report', 'as' => 'report.', 'middleware' => ['can:report_view']], function () {
     Route::get('/', [ReportController::class, 'index'])->name('index');
     Route::get('/get-data', [ReportController::class, 'data'])->name('data');
-    Route::get('/export/{type}', [ReportController::class, 'export'])->name('export');
-    Route::get('/export-pdf/{type}', [ReportController::class, 'exportPdf'])->name('export-pdf');
+    Route::get('/export/{type}', [ReportController::class, 'export'])->middleware(['can:report_export', 'throttle:5,1'])->name('export');
+    Route::get('/export-pdf/{type}', [ReportController::class, 'exportPdf'])->middleware(['can:report_export', 'throttle:5,1'])->name('export-pdf');
 });
 
 // ===========================================

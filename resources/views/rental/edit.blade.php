@@ -57,15 +57,12 @@
                             </div>
 
                             <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Tanggal Mulai Sewa <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control flatpickr-datetime" name="rental_start_date" autocomplete="off"
-                                        value="{{ $rental->rental_start_date?->format('Y-m-d H:i') }}" required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Tanggal Selesai Sewa <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control flatpickr-datetime" name="rental_end_date" autocomplete="off"
-                                        value="{{ $rental->rental_end_date?->format('Y-m-d H:i') }}" required>
+                                <div class="col-12 mb-3">
+                                    <label class="form-label" for="flatpickr-range">Periode Sewa <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="flatpickr-range" data-range-start="#rental_start_date" data-range-end="#rental_end_date" data-range-time="true" autocomplete="off"
+                                        value="{{ $rental->rental_start_date?->format('Y-m-d H:i') }} to {{ $rental->rental_end_date?->format('Y-m-d H:i') }}" placeholder="YYYY-MM-DD HH:MM to YYYY-MM-DD HH:MM" required>
+                                    <input type="hidden" name="rental_start_date" id="rental_start_date" value="{{ $rental->rental_start_date?->format('Y-m-d H:i') }}">
+                                    <input type="hidden" name="rental_end_date" id="rental_end_date" value="{{ $rental->rental_end_date?->format('Y-m-d H:i') }}">
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Lokasi Penjemputan</label>

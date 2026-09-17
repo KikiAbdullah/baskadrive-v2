@@ -37,15 +37,11 @@
     </div>
 </div>
 <div class="row mb-3">
-    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Berlaku Dari</label>
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block" for="flatpickr-range">Berlaku Dari - Sampai</label>
     <div class="col-lg-9">
-        <input type="text" name="valid_from" value="{{ $item->valid_from?->format('Y-m-d') ?? old('valid_from') }}" class="form-control flatpickr-date" autocomplete="off" />
-    </div>
-</div>
-<div class="row mb-3">
-    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Berlaku Sampai</label>
-    <div class="col-lg-9">
-        <input type="text" name="valid_to" value="{{ $item->valid_to?->format('Y-m-d') ?? old('valid_to') }}" class="form-control flatpickr-date" autocomplete="off" />
+        <input type="text" class="form-control" id="flatpickr-range" data-range-start="#validFrom" data-range-end="#validTo" placeholder="YYYY-MM-DD to YYYY-MM-DD" autocomplete="off" />
+        <input type="hidden" name="valid_from" id="validFrom" value="{{ $item?->valid_from?->format('Y-m-d') ?? old('valid_from') }}" />
+        <input type="hidden" name="valid_to" id="validTo" value="{{ $item?->valid_to?->format('Y-m-d') ?? old('valid_to') }}" />
     </div>
 </div>
 <div class="row mb-3">

@@ -11,13 +11,11 @@
     </div>
 
     <div class="row mb-4">
-        <div class="col-md-4">
-            <label class="form-label">Tanggal Mulai <span class="text-danger">*</span></label>
-            <input type="text" class="form-control flatpickr-date" name="rental_start_date" id="filterStartDate" value="{{ \Illuminate\Support\Str::before($data['rental_start_date'] ?? '', ' ') }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
-        </div>
-        <div class="col-md-4">
-            <label class="form-label">Tanggal Selesai <span class="text-danger">*</span></label>
-            <input type="text" class="form-control flatpickr-date" name="rental_end_date" id="filterEndDate" value="{{ \Illuminate\Support\Str::before($data['rental_end_date'] ?? '', ' ') }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
+        <div class="col-md-8">
+            <label class="form-label" for="flatpickr-range">Tanggal Mulai - Selesai <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="flatpickr-range" data-range-start="#filterStartDate" data-range-end="#filterEndDate" placeholder="YYYY-MM-DD to YYYY-MM-DD" autocomplete="off" required>
+            <input type="hidden" name="rental_start_date" id="filterStartDate" value="{{ \Illuminate\Support\Str::before($data['rental_start_date'] ?? '', ' ') }}">
+            <input type="hidden" name="rental_end_date" id="filterEndDate" value="{{ \Illuminate\Support\Str::before($data['rental_end_date'] ?? '', ' ') }}">
         </div>
         <div class="col-md-4">
             <label class="form-label">&nbsp;</label>
@@ -138,7 +136,15 @@
         });
     });
 
-    if ($('#filterStartDate').val() && $('#filterEndDate').val()) {
-        $('#checkAvailability').trigger('click');
-    }
+    $('#filterEndDate').on('change', function() {
+        if ($('#filterStartDate').val() && $(this).val()) {
+            $('#checkAvailability').trigger('click');
+        }
+    });
+
+    $(function() {
+        if ($('#filterStartDate').val() && $('#filterEndDate').val()) {
+            $('#checkAvailability').trigger('click');
+        }
+    });
 </script>

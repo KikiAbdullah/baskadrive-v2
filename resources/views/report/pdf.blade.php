@@ -37,11 +37,15 @@
                 @if($i === 0)
                     @foreach($row as $cell)<th>{{ $cell }}</th>@endforeach
                 @else
-                    @foreach($row as $cell)<td>{{ is_numeric($cell) && $i > 0 && $cell >= 1000 ? number_format($cell, 0, ',', '.') : $cell }}</td>@endforeach
+                    @foreach($row as $column => $cell)<td>{{ \App\Support\ReportFormat::cell($cell, $columnTypes[$column] ?? 'text') }}</td>@endforeach
                 @endif
             </tr>
         @endforeach
     </table>
+
+    @if(!empty($note))
+        <div class="meta">{{ $note }}</div>
+    @endif
 
     <div class="footer">Dokumen dihasilkan otomatis oleh {{ $settings['company_name'] ?? 'BaskaDrive' }} &mdash; {{ $settings['company_tagline'] ?? '' }}</div>
 </body>

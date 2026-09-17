@@ -115,7 +115,6 @@ class PermissionSeeder extends Seeder
         'report' => [
             'report_view',
             'report_export',
-            'report_download',
         ],
 
         // ===========================================
@@ -146,6 +145,7 @@ class PermissionSeeder extends Seeder
 
                 if ($existing) {
                     $skipped++;
+
                     continue;
                 }
 

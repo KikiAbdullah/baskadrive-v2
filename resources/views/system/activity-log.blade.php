@@ -16,10 +16,11 @@
             <div class="card-header d-flex justify-content-between align-items-center gap-2">
                 <h6 class="mb-0">Filter</h6>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <input type="text" class="form-control form-control-sm flatpickr-date w-auto" id="dateFromFilter"
-                        placeholder="Dari tanggal" autocomplete="off" style="max-width: 150px;">
-                    <input type="text" class="form-control form-control-sm flatpickr-date w-auto" id="dateToFilter"
-                        placeholder="Sampai tanggal" autocomplete="off" style="max-width: 150px;">
+                    <input type="text" class="form-control form-control-sm w-auto" id="flatpickr-range"
+                        data-range-start="#dateFromFilter" data-range-end="#dateToFilter"
+                        placeholder="Rentang tanggal" autocomplete="off" style="max-width: 250px;" aria-label="Rentang tanggal log">
+                    <input type="hidden" id="dateFromFilter" value="">
+                    <input type="hidden" id="dateToFilter" value="">
                     <select class="form-select form-select-sm w-auto" id="userFilter">
                         <option value="">Semua Pengguna</option>
                         @foreach($users as $u)

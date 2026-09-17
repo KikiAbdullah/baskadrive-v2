@@ -6,12 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\DamageReport;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\Refund;
 use App\Models\Rental;
-use App\Models\ReturnCar;
+use App\Support\AppSettings;
+use App\Support\PdfDocument;
+use App\Support\ReportFormat;
 use Carbon\Carbon;
 use DB;
 use Exception;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 
 class ReportController extends Controller
 {
@@ -22,13 +28,29 @@ class ReportController extends Controller
 
     private function dateRange(Request $request)
     {
+        $request->validate([
+            'start_date' => ['nullable', 'date_format:Y-m-d'],
+            'end_date' => ['nullable', 'date_format:Y-m-d'],
+            'tab' => ['nullable', 'string'],
+            'status' => ['nullable', 'in:reported,assessment,repair_in_progress,repaired,claimed_insurance,written_off'],
+        ]);
+
         $start = $request->filled('start_date') ? Carbon::parse($request->start_date)->startOfDay() : Carbon::now()->startOfYear();
         $end = $request->filled('end_date') ? Carbon::parse($request->end_date)->endOfDay() : Carbon::now()->endOfDay();
+
+        if ($start->gt($end)) {
+            throw ValidationException::withMessages(['end_date' => 'Tanggal akhir harus sama atau setelah tanggal awal.']);
+        }
+        if ($start->diffInDays($end->copy()->startOfDay()) + 1 > 366) {
+            throw ValidationException::withMessages(['end_date' => 'Rentang laporan maksimal 366 hari.']);
+        }
+
         return [$start, $end];
     }
 
     public function index(Request $request)
     {
+        [$start, $end] = $this->dateRange($request);
         $tab = $request->get('tab', 'revenue');
 
         $tabs = [
@@ -39,11 +61,9 @@ class ReportController extends Controller
             'financial' => 'Laporan Keuangan',
         ];
 
-        if (!array_key_exists($tab, $tabs)) {
-            $tab = 'revenue';
+        if (! array_key_exists($tab, $tabs)) {
+            return redirect()->route('report.index')->withErrors('Tipe laporan tidak dikenal.');
         }
-
-        [$start, $end] = $this->dateRange($request);
 
         $view = [
             'title' => 'Laporan',
@@ -55,19 +75,18 @@ class ReportController extends Controller
         ];
 
         if ($tab === 'revenue') {
-            $view['totalRevenue'] = Payment::where('status', 'completed')
-                ->whereBetween('payment_date', [$start, $end])
-                ->sum('amount');
+            $view['totalRevenue'] = $this->revenueQuery($start, $end)->get()->sum('revenue');
             $view['totalInvoices'] = Invoice::whereBetween('issue_date', [$start, $end])->count();
             $view['outstanding'] = Invoice::whereIn('status', ['sent', 'partially_paid', 'overdue'])
-                ->where('due_date', '<', now())->sum(DB::raw('total_amount - paid_amount'));
+                ->where('due_date', '<=', $end)
+                ->where('issue_date', '<=', $end)
+                ->sum(DB::raw('total_amount - paid_amount'));
         }
 
         if ($tab === 'financial') {
-            $view['income'] = Payment::where('status', 'completed')->whereBetween('payment_date', [$start, $end])->sum('amount');
-            $view['expense'] = DB::table('tr_maintenance')->whereNotNull('cost')->whereBetween('actual_date', [$start, $end])->sum('cost')
-                + DB::table('tr_fine')->where('status', 'paid')->whereBetween('paid_date', [$start, $end])->sum('amount')
-                + DB::table('tr_refund')->where('status', 'processed')->whereBetween('refund_date', [$start, $end])->sum('amount');
+            $rows = $this->financialRows($start, $end);
+            $view['income'] = $rows->sum('income');
+            $view['expense'] = $rows->sum('expense');
             $view['profit'] = $view['income'] - $view['expense'];
         }
 
@@ -77,12 +96,128 @@ class ReportController extends Controller
     public function data(Request $request)
     {
         return match ($request->get('tab', 'revenue')) {
+            'revenue' => $this->revenueData($request),
             'fleet' => $this->fleetUtilizationData($request),
             'customers' => $this->topCustomersData($request),
             'claims' => $this->claimsData($request),
             'financial' => $this->financialData($request),
-            default => $this->revenueData($request),
+            default => response()->json(['error' => 'Tipe laporan tidak dikenal.'], 422),
         };
+    }
+
+    private function validatePagination(Request $request): void
+    {
+        $request->validate([
+            'length' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'start' => ['sometimes', 'integer', 'min:0'],
+        ]);
+
+        $request->merge([
+            'length' => (int) $request->input('length', 10),
+            'start' => (int) $request->input('start', 0),
+        ]);
+    }
+
+    private function monthExpression(string $column): string
+    {
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? "strftime('%Y-%m', {$column})"
+            : "DATE_FORMAT({$column}, '%Y-%m')";
+    }
+
+    private function revenueQuery(Carbon $start, Carbon $end): Builder
+    {
+        $period = $this->monthExpression('payment_date');
+
+        return Payment::query()
+            ->where('status', 'completed')
+            ->whereBetween('payment_date', [$start, $end])
+            ->selectRaw("{$period} as period, SUM(amount) as revenue, COUNT(*) as payments_count")
+            ->groupByRaw($period)
+            ->orderByDesc('period');
+    }
+
+    private function fleetQuery(Carbon $start, Carbon $end): Builder
+    {
+        $name = DB::connection()->getDriverName() === 'sqlite'
+            ? "COALESCE(m_brand.brand_name, '') || ' ' || COALESCE(m_vehicle_model.model_name, '')"
+            : "CONCAT(COALESCE(m_brand.brand_name, ''), ' ', COALESCE(m_vehicle_model.model_name, ''))";
+
+        return Rental::query()
+            ->join('m_vehicle', 'tr_rental.vehicle_id', '=', 'm_vehicle.vehicle_id')
+            ->leftJoin('m_vehicle_model', 'm_vehicle.model_id', '=', 'm_vehicle_model.model_id')
+            ->leftJoin('m_brand', 'm_vehicle_model.brand_id', '=', 'm_brand.brand_id')
+            ->whereBetween('tr_rental.rental_start_date', [$start, $end])
+            ->selectRaw("m_vehicle.vehicle_id, m_vehicle.license_plate, {$name} as vehicle_name,
+                COUNT(*) as total_rentals, SUM(tr_rental.rental_days) as total_days,
+                SUM(tr_rental.total_amount) as total_revenue")
+            ->groupBy('m_vehicle.vehicle_id', 'm_vehicle.license_plate', 'm_brand.brand_name', 'm_vehicle_model.model_name')
+            ->orderByDesc('total_rentals')
+            ->orderBy('m_vehicle.vehicle_id');
+    }
+
+    private function customerQuery(Carbon $start, Carbon $end): Builder
+    {
+        $name = DB::connection()->getDriverName() === 'sqlite'
+            ? "COALESCE(m_customer.first_name, '') || ' ' || COALESCE(m_customer.last_name, '') ||
+                CASE WHEN m_customer.customer_type = 'corporate' THEN ' (' || COALESCE(m_customer.company_name, '') || ')' ELSE '' END"
+            : "CONCAT(COALESCE(m_customer.first_name, ''), ' ', COALESCE(m_customer.last_name, ''),
+                CASE WHEN m_customer.customer_type = 'corporate' THEN CONCAT(' (', COALESCE(m_customer.company_name, ''), ')') ELSE '' END)";
+
+        return Rental::query()
+            ->join('m_customer', 'tr_rental.customer_id', '=', 'm_customer.customer_id')
+            ->whereBetween('tr_rental.rental_start_date', [$start, $end])
+            ->selectRaw("m_customer.customer_id, {$name} as customer_name, m_customer.customer_type,
+                COUNT(*) as total_rentals, SUM(tr_rental.total_amount) as total_spend,
+                MAX(tr_rental.rental_start_date) as last_rental")
+            ->groupBy('m_customer.customer_id', 'm_customer.first_name', 'm_customer.last_name', 'm_customer.company_name', 'm_customer.customer_type')
+            ->orderByDesc('total_spend')
+            ->orderBy('m_customer.customer_id');
+    }
+
+    private function claimsQuery(Request $request, Carbon $start, Carbon $end): Builder
+    {
+        return DamageReport::query()->with(['vehicle', 'insuranceClaim'])
+            ->whereBetween('reported_date', [$start, $end])
+            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->status));
+    }
+
+    private function utilization($days, Carbon $start, Carbon $end): int
+    {
+        $rangeDays = max(1, (int) $start->copy()->startOfDay()->diffInDays($end->copy()->startOfDay()) + 1);
+
+        return (int) min(100, round((($days ?? 0) / $rangeDays) * 100));
+    }
+
+    private function financialRows(Carbon $start, Carbon $end): Collection
+    {
+        $pays = $this->revenueQuery($start, $end)->pluck('revenue', 'period');
+        $maintenancePeriod = $this->monthExpression('actual_date');
+        $finePeriod = $this->monthExpression('paid_date');
+        $refundPeriod = $this->monthExpression('refund_date');
+
+        $maint = DB::table('tr_maintenance')->whereNotNull('cost')->whereBetween('actual_date', [$start, $end])
+            ->selectRaw("{$maintenancePeriod} as period, SUM(cost) as amount")
+            ->groupByRaw($maintenancePeriod)->pluck('amount', 'period');
+        $fines = DB::table('tr_fine')->where('status', 'paid')->whereBetween('paid_date', [$start, $end])
+            ->selectRaw("{$finePeriod} as period, SUM(amount) as total")
+            ->groupByRaw($finePeriod)->pluck('total', 'period');
+        $refunds = Refund::query()->where('status', 'processed')->whereBetween('refund_date', [$start, $end])
+            ->selectRaw("{$refundPeriod} as period, SUM(amount) as total")
+            ->groupByRaw($refundPeriod)->pluck('total', 'period');
+
+        return $pays->keys()->merge($maint->keys())->merge($fines->keys())->merge($refunds->keys())
+            ->unique()->sortDesc()->values()->map(function ($period) use ($pays, $maint, $fines, $refunds) {
+                $income = (float) ($pays[$period] ?? 0);
+                $expense = (float) (($maint[$period] ?? 0) + ($fines[$period] ?? 0) + ($refunds[$period] ?? 0));
+
+                return (object) [
+                    'period' => $period,
+                    'income' => $income,
+                    'expense' => $expense,
+                    'profit' => $income - $expense,
+                ];
+            });
     }
 
     // ============================================================
@@ -93,17 +228,13 @@ class ReportController extends Controller
     {
         [$start, $end] = $this->dateRange($request);
 
-        $query = Payment::query()
-            ->where('status', 'completed')
-            ->whereBetween('payment_date', [$start, $end])
-            ->selectRaw("DATE_FORMAT(payment_date,'%Y-%m') as period, DATE_FORMAT(payment_date,'%M %Y') as period_label, SUM(amount) as revenue, COUNT(*) as payments_count")
-            ->groupBy('period', 'period_label')
-            ->orderBy('period', 'desc');
+        $this->validatePagination($request);
 
-        return datatables()->of($query)
-            ->addColumn('period_label', fn($r) => $r->period_label)
-            ->addColumn('revenue', fn($r) => (float) $r->revenue)
-            ->addColumn('payments_count', fn($r) => $r->payments_count)
+        return datatables()->of($this->revenueQuery($start, $end))
+            ->addColumn('period_label', fn ($r) => ReportFormat::month($r->period))
+            ->orderColumn('period_label', 'period $1')
+            ->addColumn('revenue', fn ($r) => (float) $r->revenue)
+            ->addColumn('payments_count', fn ($r) => $r->payments_count)
             ->toJson();
     }
 
@@ -114,30 +245,15 @@ class ReportController extends Controller
     public function fleetUtilizationData(Request $request)
     {
         [$start, $end] = $this->dateRange($request);
-        $rangeDays = max(1, $start->copy()->startOfDay()->diffInDays($end->copy()->endOfDay()));
+        $this->validatePagination($request);
 
-        $query = DB::table('tr_rental')
-            ->join('m_vehicle', 'tr_rental.vehicle_id', '=', 'm_vehicle.vehicle_id')
-            ->leftJoin('m_vehicle_model', 'm_vehicle.model_id', '=', 'm_vehicle_model.model_id')
-            ->leftJoin('m_brand', 'm_vehicle_model.brand_id', '=', 'm_brand.brand_id')
-            ->whereBetween('tr_rental.rental_start_date', [$start, $end])
-            ->selectRaw("m_vehicle.vehicle_id, m_vehicle.license_plate, CONCAT(IFNULL(m_brand.brand_name,''),' ',IFNULL(m_vehicle_model.model_name,'')) as vehicle_name,
-                COUNT(*) as total_rentals,
-                SUM(tr_rental.rental_days) as total_days,
-                SUM(tr_rental.total_amount) as total_revenue")
-            ->groupBy('m_vehicle.vehicle_id', 'm_vehicle.license_plate', 'vehicle_name')
-            ->orderByDesc('total_rentals');
-
-        return datatables()->of($query)
-            ->addColumn('license_plate', fn($v) => $v->license_plate)
-            ->addColumn('vehicle_name', fn($v) => $v->vehicle_name ?: '-')
-            ->addColumn('total_rentals', fn($v) => $v->total_rentals)
-            ->addColumn('total_days', fn($v) => (int) ($v->total_days ?? 0))
-            ->addColumn('utilization', function ($v) use ($rangeDays) {
-                $pct = min(100, round((($v->total_days ?? 0) / $rangeDays) * 100));
-                return $pct . '%';
-            })
-            ->addColumn('total_revenue', fn($v) => (float) ($v->total_revenue ?? 0))
+        return datatables()->of($this->fleetQuery($start, $end))
+            ->addColumn('license_plate', fn ($v) => $v->license_plate)
+            ->addColumn('vehicle_name', fn ($v) => trim($v->vehicle_name) ?: '-')
+            ->addColumn('total_rentals', fn ($v) => $v->total_rentals)
+            ->addColumn('total_days', fn ($v) => (int) ($v->total_days ?? 0))
+            ->addColumn('utilization', fn ($v) => $this->utilization($v->total_days, $start, $end).'%')
+            ->addColumn('total_revenue', fn ($v) => (float) ($v->total_revenue ?? 0))
             ->toJson();
     }
 
@@ -149,25 +265,14 @@ class ReportController extends Controller
     {
         [$start, $end] = $this->dateRange($request);
 
-        $query = DB::table('tr_rental')
-            ->join('m_customer', 'tr_rental.customer_id', '=', 'm_customer.customer_id')
-            ->whereBetween('tr_rental.rental_start_date', [$start, $end])
-            ->selectRaw("m_customer.customer_id,
-                CONCAT(IFNULL(m_customer.first_name,''),' ',IFNULL(m_customer.last_name,''),
-                    IF(m_customer.customer_type='company', CONCAT(' (',IFNULL(m_customer.company_name,''),')'),'')) as customer_name,
-                m_customer.customer_type,
-                COUNT(*) as total_rentals,
-                SUM(tr_rental.total_amount) as total_spend,
-                MAX(tr_rental.rental_start_date) as last_rental")
-            ->groupBy('m_customer.customer_id', 'customer_name', 'm_customer.customer_type')
-            ->orderByDesc('total_spend');
+        $this->validatePagination($request);
 
-        return datatables()->of($query)
-            ->addColumn('customer_name', fn($c) => trim($c->customer_name) ?: '-')
-            ->addColumn('customer_type', fn($c) => ucfirst($c->customer_type ?? '-'))
-            ->addColumn('total_rentals', fn($c) => $c->total_rentals)
-            ->addColumn('total_spend', fn($c) => (float) ($c->total_spend ?? 0))
-            ->addColumn('last_rental', fn($c) => $c->last_rental ? Carbon::parse($c->last_rental)->format('d/m/Y') : '-')
+        return datatables()->of($this->customerQuery($start, $end))
+            ->addColumn('customer_name', fn ($c) => trim($c->customer_name) ?: '-')
+            ->addColumn('customer_type', fn ($c) => ucfirst($c->customer_type ?? '-'))
+            ->addColumn('total_rentals', fn ($c) => $c->total_rentals)
+            ->addColumn('total_spend', fn ($c) => (float) ($c->total_spend ?? 0))
+            ->addColumn('last_rental', fn ($c) => $c->last_rental ? Carbon::parse($c->last_rental)->format('d/m/Y') : '-')
             ->toJson();
     }
 
@@ -179,22 +284,17 @@ class ReportController extends Controller
     {
         [$start, $end] = $this->dateRange($request);
 
-        $query = DamageReport::query()->with(['vehicle', 'insuranceClaim'])
-            ->whereBetween('reported_date', [$start, $end]);
+        $this->validatePagination($request);
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        return datatables()->of($query)
-            ->addColumn('vehicle', fn($d) => $d->vehicle?->license_plate ?? '-')
-            ->addColumn('damage_type', fn($d) => ucfirst(str_replace('_', ' ', $d->damage_type ?? '-')))
-            ->addColumn('severity', fn($d) => ucfirst($d->severity ?? '-'))
-            ->addColumn('reported_date', fn($d) => $d->reported_date?->format('d/m/Y') ?? '-')
-            ->addColumn('repair_cost', fn($d) => (float) ($d->actual_repair_cost ?? $d->repair_cost_estimate ?? 0))
-            ->addColumn('status_badge', fn($d) => view('components.damage-status-badge', ['status' => $d->status])->render())
-            ->addColumn('claim_status', fn($d) => $d->insuranceClaim ? view('components.claim-status-badge', ['status' => $d->insuranceClaim->status])->render() : '<span class="text-muted">-</span>')
-            ->addColumn('claim_amount', fn($d) => $d->insuranceClaim ? (float) ($d->insuranceClaim->claim_amount ?? 0) : null)
+        return datatables()->of($this->claimsQuery($request, $start, $end))
+            ->addColumn('vehicle', fn ($d) => $d->vehicle?->license_plate ?? '-')
+            ->addColumn('damage_type', fn ($d) => ucfirst(str_replace('_', ' ', $d->damage_type ?? '-')))
+            ->addColumn('severity', fn ($d) => ucfirst($d->severity ?? '-'))
+            ->addColumn('reported_date', fn ($d) => $d->reported_date?->format('d/m/Y') ?? '-')
+            ->addColumn('repair_cost', fn ($d) => (float) ($d->actual_repair_cost ?? $d->repair_cost_estimate ?? 0))
+            ->addColumn('status_badge', fn ($d) => view('components.damage-status-badge', ['status' => $d->status])->render())
+            ->addColumn('claim_status', fn ($d) => $d->insuranceClaim ? view('components.claim-status-badge', ['status' => $d->insuranceClaim->status])->render() : '<span class="text-muted">-</span>')
+            ->addColumn('claim_amount', fn ($d) => $d->insuranceClaim ? (float) ($d->insuranceClaim->claim_amount ?? 0) : null)
             ->rawColumns(['status_badge', 'claim_status'])
             ->toJson();
     }
@@ -207,34 +307,13 @@ class ReportController extends Controller
     {
         [$start, $end] = $this->dateRange($request);
 
-        // Query terpisah (lebih cepat & kompatibel only_full_group_by)
-        $pays = DB::table('tr_payment')->where('status', 'completed')->whereBetween('payment_date', [$start, $end])
-            ->selectRaw("DATE_FORMAT(payment_date,?) p, SUM(amount) v", ['%Y-%m'])->groupBy('p')->pluck('v', 'p');
-        $maint = DB::table('tr_maintenance')->whereNotNull('cost')->whereBetween('actual_date', [$start, $end])
-            ->selectRaw("DATE_FORMAT(COALESCE(actual_date,scheduled_date),?) p, SUM(cost) v", ['%Y-%m'])->groupBy('p')->pluck('v', 'p');
-        $fines = DB::table('tr_fine')->where('status', 'paid')->whereBetween('paid_date', [$start, $end])
-            ->selectRaw("DATE_FORMAT(paid_date,?) p, SUM(amount) v", ['%Y-%m'])->groupBy('p')->pluck('v', 'p');
-        $refunds = DB::table('tr_refund')->where('status', 'processed')->whereBetween('refund_date', [$start, $end])
-            ->selectRaw("DATE_FORMAT(refund_date,?) p, SUM(amount) v", ['%Y-%m'])->groupBy('p')->pluck('v', 'p');
+        $this->validatePagination($request);
 
-        $periods = collect($pays->keys())->merge($maint->keys())->merge($fines->keys())->merge($refunds->keys())->unique()->sort()->reverse()->values();
-
-        $rows = $periods->map(fn($p) => (object) [
-            'period' => $p,
-            'income' => (float) ($pays[$p] ?? 0),
-            'expense' => (float) (($maint[$p] ?? 0) + ($fines[$p] ?? 0) + ($refunds[$p] ?? 0)),
-        ])->map(fn($r) => (object) [
-            'period' => $r->period,
-            'income' => $r->income,
-            'expense' => $r->expense,
-            'profit' => $r->income - $r->expense,
-        ]);
-
-        return datatables()->of($rows)
-            ->addColumn('period', fn($r) => $r->period)
-            ->addColumn('income', fn($r) => (float) $r->income)
-            ->addColumn('expense', fn($r) => (float) $r->expense)
-            ->addColumn('profit', fn($r) => (float) $r->profit)
+        return datatables()->of($this->financialRows($start, $end))
+            ->editColumn('period', fn ($r) => ReportFormat::month($r->period))
+            ->addColumn('income', fn ($r) => (float) $r->income)
+            ->addColumn('expense', fn ($r) => (float) $r->expense)
+            ->addColumn('profit', fn ($r) => (float) $r->profit)
             ->toJson();
     }
 
@@ -244,81 +323,82 @@ class ReportController extends Controller
 
     private function exportRows(Request $request, string $type): ?array
     {
-        [$start, $end] = $this->dateRange($request);
-        $data = [];
+        $columns = match ($type) {
+            'revenue' => [
+                ['Periode', 'Pendapatan', 'Jumlah Pembayaran'],
+                ['text', 'money', 'integer'],
+            ],
+            'fleet-utilization' => [
+                ['Plat', 'Kendaraan', 'Jml Sewa', 'Hari', 'Utilisasi', 'Pendapatan'],
+                ['text', 'text', 'integer', 'integer', 'percent', 'money'],
+            ],
+            'top-customers' => [
+                ['Pelanggan', 'Jml Sewa', 'Total Belanja'],
+                ['text', 'integer', 'money'],
+            ],
+            'claims' => [
+                ['Kendaraan', 'Jenis', 'Severity', 'Status', 'Klaim', 'Nilai Klaim'],
+                ['text', 'text', 'text', 'text', 'text', 'money'],
+            ],
+            'financial' => [
+                ['Periode', 'Pendapatan', 'Beban', 'Laba'],
+                ['text', 'money', 'money', 'money'],
+            ],
+            default => null,
+        };
 
-        switch ($type) {
-            case 'revenue':
-                $rows = Payment::where('status', 'completed')
-                    ->whereBetween('payment_date', [$start, $end])
-                    ->selectRaw("DATE_FORMAT(payment_date,'%M %Y') as period, SUM(amount) as revenue, COUNT(*) as count")
-                    ->groupBy('period')->orderBy('period')->get();
-                $data[] = ['Periode', 'Pendapatan', 'Jumlah Pembayaran'];
-                foreach ($rows as $r) {
-                    $data[] = [$r->period, $r->revenue, $r->count];
-                }
-                break;
-            case 'fleet-utilization':
-                $rows = DB::table('tr_rental')
-                    ->join('m_vehicle', 'tr_rental.vehicle_id', '=', 'm_vehicle.vehicle_id')
-                    ->leftJoin('m_vehicle_model', 'm_vehicle.model_id', '=', 'm_vehicle_model.model_id')
-                    ->leftJoin('m_brand', 'm_vehicle_model.brand_id', '=', 'm_brand.brand_id')
-                    ->whereBetween('tr_rental.rental_start_date', [$start, $end])
-                    ->selectRaw("m_vehicle.license_plate, CONCAT(IFNULL(m_brand.brand_name,''),' ',IFNULL(m_vehicle_model.model_name,'')) as vehicle_name, COUNT(*) as total_rentals, SUM(tr_rental.rental_days) as total_days, SUM(tr_rental.total_amount) as total_revenue")
-                    ->groupBy('m_vehicle.vehicle_id', 'm_vehicle.license_plate', 'vehicle_name')->get();
-                $data[] = ['Plat', 'Kendaraan', 'Jml Sewa', 'Hari', 'Pendapatan'];
-                foreach ($rows as $r) {
-                    $data[] = [$r->license_plate, $r->vehicle_name, $r->total_rentals, $r->total_days, $r->total_revenue];
-                }
-                break;
-            case 'top-customers':
-                $rows = DB::table('tr_rental')
-                    ->join('m_customer', 'tr_rental.customer_id', '=', 'm_customer.customer_id')
-                    ->whereBetween('tr_rental.rental_start_date', [$start, $end])
-                    ->selectRaw("CONCAT(IFNULL(m_customer.first_name,''),' ',IFNULL(m_customer.last_name,'')) as name, COUNT(*) as total_rentals, SUM(tr_rental.total_amount) as total_spend")
-                    ->groupBy('m_customer.customer_id', 'name')->orderByDesc('total_spend')->get();
-                $data[] = ['Pelanggan', 'Jml Sewa', 'Total Belanja'];
-                foreach ($rows as $r) {
-                    $data[] = [trim($r->name), $r->total_rentals, $r->total_spend];
-                }
-                break;
-            case 'claims':
-                $rows = DamageReport::with(['vehicle', 'insuranceClaim'])
-                    ->whereBetween('reported_date', [$start, $end])
-                    ->get();
-                $data[] = ['Kendaraan', 'Jenis', 'Severity', 'Status', 'Klaim', 'Nilai Klaim'];
-                foreach ($rows as $r) {
-                    $data[] = [
-                        $r->vehicle?->license_plate,
+        if ($columns === null) {
+            return null;
+        }
+
+        [$start, $end] = $this->dateRange($request);
+        [$header, $columnTypes] = $columns;
+
+        $rows = (function () use ($request, $type, $start, $end, $header) {
+            yield $header;
+
+            $records = match ($type) {
+                'revenue' => $this->revenueQuery($start, $end)->lazy(500),
+                'fleet-utilization' => $this->fleetQuery($start, $end)->lazy(500),
+                'top-customers' => $this->customerQuery($start, $end)->lazy(500),
+                'claims' => $this->claimsQuery($request, $start, $end)->orderBy('damage_id')->lazy(500),
+                'financial' => $this->financialRows($start, $end),
+            };
+
+            foreach ($records as $r) {
+                yield match ($type) {
+                    'revenue' => [ReportFormat::month($r->period), $r->revenue, $r->payments_count],
+                    'fleet-utilization' => [
+                        $r->license_plate,
+                        trim($r->vehicle_name) ?: '-',
+                        $r->total_rentals,
+                        (int) ($r->total_days ?? 0),
+                        $this->utilization($r->total_days, $start, $end),
+                        $r->total_revenue ?? 0,
+                    ],
+                    'top-customers' => [trim($r->customer_name) ?: '-', $r->total_rentals, $r->total_spend ?? 0],
+                    'claims' => [
+                        $r->vehicle?->license_plate ?? '-',
                         $r->damage_type,
                         $r->severity,
                         $r->status,
                         $r->insuranceClaim?->status ?? '-',
                         $r->insuranceClaim?->claim_amount ?? 0,
-                    ];
-                }
-                break;
-            case 'financial':
-                $union = DB::table('tr_payment')
-                    ->selectRaw("DATE_FORMAT(payment_date,'%Y-%m') as period, SUM(amount) as income, 0 as expense")
-                    ->where('status', 'completed')
-                    ->whereBetween('payment_date', [$start, $end])
-                    ->unionAll(DB::table('tr_maintenance')->selectRaw("DATE_FORMAT(COALESCE(actual_date,scheduled_date),'%Y-%m') as period, 0 as income, SUM(cost) as expense")->whereNotNull('cost')->whereBetween('COALESCE(actual_date,scheduled_date)', [$start, $end]))
-                    ->unionAll(DB::table('tr_fine')->selectRaw("DATE_FORMAT(paid_date,'%Y-%m') as period, 0 as income, SUM(amount) as expense")->where('status', 'paid')->whereBetween('paid_date', [$start, $end]))
-                    ->unionAll(DB::table('tr_refund')->selectRaw("DATE_FORMAT(refund_date,'%Y-%m') as period, 0 as income, SUM(amount) as expense")->where('status', 'processed')->whereBetween('refund_date', [$start, $end]));
-                $rows = DB::query()->fromSub($union, 't')
-                    ->selectRaw("period, SUM(income) as income, SUM(expense) as expense, SUM(income)-SUM(expense) as profit")
-                    ->groupBy('period')->orderBy('period')->get();
-                $data[] = ['Periode', 'Pendapatan', 'Beban', 'Laba'];
-                foreach ($rows as $r) {
-                    $data[] = [$r->period, $r->income, $r->expense, $r->profit];
-                }
-                break;
-            default:
-                return null;
-        }
+                    ],
+                    'financial' => [ReportFormat::month($r->period), $r->income, $r->expense, $r->profit],
+                };
+            }
+        })();
 
-        return ['rows' => $data, 'start' => $start, 'end' => $end];
+        return [
+            'rows' => $rows,
+            'columnTypes' => $columnTypes,
+            'start' => $start,
+            'end' => $end,
+            'note' => $type === 'fleet-utilization'
+                ? 'Utilisasi = jumlah rental_days untuk sewa yang dimulai dalam periode, semua status, dibagi jumlah hari kalender inklusif dalam periode; maksimal 100%.'
+                : null,
+        ];
     }
 
     public function export(Request $request, $type)
@@ -328,25 +408,40 @@ class ReportController extends Controller
             if ($result === null) {
                 return redirect()->back()->withErrors('Tipe laporan tidak dikenal.');
             }
-            $data = $result['rows'];
-
-            $filename = $type . '_' . now()->format('Ymd') . '.csv';
+            $filename = $type.'_'.now()->format('Ymd').'.csv';
             $headers = [
-                'Content-Type' => 'text/csv',
-                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                'Content-Type' => 'text/csv; charset=UTF-8',
+                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
             ];
 
-            $callback = function () use ($data) {
+            $callback = function () use ($result) {
                 $handle = fopen('php://output', 'w');
-                foreach ($data as $row) {
-                    fputcsv($handle, $row);
+                try {
+                    fwrite($handle, "\xEF\xBB\xBF");
+                    foreach ($result['rows'] as $index => $row) {
+                        $cells = [];
+                        foreach ($row as $column => $value) {
+                            $cells[] = ReportFormat::cell($value, $index === 0 ? 'text' : $result['columnTypes'][$column], true);
+                        }
+                        fputcsv($handle, $cells, ';', '"', '');
+                    }
+                } catch (ValidationException $e) {
+                    throw $e;
+                } catch (Exception $e) {
+                    report($e);
+                    throw $e;
+                } finally {
+                    fclose($handle);
                 }
-                fclose($handle);
             };
 
             return response()->stream($callback, 200, $headers);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (Exception $e) {
-            return redirect()->back()->withErrors($e->getMessage());
+            report($e);
+
+            return redirect()->route('report.index')->withErrors('Laporan gagal diekspor. Silakan coba lagi.');
         }
     }
 
@@ -358,6 +453,14 @@ class ReportController extends Controller
                 return redirect()->back()->withErrors('Tipe laporan tidak dikenal.');
             }
 
+            $rows = [];
+            foreach ($result['rows'] as $index => $row) {
+                if ($index > 2000) {
+                    throw ValidationException::withMessages(['type' => 'Ekspor PDF maksimal 2000 baris data. Persempit filter atau gunakan CSV.']);
+                }
+                $rows[] = $row;
+            }
+
             $labels = [
                 'revenue' => 'Laporan Pendapatan & Profit',
                 'fleet-utilization' => 'Laporan Utilisasi Armada',
@@ -366,19 +469,25 @@ class ReportController extends Controller
                 'financial' => 'Laporan Keuangan',
             ];
 
-            return \App\Support\PdfDocument::download(
+            return PdfDocument::download(
                 'report.pdf',
                 [
                     'reportTitle' => $labels[$type] ?? 'Laporan',
-                    'rows' => $result['rows'],
+                    'rows' => $rows,
+                    'columnTypes' => $result['columnTypes'],
+                    'note' => $result['note'],
                     'start' => $result['start']->format('d/m/Y'),
                     'end' => $result['end']->format('d/m/Y'),
-                    'settings' => \App\Support\AppSettings::all(),
+                    'settings' => AppSettings::all(),
                 ],
-                'Laporan-' . $type . '-' . now()->format('Ymd')
+                'Laporan-'.$type.'-'.now()->format('Ymd')
             );
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (Exception $e) {
-            return redirect()->back()->withErrors($e->getMessage());
+            report($e);
+
+            return redirect()->route('report.index')->withErrors('Laporan gagal diekspor. Silakan coba lagi.');
         }
     }
 }
