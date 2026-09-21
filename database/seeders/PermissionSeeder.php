@@ -41,6 +41,14 @@ class PermissionSeeder extends Seeder
 
         'fleet' => [
             'fleet_view',
+            // FLE-01 (audit Fleet): permission aksi terpisah — pemegang fleet_view
+            // tidak otomatis boleh mengeksekusi mutasi berdampak (jurnal, tagihan,
+            // hapus bukti foto, status kendaraan).
+            'fleet_maintain',
+            'fleet_damage_add',
+            'fleet_damage_manage',
+            'fleet_claim_manage',
+            'fleet_bill_renter',
         ],
 
         'finance' => [

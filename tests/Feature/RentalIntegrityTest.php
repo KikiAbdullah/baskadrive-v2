@@ -81,7 +81,8 @@ class RentalIntegrityTest extends TestCase
             route('rental.detail.payment.store', $rental->rental_id),
             ['amount' => $half, 'payment_method' => 'transfer'] // alias lama → dinormalisasi
         );
-        $second->assertOk()->assertJson(['status' => false]);
+        // Remediasi FIN-12: penolakan bisnis kini 422 (bukan 200 + status:false)
+        $second->assertStatus(422)->assertJson(['status' => false]);
         $this->assertStringContainsString('melebihi sisa tagihan', $second->json('msg'));
 
         // pelunasan → paid

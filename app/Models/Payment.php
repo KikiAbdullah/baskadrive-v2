@@ -9,6 +9,15 @@ class Payment extends Model
 {
     use SoftDeletes;
 
+    /** Alokasi pembayaran pokok sewa (default). */
+    public const ALLOCATION_RENTAL = 'rental';
+
+    /** Alokasi pembayaran denda — terpisah dari pelunasan pokok (FIN-03). */
+    public const ALLOCATION_FINE = 'fine';
+
+    /** Alokasi penerimaan deposit jaminan — kewajiban terpisah (FIN-08). */
+    public const ALLOCATION_DEPOSIT = 'deposit';
+
     protected $table = 'tr_payment';
 
     protected $primaryKey = 'payment_id';
@@ -17,7 +26,11 @@ class Payment extends Model
 
     protected $fillable = [
         'invoice_id', 'rental_id', 'payment_date', 'amount',
-        'payment_method', 'reference_number', 'status', 'notes',
+        'payment_method', 'reference_number', 'status', 'allocation', 'notes',
+    ];
+
+    protected $attributes = [
+        'allocation' => self::ALLOCATION_RENTAL,
     ];
 
     protected $casts = [
@@ -44,5 +57,17 @@ class Payment extends Model
     public function scopeCompleted($query)
     {
         return $query->where('status', 'completed');
+    }
+
+    /** Pembayaran pokok sewa saja (FIN-03): denda tidak dihitung sebagai pelunasan. */
+    public function scopeRentalPrincipal($query)
+    {
+        return $query->where('allocation', self::ALLOCATION_RENTAL);
+    }
+
+    /** Pembayaran denda (FIN-03). */
+    public function scopeFineAllocation($query)
+    {
+        return $query->where('allocation', self::ALLOCATION_FINE);
     }
 }

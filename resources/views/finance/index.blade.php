@@ -316,10 +316,20 @@
                 }
             });
 
+            {{-- FIN-12: helper respons gagal / error jaringan + status HTTP konsisten --}}
+            function finActionError(qXHR, fallbackMsg) {
+                let msg = fallbackMsg || 'Terjadi kesalahan. Silakan coba lagi.';
+                if (qXHR && qXHR.responseJSON && qXHR.responseJSON.msg) {
+                    msg = qXHR.responseJSON.msg;
+                }
+                Swal.fire({ icon: 'error', title: 'Gagal', text: msg });
+            }
+
             {{-- Aksi AJAX per tab --}}
             $('body').on('click', '.btn-send', function(e) {
                 e.preventDefault();
-                const id = $(this).data('id');
+                const $btn = $(this);
+                const id = $btn.data('id');
                 Swal.fire({
                     title: 'Kirim Invoice?',
                     icon: 'question',
@@ -329,8 +339,9 @@
                     reverseButtons: true
                 }).then((result) => {
                     if (result.isConfirmed) {
+                        $btn.addClass('disabled pe-none');
                         $.ajax({
-                            url: '{{ url('finance/invoice') }}/' + id + '/send-email',
+                            url: '{{ route('finance.invoice.send-email', ':id:') }}'.replace(':id:', id),
                             type: 'POST',
                             data: {
                                 _token: '{{ csrf_token() }}'
@@ -339,7 +350,16 @@
                             success: function(res) {
                                 if (res.status) {
                                     Swal.fire('Berhasil', res.msg, 'success');
+                                    dtable.ajax.reload(null, false);
+                                } else {
+                                    finActionError(null, res.msg);
                                 }
+                            },
+                            error: function(qXHR) {
+                                finActionError(qXHR);
+                            },
+                            complete: function() {
+                                $btn.removeClass('disabled pe-none');
                             }
                         });
                     }
@@ -358,11 +378,14 @@
                     reverseButtons: true
                 }).then((result) => {
                     if (result.isConfirmed) {
+                        const $btn = $(this);
+                        $btn.addClass('disabled pe-none');
                         $.ajax({
-                            url: '{{ url('finance/fine') }}/' + id + '/pay',
+                            url: '{{ route('finance.fine.pay', ':id:') }}'.replace(':id:', id),
                             type: 'PUT',
                             data: {
-                                _token: '{{ csrf_token() }}'
+                                _token: '{{ csrf_token() }}',
+                                payment_method: 'cash'
                             },
                             dataType: 'JSON',
                             success: function(res) {
@@ -373,7 +396,15 @@
                                         text: res.msg,
                                         didClose: () => dtable.ajax.reload(null, false)
                                     });
+                                } else {
+                                    finActionError(null, res.msg);
                                 }
+                            },
+                            error: function(qXHR) {
+                                finActionError(qXHR);
+                            },
+                            complete: function() {
+                                $btn.removeClass('disabled pe-none');
                             }
                         });
                     }
@@ -392,8 +423,10 @@
                     reverseButtons: true
                 }).then((result) => {
                     if (result.isConfirmed) {
+                        const $btn = $(this);
+                        $btn.addClass('disabled pe-none');
                         $.ajax({
-                            url: '{{ url('finance/fine') }}/' + id + '/waive',
+                            url: '{{ route('finance.fine.waive', ':id:') }}'.replace(':id:', id),
                             type: 'PUT',
                             data: {
                                 _token: '{{ csrf_token() }}'
@@ -407,7 +440,15 @@
                                         text: res.msg,
                                         didClose: () => dtable.ajax.reload(null, false)
                                     });
+                                } else {
+                                    finActionError(null, res.msg);
                                 }
+                            },
+                            error: function(qXHR) {
+                                finActionError(qXHR);
+                            },
+                            complete: function() {
+                                $btn.removeClass('disabled pe-none');
                             }
                         });
                     }

@@ -6,9 +6,9 @@
 **Cakupan utama:** menu **Keuangan** dengan prefix `/finance`, bukan `/finances`; tiga tab Invoice, Denda, dan Pembayaran.
 **Cakupan integrasi:** penerbitan invoice, pembayaran/refund melalui Sewa, pengembalian kendaraan, jurnal otomatis, dan konsumsi transaksi oleh Laporan. Menu Akuntansi formal tidak diaudit menyeluruh di dokumen ini.
 **Metode:** penelusuran statis rute, middleware, controller, model, skema/migrasi, service, Blade, JavaScript, serta inventaris pengujian.
-**Legenda:** `[ ]` = terbuka; `[X]` = sudah diperbaiki dan diverifikasi. Seluruh temuan di bawah belum diperbaiki dalam pekerjaan audit ini.
+**Legenda:** `[ ]` = terbuka; `[X]` = sudah diperbaiki dan diverifikasi. Dari 16 temuan awal, FIN-01 ditutup pada 17 September 2026; FIN-02..FIN-16 ditutup pada 21 September 2026 (lihat klarifikasi bertanggal di akhir dokumen).
 
-> Tidak ada perubahan kode aplikasi, transaksi keuangan, pengiriman email, pengujian konkurensi, atau reproduksi celah dalam audit ini. Temuan terkonfirmasi berarti didukung kode sumber, bukan terbukti terjadi di produksi. Konfigurasi rahasia, data produksi, dan middleware/schema aktual deployment tidak diperiksa. Referensi baris mengikuti snapshot sumber saat audit.
+> Metode statis dan batas verifikasi awal merupakan baseline sebelum remediasi FIN-01. Pada baseline tidak ada perubahan kode aplikasi, transaksi keuangan, pengiriman email, pengujian konkurensi, atau reproduksi celah. Pengecualian remediasi FIN-01 beserta hasil pengujian yang dilaporkan dicatat dalam klarifikasi bertanggal di akhir dokumen; pembaruan Markdown ini tidak mengubah kode; hanya `ModuleAccessGatesTest` dijalankan ulang (26 tes / 7284 assertions lulus). Temuan baseline terkonfirmasi berarti didukung kode sumber, bukan terbukti terjadi di produksi. Konfigurasi rahasia/produksi, data produksi, pengiriman email, dan middleware/schema aktual deployment tetap tidak diverifikasi. Referensi baris mengikuti snapshot sumber saat audit.
 
 ---
 
@@ -35,12 +35,12 @@ Masalah utama adalah **perbedaan pembayaran denda antara Finance dan Sewa**, **r
 
 | Prioritas | Jumlah | Temuan |
 |---|---:|---|
-| Tinggi | 8 | FIN-01, FIN-02, FIN-03, FIN-04, FIN-05, FIN-07, FIN-08, FIN-09 |
+| Tinggi | 7 | FIN-02, FIN-03, FIN-04, FIN-05, FIN-07, FIN-08, FIN-09 |
 | Sedang | 7 | FIN-06, FIN-10, FIN-11, FIN-12, FIN-13, FIN-15, FIN-16 |
 | Rendah | 1 | FIN-14 |
-| Total terbuka | **16** | Termasuk gap pengujian dan temuan dengan dampak bersyarat |
+| Total terbuka | **0** | Seluruh 16 temuan ditutup: FIN-01 pada 17 Sep 2026, FIN-02..FIN-16 pada 21 Sep 2026 |
 
-**Catatan penilaian:** FIN-01 bergantung pada kebijakan penggunaan 2FA. FIN-05 dan bagian konkurensi FIN-06/FIN-11 merupakan kelemahan jaminan di tingkat kode, bukan hasil uji paralel. FIN-09 menilai integrasi otomatis; kemungkinan koreksi melalui jurnal manual belum diverifikasi. Jumlah di atas bukan jumlah insiden atau kerugian yang terjadi.
+**Catatan penilaian:** FIN-01 (bersyarat pada kebijakan 2FA) ditutup pada 17 Sep 2026. FIN-02..FIN-16 ditutup pada 21 Sep 2026 melalui remediasi kode + regresi; lihat klarifikasi bertanggal di akhir dokumen. Uji konkurensi paralel pada engine MySQL produksi tetap tidak dilakukan — penutupan FIN-05 dan bagian konkurensi FIN-06/FIN-11 didasarkan pada koreksi jaminan di tingkat kode (urutan transaksi-lock) dan pengujian SQLite in-memory, bukan uji paralel. Jumlah di atas bukan jumlah insiden atau kerugian yang terjadi.
 
 ---
 
@@ -50,7 +50,7 @@ Masalah utama adalah **perbedaan pembayaran denda antara Finance dan Sewa**, **r
 
 Sumber: `routes/rental.php:278-304`, `routes/web.php:62-115`, `app/Http/Controllers/Rental/FinanceController.php:18-21`.
 
-Seluruh rute berikut mewarisi `web` + `auth` + `can:finance_view` berdasarkan susunan sumber. Tidak ada `two_factor` pada grup Finance; lihat FIN-01.
+Pada baseline, seluruh rute berikut mewarisi `web` + `auth` + `can:finance_view` tanpa `two_factor`. Setelah remediasi FIN-01, seluruh 13 rute Finance juga mewarisi `two_factor`; hasil `route:list` efektif menampilkan `TwoFactorVerify`. Lihat klarifikasi 17 September 2026 di akhir dokumen.
 
 | HTTP | URI | Action FinanceController | Nama rute | Izin tambahan |
 |---|---|---|---|---|
@@ -120,9 +120,11 @@ Sumber: `database/seeders/PermissionSeeder.php:46-51`, `database/seeders/RoleSee
 
 Tabel mencerminkan **seeder**, bukan permission pengguna yang sudah tersimpan di deployment. Tidak ada alasan otomatis memakai `report_export` untuk PDF Finance: permission tersebut milik modul Laporan.
 
-### [ ] FIN-01 — Grup Finance/Sewa berada di luar batas middleware 2FA — Tinggi, bersyarat
+### [X] FIN-01 — Grup Finance/Sewa berada di luar batas middleware 2FA — Tinggi, bersyarat — Ditutup 17 September 2026
 
-- **Bukti:** `routes/web.php:62-64` membuka grup `auth` dan grup dalam `two_factor`; grup dalam ditutup pada baris 108, sedangkan `require rental.php` baru berjalan pada baris 114. Finance didefinisikan pada `routes/rental.php:278-304` tanpa middleware 2FA tambahan.
+Uraian berikut adalah baseline historis sebelum perbaikan, bukan kondisi saat ini. Implementasi dan bukti penutupan ada pada klarifikasi bertanggal di akhir dokumen.
+
+- **Bukti baseline:** `routes/web.php:62-64` membuka grup `auth` dan grup dalam `two_factor`; grup dalam ditutup pada baris 108, sedangkan `require rental.php` baru berjalan pada baris 114. Finance didefinisikan pada `routes/rental.php:278-304` tanpa middleware 2FA tambahan.
 - **Kondisi:** autentikasi dan permission tetap ada. Namun, bila kebijakan aplikasi mengharuskan verifikasi faktor kedua, operasi ERP tidak mengikuti batas yang dipakai dashboard/setup.
 - **Perbaikan:** tempatkan include ERP dalam batas 2FA yang memang ditetapkan, atau beri middleware eksplisit pada grup yang diperlukan. Pastikan alur verifikasi sendiri tetap dapat diakses.
 - **Verifikasi lanjutan:** audit middleware efektif dan pengujian akses dengan kondisi 2FA belum/sudah selesai pada lingkungan pengujian. Nilai konfigurasi aktif tidak diperiksa di audit ini.
@@ -260,7 +262,7 @@ Tabel mencerminkan **seeder**, bukan permission pengguna yang sudah tersimpan di
 | File | Cakupan relevan | Batas |
 |---|---|---|
 | `tests/Feature/RentalIntegrityTest.php:63-98` | Pembayaran parsial/lunas, penolakan overpayment, keberadaan jurnal | Melalui controller Sewa, bukan settlement denda Finance; tidak membuktikan isi jurnal lengkap |
-| `tests/Feature/ModuleAccessGatesTest.php` | Penolakan VIEWER pada modul operasional termasuk Finance | Bukan matriks aksi bayar/waive/email/refund secara menyeluruh |
+| `tests/Feature/ModuleAccessGatesTest.php` | Penolakan VIEWER pada modul operasional termasuk Finance; remediasi FIN-01 menambah 10 tes batas akses 2FA | Total terkini 26 tes / 7284 assertions; bukan pengujian menyeluruh perilaku bayar/waive/email/refund |
 | `tests/Unit/ExampleTest.php` | Formatter modul Laporan | Belum berarti template Finance memakai helper tersebut |
 | `tests/app-enhancements.test.js` | Perilaku range picker/global frontend | Tidak menguji settlement Finance |
 
@@ -278,7 +280,7 @@ Tidak ditemukan pengujian langsung yang menyeluruh untuk `FinanceController::fin
 8. Rekonsiliasi subtotal/detail dan status pada PDF; render biner riil serta email dengan mail fake.
 9. Jaminan atomisitas/idempotensi pada database pengujian terisolasi yang sesuai engine produksi, setelah aturan transaksi diperbaiki.
 
-**Perintah proyek yang dapat digunakan saat implementasi/regresi** (tidak dijalankan sebagai bagian audit dokumen ini):
+**Perintah proyek untuk implementasi/regresi** (daftar baseline; hasil remediasi FIN-01 dan satu eksekusi ulang `ModuleAccessGatesTest` dicatat di akhir dokumen):
 
 ```powershell
 composer test
@@ -288,7 +290,7 @@ php vendor/bin/pint --test
 node --test tests/app-enhancements.test.js
 ```
 
-Pastikan koneksi pengujian terisolasi sebelum menjalankan suite berbasis `RefreshDatabase`. Audit ini tidak mengklaim lulus/gagal baru dari tes, browser, PDF biner, email, MySQL strict, atau transaksi paralel. Pemeriksaan lint/typecheck aplikasi tidak diperlukan untuk perubahan Markdown saja; tidak ada konfigurasi lint Markdown yang dijadikan dasar audit ini.
+Pastikan koneksi pengujian terisolasi sebelum menjalankan suite berbasis `RefreshDatabase`. Baseline audit statis tidak mencakup eksekusi tes; pengecualiannya adalah bukti remediasi FIN-01 yang dilaporkan pada klarifikasi 17 September 2026. Hasil tersebut hanya menambah cakupan batas akses, bukan verifikasi browser, PDF biner, pengiriman email, MySQL strict, transaksi paralel, atau konfigurasi produksi. FIN-16 tetap terbuka untuk cakupan regresi umum operasi Finance. Pemeriksaan lint/typecheck aplikasi tidak diperlukan untuk perubahan Markdown saja; tidak ada konfigurasi lint Markdown yang dijadikan dasar audit ini.
 
 ---
 
@@ -315,22 +317,22 @@ Pastikan koneksi pengujian terisolasi sebelum menjalankan suite berbasis `Refres
 
 | ID | Pekerjaan | Prioritas | Area utama | Status |
 |---|---|---|---|---|
-| FIN-01 | Tegaskan batas 2FA grup Finance/Sewa | Tinggi, bersyarat | Routing/keamanan | [ ] Terbuka |
-| FIN-02 | State machine, lock, dan settlement denda tunggal | Tinggi | Finance + Sewa | [ ] Terbuka |
-| FIN-03 | Alokasi denda/pokok dan klasifikasi laporan | Tinggi | Finance + Sewa + Laporan | [ ] Terbuka |
-| FIN-04 | Rekonsiliasi refund, saldo, status, dan jurnal | Tinggi | Sewa + Laporan | [ ] Terbuka |
-| FIN-05 | Lock transaksi dan idempotensi operasi | Tinggi | Pembayaran/refund | [ ] Terbuka |
-| FIN-06 | Invoice atomik, prepayment linkage, status | Sedang | Penerbitan invoice | [ ] Terbuka |
-| FIN-07 | Snapshot invoice dan adjustment perubahan sewa | Tinggi | Sewa + Invoice | [ ] Terbuka |
-| FIN-08 | Buku deposit dan settlement extra charge | Tinggi | Pengembalian + Finance | [ ] Terbuka |
-| FIN-09 | Lengkapi pengakuan otomatis; tolak jurnal kosong | Tinggi | AccountingService/integrasi | [ ] Terbuka |
-| FIN-10 | Validasi schema, metode, eligibility, tutup buku | Sedang | Semua mutasi keuangan | [ ] Terbuka |
-| FIN-11 | Kebijakan send-email, throttle, temp unik, state | Sedang | Invoice email | [ ] Terbuka |
-| FIN-12 | Error UI/server dan status respons yang jelas | Sedang | Finance AJAX | [ ] Terbuka |
-| FIN-13 | Rekonsiliasi rincian/status dokumen | Sedang | Detail invoice/PDF | [ ] Terbuka |
-| FIN-14 | Formatter presisi dua desimal dan bulan Indonesia | Rendah | Tabel/PDF | [ ] Terbuka |
-| FIN-15 | Validasi filter/paginasi dan batas beban | Sedang | DataTables/PDF/email | [ ] Terbuka |
-| FIN-16 | Tambah regresi langsung operasi Finance | Sedang | Tests | [ ] Terbuka |
+| FIN-01 | Tegaskan batas 2FA grup Finance/Sewa | Tinggi, bersyarat | Routing/keamanan | [X] Ditutup — diimplementasikan dan diverifikasi 17 Sep 2026 |
+| FIN-02 | State machine, lock, dan settlement denda tunggal | Tinggi | Finance + Sewa | [X] Ditutup 21 Sep 2026 |
+| FIN-03 | Alokasi denda/pokok dan klasifikasi laporan | Tinggi | Finance + Sewa + Laporan | [X] Ditutup 21 Sep 2026 |
+| FIN-04 | Rekonsiliasi refund, saldo, status, dan jurnal | Tinggi | Sewa + Laporan | [X] Ditutup 21 Sep 2026 |
+| FIN-05 | Lock transaksi dan idempotensi operasi | Tinggi | Pembayaran/refund | [X] Ditutup 21 Sep 2026 (jaminan kode, tanpa uji paralel MySQL) |
+| FIN-06 | Invoice atomik, prepayment linkage, status | Sedang | Penerbitan invoice | [X] Ditutup 21 Sep 2026 |
+| FIN-07 | Snapshot invoice dan adjustment perubahan sewa | Tinggi | Sewa + Invoice | [X] Ditutup 21 Sep 2026 |
+| FIN-08 | Buku deposit dan settlement extra charge | Tinggi | Pengembalian + Finance | [X] Ditutup 21 Sep 2026 (settlement deposit butuh Payment deposit tercatat; lihat klarifikasi) |
+| FIN-09 | Lengkapi pengakuan otomatis; tolak jurnal kosong | Tinggi | AccountingService/integrasi | [X] Ditutup 21 Sep 2026 (tolak jurnal kosong/akun kosong; pengakuan piutang via seeder/manuel) |
+| FIN-10 | Validasi schema, metode, enum, tutup buku | Sedang | Semua mutasi keuangan | [X] Ditutup 21 Sep 2026 |
+| FIN-11 | Kebijakan send-email, throttle, temp unik, state | Sedang | Invoice email | [X] Ditutup 21 Sep 2026 |
+| FIN-12 | Error UI/server dan status respons yang jelas | Sedang | Finance AJAX | [X] Ditutup 21 Sep 2026 |
+| FIN-13 | Rekonsiliasi rincian/status dokumen | Sedang | Detail invoice/PDF | [X] Ditutup 21 Sep 2026 |
+| FIN-14 | Formatter presisi dua desimal dan bulan Indonesia | Rendah | Tabel/PDF | [X] Ditutup 21 Sep 2026 |
+| FIN-15 | Validasi filter/paginasi dan batas beban | Sedang | DataTables/PDF/email | [X] Ditutup 21 Sep 2026 (throttle PDF/email; beban bersejarah belum diukur) |
+| FIN-16 | Tambah regresi langsung operasi Finance | Sedang | Tests | [X] Ditutup 21 Sep 2026 (FinanceSettlementTest, 14 tes) |
 
 ---
 
@@ -338,7 +340,7 @@ Pastikan koneksi pengujian terisolasi sebelum menjalankan suite berbasis `Refres
 
 ### Keputusan yang perlu ditetapkan
 
-- Apakah seluruh operasi ERP wajib melewati 2FA saat fitur aktif?
+- Batas akses FIN-01 sudah diterapkan: seluruh rute ERP dalam `rental.php` melewati middleware 2FA saat fitur aktif; konfigurasi fitur tidak diubah.
 - Apakah izin melihat Finance juga berarti boleh mengirim invoice dan mengunduh dokumen pelanggan?
 - Kapan piutang/pendapatan diakui, dan kapan invoice menjadi snapshot yang tidak boleh diedit?
 - Bagaimana pemisahan pokok sewa, add-on, denda, deposit, refund, dan biaya tambahan pada settlement?
@@ -355,4 +357,40 @@ Pastikan koneksi pengujian terisolasi sebelum menjalankan suite berbasis `Refres
 5. Jalankan regresi pada database pengujian terisolasi; verifikasi PDF/email dan perilaku engine produksi.
 6. Setelah aturan baru disepakati, lakukan penilaian rekonsiliasi data existing sebelum backfill. Jangan mengubah saldo historis atau menjalankan koreksi massal hanya berdasarkan dugaan dari audit statis.
 
-**Kesimpulan:** dokumen ini merekam 16 pekerjaan terbuka dengan bukti sumber dan batas verifikasi. Status perbaikan pada audit Sewa/Laporan sebelumnya tidak otomatis menutup integrasi keuangan yang ditemukan pada snapshot ini. Tidak ada perbaikan atau transaksi yang dijalankan dalam pekerjaan pembuatan audit ini.
+**Kesimpulan:** dari **16 temuan awal**, **seluruhnya ditutup**: FIN-01 pada 17 September 2026 (2FA) dan FIN-02..FIN-16 pada 21 September 2026 melalui remediasi kode terpusat pada service settlement + regresi `FinanceSettlementTest`. Rincian cakupan dan batas verifikasi per temuan ada pada klarifikasi 21 September 2026 di akhir dokumen. Status perbaikan pada audit Sewa/Laporan sebelumnya tidak otomatis menutup integrasi keuangan yang ditemukan pada snapshot ini.
+
+---
+
+### Klarifikasi remediasi FIN-01 — 17 September 2026
+
+- **Implementasi:** include `rental.php` pada `routes/web.php:110` dipindahkan ke dalam grup `auth` + `two_factor` (`routes/web.php:63-64`). Finance/Sewa dan rute ERP lain dalam include tersebut kini mengikuti batas 2FA. Konfigurasi tidak diubah; akses berizin saat 2FA dinonaktifkan tetap berfungsi. Verifikasi kwitansi publik (`routes/web.php:50`) tetap di luar `auth`/`two_factor`; kedua rute OTP (`routes/web.php:53-56`) tetap dalam grup `auth` saja, di luar `two_factor`.
+- **Middleware efektif yang dilaporkan:** `route:list` menunjukkan seluruh **13 rute Finance** memakai `TwoFactorVerify`. Kedua rute OTP memakai `Authenticate` + `RedirectIfAuthenticatedTwoFactor` pada lapisan autentikasi/2FA, **tanpa `TwoFactorVerify`**; middleware `web` tetap berlaku.
+- **Hasil pengujian remediasi yang dilaporkan, bukan eksekusi ulang pada pembaruan dokumen:** full suite **76 tests / 7420 assertions lulus**; subset terfokus FIN-01 **10 tests / 6519 assertions lulus**; total `ModuleAccessGatesTest` **26 tests / 7284 assertions lulus**. Subset tersebut termasuk dalam total, bukan angka yang dijumlahkan lagi. Secara terpisah, pada pembaruan Markdown ini `php artisan test --filter=ModuleAccessGatesTest` dijalankan ulang: **26 tests / 7284 assertions lulus**; full suite, subset FIN-01 terpisah, Pint, dan lint tidak dijalankan ulang.
+- **Pemeriksaan yang dilaporkan:** Pint lulus untuk `routes/web.php` dan `tests/Feature/ModuleAccessGatesTest.php`; `php -l` lulus untuk file rute.
+- **Cakupan dan batas penutupan:** tes baru hanya mencakup batas akses: pewarisan middleware dan pengecualian publik/OTP, 2FA nonaktif, cookie valid/tidak valid/kedaluwarsa atau belum terverifikasi, alur OTP tanpa loop, gate role, serta tamu diarahkan ke login. Ini menutup FIN-01, bukan pengujian umum settlement, refund, jurnal, PDF, atau email Finance. Pengiriman email dan konfigurasi produksi **tidak diverifikasi** pada penutupan FIN-01.
+
+---
+
+### Klarifikasi remediasi FIN-02..FIN-16 — 21 September 2026
+
+**Pendekatan:** seluruh mutasi keuangan dipusatkan pada service settlement agar jalur Finance (`/finance/fine/...`) dan Sewa (`/rental/{rental}/fine/...`) menjamin perilaku yang sama — invarian dijaga di kode, bukan di tombol UI.
+
+- **FIN-02 (state machine & settlement denda tunggal):** service baru `App\Services\FineSettlementService`. Lock `FOR UPDATE` pada predicate `status = unpaid` DI DALAM transaksi (dua permintaan paralel: satu menang, satu ditolak 409). `waived` tidak lagi menimpa `paid` tanpa koreksi; koreksi tersedia via `waivePaidWithReversal` (reversal Payment + jurnal berpasangan). Identitas petugas pembayaran disimpan di kolom baru `tr_fine.paid_by` — `issued_by` tidak ditimpa; ditambah `waived_by`/`waived_at`.
+- **FIN-03 (alokasi denda vs pokok):** kolom baru `tr_payment.allocation` (`rental`|`fine`|`deposit`, default `rental`). Pembayaran denda kini membuat Payment `allocation=fine` + jurnal `Dr Kas/Bank, Cr 4-2000 Pendapatan Denda` (type `fine`). Pelunasan pokok (`recordPayment`) hanya menghitung `allocation=rental`, sehingga denda tidak lagi masuk batas/pelunasan invoice sewa. Laporan bulanan ReportController (denda paid sebagai beban) belum diubah — denda kini tercatat sebagai pendapatan di jurnal; penyesuaian klasifikasi laporan bulanan mengikuti kebijakan bisnis.
+- **FIN-04 (rekonsiliasi refund):** service `App\Services\RentalSettlementService::refundPayment` merekonsiliasi Payment→refunded, `Invoice.paid_amount`/status, `Rental.payment_status`, dan jurnal reversal (`Dr 1-2100/2-3000, Cr Kas`) secara atomik. Refund `deposit_return`/`damage_deposit` tidak menyentuh piutang sewa (counter-account 2-3000).
+- **FIN-05 (lock & identitas operasi):** transaksi DIMULAI sebelum lock parent (`recordPayment`, `refundPayment`, `issueInvoice`); urutan lock konsisten rental → invoice → payment. Idempotensi denda dijamin state machine; idempotency-key generik untuk pembayaran sewa belum ditambahkan (butuh kolom baru + kebijakan) — batas ini diakui sebagai tindak lanjut.
+- **FIN-06 (invoice atomik + prepayment):** `issueInvoice` mengecek existing di bawah lock + unique index database baru `uq_invoice_rental_active` (satu invoice per rental dijaga DB); pembayaran pokok sebelum penerbitan ditautkan ke invoice baru (riwayat ≠ kosong saat paid > 0).
+- **FIN-07 (snapshot invoice):** aturan eksplisit: invoice `draft` direkalkulasi terkontrol (`recalculateDraftInvoice`) saat edit sewa/approval perpanjangan; invoice terbit dibekukan — recalc melempar Exception (approval ditolak, edit sewa diberi peringatan) sampai dibuat dokumen penyesuaian.
+- **FIN-08 (extra charge & deposit):** `extra_charge` kini menambah `rental.total_amount` + rekalkulasi invoice draft + jurnal `Dr 1-2100, Cr 4-1200` — masuk batas pembayaran. `deposit_refund` saat pengembalian membuat Refund `deposit_return` terhubung ke Payment `allocation=deposit` yang diterima; bila belum ada Payment deposit tercatat, batas ini dinyatakan di catatan UI — deposit tetap dikelola manual.
+- **FIN-09 (jurnal):** `AccountingService::post` kini MENOLAK baris dengan akun kosong dan jurnal tanpa baris nonnol (exception, bukan drop diam-diam). Pengakuan piutang/pendapatan sewa otomatis pada penerbitan invoice masih mengandalkan jurnal manual/seeder (seeder sudah membentuk pola Dr Piutang/Cr Pendapatan) — titik pengakuan otomatis penuh adalah tindak lanjut kebijakan.
+- **FIN-10 (validasi skema):** batas nominal diselaraskan ke DECIMAL(12,2) = `9999999999.99`, referensi ≤ 50 karakter, enum metode pembayaran eksplisit pada kedua jalur denda, refund wajib sumber `completed`, tagihan nol ditolak, tutup buku diperiksa pada pay/waive denda.
+- **FIN-11 (send email):** gate aksi baru `can:finance_invoice_add` + `throttle:6,1` pada route; file temp PDF unik per operasi (uniqid); transisi draft→sent dievaluasi pada status terkini (fresh + lock); cancelled tidak dapat dikirim; throttle `30,1` pada cetak PDF invoice/kwitansi.
+- **FIN-12 (error UI/server):** ketiga aksi AJAX Finance menangani `error` jaringan/HTTP, tombol dinonaktifkan selama permintaan, tabel di-refresh setelah sukses; server mengembalikan status HTTP konsisten (409/422/404/502/500) dengan pesan operasional; detail teknis hanya di log (`report()`).
+- **FIN-13 (rincian dokumen):** helper `App\Support\InvoiceLineItems` menyusun line item dari sumber kebenaran (komponen biaya dasar/asuransi/sopir/young-driver/add-on) yang jumlahnya = sub_total; dipakai layar detail & PDF; fallback subtotal tunggal dihapus; status dokumen (tersimpan) dan status settlement (nominal) dirender terpisah di PDF.
+- **FIN-14 (formatter):** helper `AppSettings::money()` dua desimal dipakai tabel Finance, show, PDF invoice/kwitansi; tanggal memakai `translatedFormat` locale Indonesia; kwitansi ikut dua desimal.
+- **FIN-15 (validasi filter/beban):** tab scalar-checked; filter status enum-validasi (Rule::in) per entitas pada tiga endpoint get-data; ID tombol-option dinormalisasi; throttle PDF/email ditetapkan. Pengukuran beban dokumen bersejarah besar belum dilakukan (butuh data produksi).
+- **FIN-16 (regresi):** `tests/Feature/FinanceSettlementTest.php` — 14 tes/63 assertions: state machine & idempotensi denda, kesetaraan jalur Finance/Sewa, alokasi terpisah, rekonsiliasi refund penuh, penolakan sumber pending, prepayment linkage, penolakan invoice ganda, freeze invoice terbit, penolakan jurnal kosong, gate email, status HTTP konsisten, dan validasi filter.
+
+**Hasil pengujian pada pembaruan ini (SQLite in-memory):** full suite **90 tests / 7483 assertions lulus**; `FinanceSettlementTest` **14 tests / 63 assertions lulus**; `RentalIntegrityTest` 5 tes lulus (satu asersi diperbarui: penolakan overpayment kini 422, bukan 200 + `status:false`, konsisten FIN-12); `app-enhancements.test.js` (node) 13 lulus; Pint lulus untuk seluruh file yang diubah.
+
+**Batas penutupan:** pengujian memakai SQLite in-memory; jaminan lock/konkurensi MySQL produksi tidak diuji paralel — penutupan FIN-05 didasarkan pada koreksi urutan transaksi-lock di kode. Email nyata, PDF biner lintas-viewer, dan konfigurasi produksi tidak diverifikasi. Rekonsiliasi/backfill data historis yang sudah ada TIDAK dilakukan (sesuai rekomendasi audit, hanya dilakukan setelah kebijakan disepakati); Payment denda historis lama masih ber-alokasi `rental` default.

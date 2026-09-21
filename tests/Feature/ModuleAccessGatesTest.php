@@ -6,6 +6,9 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Models\DamageReport;
 use App\Models\Fine;
 use App\Models\InsuranceClaim;
+use App\Models\Invoice;
+use App\Models\Journal;
+use App\Models\JournalDetail;
 use App\Models\Maintenance;
 use App\Models\Payment;
 use App\Models\Refund;
@@ -17,6 +20,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Session\SymfonySessionDecorator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Route;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Spatie\LaravelPdf\Facades\Pdf;
 use Spatie\LaravelPdf\PdfBuilder;
@@ -30,6 +37,7 @@ class ModuleAccessGatesTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['2fa.enabled' => false]);
         $this->travelTo(Carbon::parse('2026-09-17 12:00:00'));
         $this->seed(DatabaseSeeder::class);
     }
@@ -37,6 +45,243 @@ class ModuleAccessGatesTest extends TestCase
     protected function user(string $username): User
     {
         return User::where('username', $username)->firstOrFail();
+    }
+
+    private function assertErpRouteProtection(): void
+    {
+        $routes = collect(Route::getRoutes()->getRoutes())->filter(fn ($route) => str_starts_with($route->getActionName(), 'App\\Http\\Controllers\\Rental\\')
+            || str_starts_with($route->getActionName(), 'App\\Http\\Controllers\\Master\\')
+        );
+        $this->assertNotEmpty($routes->all());
+
+        foreach ($routes as $route) {
+            $middleware = $route->middleware();
+            $this->assertContains('auth', $middleware, $route->getName().' must inherit auth');
+            $this->assertContains('two_factor', $middleware, $route->getName().' must inherit two_factor');
+            $this->assertLessThan(array_search('two_factor', $middleware), array_search('auth', $middleware));
+        }
+
+        foreach ([
+            'dashboard.index', 'master.customer.store', 'fleet.damage.index', 'accounting.journal.index', 'system.settings',
+            'finance.index', 'finance.invoice.send-email', 'finance.fine.pay', 'finance.fine.waive',
+            'rental.index', 'rental.create.store', 'rental.update', 'rental.confirm', 'rental.cancel',
+            'rental.detail.fine.store', 'rental.detail.fine.pay', 'rental.detail.fine.waive',
+            'rental.detail.invoice.generate', 'rental.detail.invoice.store', 'rental.detail.payment.store',
+            'rental.detail.refund.store', 'rental.detail.extension.store', 'rental.detail.return.store',
+            'report.export', 'report.export-pdf',
+        ] as $name) {
+            $this->assertTrue($routes->contains(fn ($route) => $route->getName() === $name), $name);
+        }
+    }
+
+    private function enableFin01TwoFactor(string $username = 'supervisor'): User
+    {
+        $this->assertErpRouteProtection();
+        $this->withMiddleware();
+        config(['2fa.enabled' => true, '2fa.cookie_name' => 'fin01_test_2fa']);
+        Http::fake();
+        Mail::fake();
+        $user = $this->user($username);
+        $user->forceFill([
+            'token_last_request' => now(),
+            'token_2fa' => Hash::make('48261'),
+            'token_2fa_expires_at' => now()->addMinutes(5),
+            'two_factor_cookie_hash' => null,
+            'two_factor_cookie_expires_at' => null,
+        ])->save();
+        $this->actingAs($user);
+
+        return $user;
+    }
+
+    private function assertFin01ErpAccess(): void
+    {
+        foreach (['finance.index', 'rental.index'] as $name) {
+            $this->get(route($name))->assertOk();
+        }
+        foreach (['finance.invoice.data', 'finance.fine.data', 'finance.payment.data', 'rental.data'] as $name) {
+            $this->get(route($name))->assertOk()->assertJsonStructure(['data', 'recordsTotal'])
+                ->assertJsonMissingPath('error');
+        }
+    }
+
+    public function test_fin01_all_erp_routes_inherit_auth_and_two_factor_with_public_and_otp_exceptions(): void
+    {
+        $this->assertErpRouteProtection();
+
+        foreach (['2fa.show', 'verifyTwoFactor'] as $name) {
+            $route = Route::getRoutes()->getByName($name);
+            $this->assertNotNull($route);
+            $this->assertContains('auth', $route->gatherMiddleware());
+            $this->assertNotContains('two_factor', $route->gatherMiddleware());
+        }
+
+        $receipt = Route::getRoutes()->getByName('verify.receipt');
+        $this->assertNotNull($receipt);
+        $this->assertNotContains('auth', $receipt->gatherMiddleware());
+        $this->assertNotContains('two_factor', $receipt->gatherMiddleware());
+    }
+
+    public function test_fin01_disabled_two_factor_allows_authorized_supervisor_erp_access(): void
+    {
+        $this->assertErpRouteProtection();
+        $this->withMiddleware();
+        $this->assertFalse(config('2fa.enabled'));
+        $this->actingAs($this->user('supervisor'));
+        $this->assertFin01ErpAccess();
+    }
+
+    public function test_fin01_valid_encrypted_cookie_allows_verified_supervisor_erp_access(): void
+    {
+        $user = $this->enableFin01TwoFactor();
+        $token = 'fin01-synthetic-verified-client-token';
+        $user->forceFill([
+            'two_factor_cookie_hash' => Hash::make($token),
+            'two_factor_cookie_expires_at' => now()->addHours(8),
+        ])->save();
+        $this->withCookie(config('2fa.cookie_name'), $token);
+        $this->assertNotSame($token, $this->prepareCookiesForRequest()[config('2fa.cookie_name')]);
+        $this->assertFin01ErpAccess();
+        Http::assertNothingSent();
+        Mail::assertNothingOutgoing();
+    }
+
+    public static function fin01UnverifiedCookies(): array
+    {
+        return [
+            'no cookie' => ['missing'],
+            'encrypted nonmatching cookie' => ['invalid'],
+            'expired matching cookie' => ['expired'],
+            'malformed encrypted cookie' => ['malformed'],
+        ];
+    }
+
+    #[DataProvider('fin01UnverifiedCookies')]
+    public function test_fin01_unverified_requests_redirect_to_otp_without_erp_mutations(string $cookieState): void
+    {
+        $user = $this->enableFin01TwoFactor();
+        $this->assertSame('sqlite', DB::connection()->getDriverName());
+        $this->assertSame(':memory:', DB::connection()->getDatabaseName());
+        $token = 'fin01-synthetic-client-token';
+        $user->forceFill([
+            'two_factor_cookie_hash' => Hash::make($token),
+            'two_factor_cookie_expires_at' => $cookieState === 'expired' ? now()->subMinute() : now()->addHours(8),
+        ])->save();
+        if ($cookieState === 'invalid') {
+            $this->withCookie(config('2fa.cookie_name'), 'fin01-nonmatching-client-token');
+        } elseif ($cookieState === 'expired') {
+            $this->withCookie(config('2fa.cookie_name'), $token);
+        } elseif ($cookieState === 'malformed') {
+            $this->withUnencryptedCookie(config('2fa.cookie_name'), 'fin01-not-an-encrypted-cookie');
+        }
+
+        $rental = Rental::query()->firstOrFail()->replicate()->unsetRelations();
+        $rental->forceFill([
+            'rental_code' => 'TEST-FIN01', 'status' => 'reserved', 'payment_status' => 'unpaid',
+            'total_amount' => 1000, 'promo_id' => null,
+        ])->save();
+        $rental->customer->update(['email' => 'fin01@example.test', 'phone' => null]);
+        $invoice = Invoice::create([
+            'rental_id' => $rental->getKey(), 'invoice_number' => 'TEST-FIN01-INVOICE',
+            'issue_date' => now(), 'due_date' => now()->addDays(7), 'sub_total' => 1000,
+            'total_amount' => 1000, 'paid_amount' => 0, 'status' => 'draft',
+        ]);
+        $fine = Fine::create([
+            'rental_id' => $rental->getKey(), 'fine_type' => 'late_return',
+            'amount' => 100, 'status' => 'unpaid', 'issued_date' => now(),
+        ]);
+        $models = [Rental::class, Invoice::class, Fine::class, Payment::class, Refund::class, Journal::class, JournalDetail::class];
+        $counts = array_map(fn ($model) => DB::table((new $model)->getTable())->count(), $models);
+        $records = [$rental, $invoice, $fine, $rental->vehicle, $rental->customer];
+        $states = array_map(fn ($model) => $model->fresh()->getRawOriginal(), $records);
+        $otpState = $user->fresh()->getRawOriginal();
+
+        $requests = [
+            ['GET', route('finance.index'), []],
+            ['GET', route('rental.index'), []],
+            ['GET', route('finance.invoice.data'), []],
+            ['GET', route('rental.data'), []],
+            ['POST', route('finance.invoice.send-email', $invoice->getKey()), []],
+            ['PUT', route('finance.fine.pay', $fine->getKey()), ['payment_method' => 'cash']],
+            ['PUT', route('finance.fine.waive', $fine->getKey()), []],
+            ['POST', route('rental.detail.payment.store', $rental->getKey()), ['amount' => 10, 'payment_method' => 'cash']],
+            ['PUT', route('rental.cancel', $rental->getKey()), []],
+        ];
+
+        foreach ($requests as [$method, $url, $data]) {
+            $this->{strtolower($method)}($url, $data)
+                ->assertRedirect(route('2fa.show', ['redirect' => $url]));
+            foreach ($models as $index => $model) {
+                $this->assertDatabaseCount((new $model)->getTable(), $counts[$index]);
+            }
+            foreach ($records as $index => $model) {
+                $this->assertSame($states[$index], $model->fresh()->getRawOriginal(), $method.' '.$url);
+            }
+            $this->assertSame($otpState, $user->fresh()->getRawOriginal());
+            Http::assertNothingSent();
+            Mail::assertNothingOutgoing();
+        }
+    }
+
+    public function test_fin01_otp_get_and_valid_post_issue_cookie_that_unlocks_erp_without_loop(): void
+    {
+        $user = $this->enableFin01TwoFactor();
+        $target = route('finance.index');
+        $otpUrl = route('2fa.show', ['redirect' => $target]);
+        $this->get($target)->assertRedirect($otpUrl);
+        $this->get($otpUrl)->assertOk()->assertViewIs('auth.two_factor');
+        $this->assertTrue(Hash::check('48261', $user->fresh()->token_2fa));
+        $response = $this->post(route('verifyTwoFactor'), ['otp' => '48261', 'redirect' => $target]);
+        $response->assertRedirect($target)->assertCookie(config('2fa.cookie_name'));
+        $user->refresh();
+        $this->assertNull($user->token_2fa);
+        $this->assertNull($user->token_2fa_expires_at);
+        $cookie = $response->getCookie(config('2fa.cookie_name'));
+        $wireCookie = $response->getCookie(config('2fa.cookie_name'), false);
+        $this->assertNotNull($cookie);
+        $this->assertNotNull($wireCookie);
+        $this->assertNotSame($cookie->getValue(), $wireCookie->getValue());
+        $this->assertNotSame($cookie->getValue(), $user->two_factor_cookie_hash);
+        $this->assertTrue(Hash::check($cookie->getValue(), $user->two_factor_cookie_hash));
+        $this->assertTrue($user->two_factor_cookie_expires_at->equalTo(now()->addHours(8)));
+        $this->withUnencryptedCookie(config('2fa.cookie_name'), $wireCookie->getValue());
+        $this->assertFin01ErpAccess();
+        $this->get($otpUrl)->assertRedirect('/');
+        $this->get('/')->assertOk();
+        Http::assertNothingSent();
+        Mail::assertNothingOutgoing();
+    }
+
+    public function test_fin01_verified_viewer_remains_forbidden_from_finance_and_rental(): void
+    {
+        $user = $this->enableFin01TwoFactor('viewer');
+        $token = 'fin01-synthetic-viewer-client-token';
+        $user->forceFill([
+            'two_factor_cookie_hash' => Hash::make($token),
+            'two_factor_cookie_expires_at' => now()->addHours(8),
+        ])->save();
+        $this->withCookie(config('2fa.cookie_name'), $token);
+        $this->get('/')->assertOk();
+        foreach (['finance.index', 'rental.index', 'finance.invoice.data', 'rental.data'] as $name) {
+            $this->get(route($name))->assertForbidden();
+        }
+        Http::assertNothingSent();
+        Mail::assertNothingOutgoing();
+    }
+
+    public function test_fin01_guests_redirect_to_login_before_two_factor(): void
+    {
+        $this->assertErpRouteProtection();
+        $this->withMiddleware();
+        config(['2fa.enabled' => true]);
+        Http::fake();
+        Mail::fake();
+        foreach (['finance.index', 'rental.index', 'finance.invoice.data', 'rental.data', '2fa.show'] as $name) {
+            $this->get(route($name))->assertRedirect(route('login'));
+        }
+        $this->post(route('verifyTwoFactor'), ['otp' => '48261'])->assertRedirect(route('login'));
+        Http::assertNothingSent();
+        Mail::assertNothingOutgoing();
     }
 
     public function test_viewer_cannot_access_operational_modules(): void

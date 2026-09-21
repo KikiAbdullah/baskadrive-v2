@@ -265,7 +265,7 @@
                     </td>
                     <td class="head-doc">
                         <div class="no">PAY-{{ str_pad($item->payment_id, 5, '0', STR_PAD_LEFT) }}</div>
-                        <div class="dt">{{ $item->payment_date?->format('d F Y') ?? '-' }}</div>
+                        <div class="dt">{{ $item->payment_date?->locale('id')->translatedFormat('d F Y') ?? '-' }}</div>
                     </td>
                 </tr>
             </table>
@@ -309,7 +309,7 @@
                 </tr>
                 <tr>
                     <td class="k">Tanggal Bayar</td>
-                    <td class="v">{{ $item->payment_date?->format('d F Y') ?? '-' }}</td>
+                    <td class="v">{{ $item->payment_date?->locale('id')->translatedFormat('d F Y') ?? '-' }}</td>
                     <td class="k">Metode</td>
                     <td class="v">{{ ucfirst($item->payment_method ?? '-') }}</td>
                 </tr>
@@ -327,7 +327,7 @@
             <div class="card-head"><span class="letter">B</span> Jumlah Dibayarkan</div>
             <div class="total-bar">
                 TOTAL DIBAYAR
-                <span class="amt">Rp {{ number_format($item->amount ?? 0, 0, ',', '.') }}</span>
+                <span class="amt">{{ \App\Support\AppSettings::money($item->amount ?? 0) }}</span>
             </div>
         </div>
 
@@ -356,7 +356,7 @@
         </div>
 
         <div class="foot">
-            Kwitansi No. PAY-{{ str_pad($item->payment_id, 5, '0', STR_PAD_LEFT) }} &mdash; dicetak otomatis dari sistem {{ $settings['company_name'] }} pada {{ now()->format('d F Y H:i') }} &mdash; dokumen sah tanpa tanda tangan basah
+            Kwitansi No. PAY-{{ str_pad($item->payment_id, 5, '0', STR_PAD_LEFT) }} &mdash; dicetak otomatis dari sistem {{ $settings['company_name'] }} pada {{ now()->locale('id')->translatedFormat('d F Y H:i') }} &mdash; dokumen sah tanpa tanda tangan basah
         </div>
     </div>
 </body>

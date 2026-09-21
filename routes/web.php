@@ -10,6 +10,7 @@ use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\Auth\VerificationController;
 use App\Http\Controllers\LogViewerController;
 use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\ReceiptVerificationController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\UserController;
@@ -46,7 +47,7 @@ Route::get('email/verify/{id}/{hash}', [VerificationController::class, 'verify']
 Route::post('email/resend', [VerificationController::class, 'resend'])->name('verification.resend');
 
 // Verifikasi publik keaslian kwitansi (scan QR di dokumen)
-Route::get('verify/receipt/{payment}', [\App\Http\Controllers\ReceiptVerificationController::class, 'verify'])->name('verify.receipt');
+Route::get('verify/receipt/{payment}', [ReceiptVerificationController::class, 'verify'])->name('verify.receipt');
 
 // Two-Factor Routes
 Route::group(['middleware' => ['auth']], function () {
@@ -105,11 +106,8 @@ Route::group(['middleware' => ['auth']], function () {
             Route::get('log-viewer', [LogViewerController::class, 'index'])->name('log-viewer.index');
         });
         Route::get('get-button-option', [AjaxController::class, 'getButtonOption'])->name('get.button-option');
+
+        require __DIR__.'/rental.php';
     });
 
-    // ===========================================
-    // RENTAL ERP — 8 MODUL (Dashboard, Master, Sewa,
-    // Fleet, Keuangan, Akuntansi, Laporan, Sistem)
-    // ===========================================
-    require __DIR__.'/rental.php';
 });

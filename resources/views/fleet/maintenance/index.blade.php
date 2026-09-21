@@ -13,10 +13,12 @@
             </div>
             <div class="d-flex align-content-center flex-wrap gap-4">
                 <span class="menuoption"></span>
-                <a href="{{ route('fleet.maintenance.create') }}" class="action-link-icon-text">
-                    <i class="ri-add-line"></i>
-                    <span class="fw-semibold text-uppercase">Tambah Jadwal</span>
-                </a>
+                @can('fleet_maintain')
+                    <a href="{{ route('fleet.maintenance.create') }}" class="action-link-icon-text">
+                        <i class="ri-add-line"></i>
+                        <span class="fw-semibold text-uppercase">Tambah Jadwal</span>
+                    </a>
+                @endcan
             </div>
         </div>
 
@@ -133,6 +135,7 @@
                     reverseButtons: true,
                 }).then((result) => {
                     if (result.isConfirmed) {
+                        Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                         $.ajax({
                             url: '{{ url('fleet/maintenance') }}/' + id + '/complete',
                             type: 'PUT',
@@ -140,6 +143,7 @@
                                 _token: '{{ csrf_token() }}'
                             },
                             dataType: 'JSON',
+                            complete: () => Swal.close(),
                             success: function(res) {
                                 if (res.status) {
                                     Swal.fire({
@@ -148,7 +152,14 @@
                                         text: res.msg,
                                         didClose: () => dtable.ajax.reload(null, false)
                                     });
+                                } else {
+                                    Swal.fire({ icon: 'error', title: 'Gagal', text: res.msg || 'Terjadi kesalahan.' });
                                 }
+                            },
+                            error: function(xhr) {
+                                const msg = (xhr.responseJSON && (xhr.responseJSON.msg || xhr.responseJSON.message))
+                                    || (xhr.status === 0 ? 'Koneksi gagal. Periksa jaringan Anda.' : 'Terjadi kesalahan. Coba lagi.');
+                                Swal.fire({ icon: 'error', title: 'Gagal', text: msg });
                             }
                         });
                     }

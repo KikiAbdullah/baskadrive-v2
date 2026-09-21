@@ -13,10 +13,12 @@
             </div>
             <div class="d-flex align-content-center flex-wrap gap-4">
                 <span class="menuoption"></span>
-                <a href="{{ route('fleet.damage.create') }}" class="action-link-icon-text">
-                    <i class="ri-add-line"></i>
-                    <span class="fw-semibold text-uppercase">Tambah Laporan</span>
-                </a>
+                @can('fleet_damage_add')
+                    <a href="{{ route('fleet.damage.create') }}" class="action-link-icon-text">
+                        <i class="ri-add-line"></i>
+                        <span class="fw-semibold text-uppercase">Tambah Laporan</span>
+                    </a>
+                @endcan
             </div>
         </div>
 

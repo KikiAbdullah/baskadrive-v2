@@ -3,28 +3,32 @@
 namespace App\Http\Controllers\Rental;
 
 use App\Http\Controllers\Controller;
-use App\Models\Coa;
+use App\Jobs\SendWhatsAppNotification;
 use App\Models\Customer;
 use App\Models\Driver;
 use App\Models\Fine;
 use App\Models\Invoice;
-use App\Models\Journal;
-use App\Models\JournalDetail;
 use App\Models\Location;
 use App\Models\Payment;
 use App\Models\Promo;
+use App\Models\Refund;
 use App\Models\Rental;
 use App\Models\RentalDetail;
 use App\Models\RentalExtension;
 use App\Models\RentalInspection;
-use App\Models\Refund;
 use App\Models\ReturnCar;
 use App\Models\Vehicle;
+use App\Services\AccountingService;
+use App\Services\FineSettlementService;
+use App\Services\RentalSettlementService;
+use App\Support\AppSettings;
+use App\Support\PdfDocument;
 use Carbon\Carbon;
 use DB;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Spatie\LaravelPdf\Facades\Pdf;
 
@@ -76,6 +80,7 @@ class RentalController extends Controller
     {
         if ($request->ajax()) {
             $response = $this->renderStep($request, $step);
+
             // Cegah cache GET yang mengubah state session
             return $response->header('Cache-Control', 'no-store, no-cache, must-revalidate')
                 ->header('Pragma', 'no-cache');
@@ -104,7 +109,7 @@ class RentalController extends Controller
             $inTx = true;
 
             $data = $request->session()->get('rental_wizard_data', []);
-            $settings = \App\Support\AppSettings::all();
+            $settings = AppSettings::all();
 
             if (empty($data['customer_id']) || empty($data['vehicle_id'])) {
                 throw new Exception('Data pelanggan dan kendaraan harus diisi.');
@@ -151,7 +156,7 @@ class RentalController extends Controller
             $taxAmount = 0;
             $totalAmount = $totalBase + $insuranceFee + $driverFee + $youngDriverFee + $addonsTotal;
 
-            if (!empty($data['promo_id'])) {
+            if (! empty($data['promo_id'])) {
                 // FASE 1 audit sewa: validasi promo UTUH (aktif, masa berlaku, min hari, kategori, kuota + row-lock)
                 $promo = $this->usablePromo($data['promo_id'], $vehicle, $rentalDays);
                 if ($promo) {
@@ -202,11 +207,11 @@ class RentalController extends Controller
             ]);
 
             // Audit M-08: konsumsi kuota promo dalam transaction yang sama
-            if (!empty($data['promo_id'])) {
+            if (! empty($data['promo_id'])) {
                 Promo::where('promo_id', $data['promo_id'])->increment('usage_count');
             }
 
-            if (!empty($data['addons'])) {
+            if (! empty($data['addons'])) {
                 foreach ($data['addons'] as $addon) {
                     RentalDetail::create([
                         'rental_id' => $rental->rental_id,
@@ -225,20 +230,23 @@ class RentalController extends Controller
             $inTx = false;
 
             // Notifikasi WA booking berhasil
-            try { $this->sendRentalWA($rental, 'Booking Berhasil', 'Sewa *'.$rental->rental_code.'* berhasil dibuat. Periode: '.$rental->rental_start_date->format('d M Y').' s/d '.$rental->rental_end_date->format('d M Y')); } catch (\Throwable $e) {}
+            try {
+                $this->sendRentalWA($rental, 'Booking Berhasil', 'Sewa *'.$rental->rental_code.'* berhasil dibuat. Periode: '.$rental->rental_start_date->format('d M Y').' s/d '.$rental->rental_end_date->format('d M Y'));
+            } catch (\Throwable $e) {
+            }
 
             $request->session()->forget(['rental_wizard_step', 'rental_wizard_data']);
 
             if ($request->ajax() || $request->expectsJson()) {
                 return response()->json([
                     'status' => true,
-                    'msg' => 'Sewa berhasil dibuat. Kode: ' . $rental->rental_code,
+                    'msg' => 'Sewa berhasil dibuat. Kode: '.$rental->rental_code,
                     'redirect' => route('rental.show', $rental->rental_id),
                 ]);
             }
 
             return redirect()->route('rental.show', $rental->rental_id)
-                ->withSuccess('Sewa berhasil dibuat. Kode: ' . $rental->rental_code);
+                ->withSuccess('Sewa berhasil dibuat. Kode: '.$rental->rental_code);
         } catch (Exception $e) {
             if ($inTx) {
                 DB::rollback();
@@ -270,7 +278,7 @@ class RentalController extends Controller
             ->map(function ($c) {
                 return [
                     'id' => $c->customer_id,
-                    'text' => $c->full_name . ' - ' . $c->phone . ($c->is_blacklisted ? ' [BLACKLIST]' : ''),
+                    'text' => $c->full_name.' - '.$c->phone.($c->is_blacklisted ? ' [BLACKLIST]' : ''),
                     'full_name' => $c->full_name,
                     'phone' => $c->phone,
                     'email' => $c->email,
@@ -299,9 +307,9 @@ class RentalController extends Controller
             ->paginate(20, ['*'], 'page', $page);
 
         return response()->json([
-            'results' => $items->map(fn($l) => [
+            'results' => $items->map(fn ($l) => [
                 'id' => $l->location_id,
-                'text' => $l->location_name . ' - ' . $l->city,
+                'text' => $l->location_name.' - '.$l->city,
             ])->values(),
             'pagination' => ['more' => $items->hasMorePages()],
         ]);
@@ -324,9 +332,9 @@ class RentalController extends Controller
             ->paginate(20, ['*'], 'page', $page);
 
         return response()->json([
-            'results' => $items->map(fn($d) => [
+            'results' => $items->map(fn ($d) => [
                 'id' => $d->driver_id,
-                'text' => $d->full_name . ' - ' . $d->phone,
+                'text' => $d->full_name.' - '.$d->phone,
             ])->values(),
             'pagination' => ['more' => $items->hasMorePages()],
         ]);
@@ -348,11 +356,11 @@ class RentalController extends Controller
             ->paginate(20, ['*'], 'page', $page);
 
         return response()->json([
-            'results' => $items->map(fn($p) => [
+            'results' => $items->map(fn ($p) => [
                 'id' => $p->promo_id,
-                'text' => $p->promo_code . ' - ' . ($p->discount_type == 'percentage'
-                    ? $p->discount_value . '%'
-                    : 'Rp ' . number_format($p->discount_value, 0, ',', '.')),
+                'text' => $p->promo_code.' - '.($p->discount_type == 'percentage'
+                    ? $p->discount_value.'%'
+                    : 'Rp '.number_format($p->discount_value, 0, ',', '.')),
             ])->values(),
             'pagination' => ['more' => $items->hasMorePages()],
         ]);
@@ -383,7 +391,7 @@ class RentalController extends Controller
 
                 return [
                     'id' => $v->vehicle_id,
-                    'text' => $v->license_plate . ' - ' . ($brand?->brand_name ?? '') . ' ' . ($model?->model_name ?? ''),
+                    'text' => $v->license_plate.' - '.($brand?->brand_name ?? '').' '.($model?->model_name ?? ''),
                     'license_plate' => $v->license_plate,
                     'model_name' => $model?->model_name ?? '',
                     'brand_name' => $brand?->brand_name ?? '',
@@ -408,7 +416,7 @@ class RentalController extends Controller
         $rentalDays = $this->rentalDays($startDate, $endDate);
         $withDriver = $request->boolean('is_with_driver');
         $promoId = $request->get('promo_id');
-        $settings = \App\Support\AppSettings::all();
+        $settings = AppSettings::all();
 
         $vehicle = Vehicle::with('model')->findOrFail($vehicleId);
         $baseRate = $vehicle->model->base_price_per_day;
@@ -471,7 +479,7 @@ class RentalController extends Controller
      */
     private function resolveTaxPercent($perRental = null, ?array $settings = null): float
     {
-        $settings = $settings ?? \App\Support\AppSettings::all();
+        $settings = $settings ?? AppSettings::all();
 
         // Sewa lama / explicit per-sewa: null = ikut setting, angka = dipakai apa adanya (0 = tanpa PPN)
         if ($perRental !== null && $perRental !== '') {
@@ -487,10 +495,15 @@ class RentalController extends Controller
 
     private function isPromoApplicable(?Promo $promo, ?Vehicle $vehicle): bool
     {
-        if (! $promo || empty($promo->applicable_categories)) return true;
-        if (! $vehicle || ! $vehicle->model) return true;
+        if (! $promo || empty($promo->applicable_categories)) {
+            return true;
+        }
+        if (! $vehicle || ! $vehicle->model) {
+            return true;
+        }
         $cat = strtolower($vehicle->model->category ?? '');
         $allowed = array_map('strtolower', (array) $promo->applicable_categories);
+
         return in_array($cat, $allowed, true);
     }
 
@@ -529,18 +542,34 @@ class RentalController extends Controller
      */
     private function usablePromo($promoId, ?Vehicle $vehicle, int $rentalDays, bool $lock = true, bool $lenientQuota = false): ?Promo
     {
-        if (! $promoId) return null;
+        if (! $promoId) {
+            return null;
+        }
 
         $query = Promo::where('promo_id', $promoId);
-        if ($lock) $query->lockForUpdate();
+        if ($lock) {
+            $query->lockForUpdate();
+        }
         $promo = $query->first();
 
-        if (! $promo || ! $promo->is_active) return null;
-        if ($promo->valid_from && now()->lt($promo->valid_from->copy()->startOfDay())) return null;
-        if ($promo->valid_to && now()->gt($promo->valid_to->copy()->endOfDay())) return null;
-        if ($rentalDays < (int) ($promo->min_rental_days ?? 1)) return null;
-        if (! $this->isPromoApplicable($promo, $vehicle)) return null;
-        if (! $lenientQuota && $promo->max_usage !== null && $promo->usage_count >= $promo->max_usage) return null;
+        if (! $promo || ! $promo->is_active) {
+            return null;
+        }
+        if ($promo->valid_from && now()->lt($promo->valid_from->copy()->startOfDay())) {
+            return null;
+        }
+        if ($promo->valid_to && now()->gt($promo->valid_to->copy()->endOfDay())) {
+            return null;
+        }
+        if ($rentalDays < (int) ($promo->min_rental_days ?? 1)) {
+            return null;
+        }
+        if (! $this->isPromoApplicable($promo, $vehicle)) {
+            return null;
+        }
+        if (! $lenientQuota && $promo->max_usage !== null && $promo->usage_count >= $promo->max_usage) {
+            return null;
+        }
 
         return $promo;
     }
@@ -573,7 +602,9 @@ class RentalController extends Controller
 
     private function addonsTotalFor(?int $rentalId): float
     {
-        if (! $rentalId) return 0.0;
+        if (! $rentalId) {
+            return 0.0;
+        }
 
         return (float) RentalDetail::where('rental_id', $rentalId)->sum('total_price');
     }
@@ -613,7 +644,7 @@ class RentalController extends Controller
             // lokasi default (1 baris) yang dimuat untuk preselect.
             'defaultLocation' => Location::active()->orderBy('location_name')->first(),
             'vehicles' => Vehicle::with('model.brand')->where('status', 'available')->get(),
-            'settings' => \App\Support\AppSettings::all(),
+            'settings' => AppSettings::all(),
             'stepCustomer' => $customer,
             'stepVehicle' => $vehicle,
             'stepPickupLoc' => $pickupLoc,
@@ -682,7 +713,7 @@ class RentalController extends Controller
                     'addons.*.unit_price' => 'required_with:addons|numeric|min:0|max:99999999',
                     'addons.*.item_type' => 'nullable|string|in:other,gps,child_seat,extra_driver',
                 ],
-                ['rental_start_date','rental_end_date','pickup_location_id','return_location_id','is_with_driver','driver_id','driver_fee','promo_id','tax_percent','deposit_amount','notes','addons'],
+                ['rental_start_date', 'rental_end_date', 'pickup_location_id', 'return_location_id', 'is_with_driver', 'driver_id', 'driver_fee', 'promo_id', 'tax_percent', 'deposit_amount', 'notes', 'addons'],
             ],
             default => [['customer_id' => 'required|exists:m_customer,customer_id'], ['customer_id']],
         };
@@ -690,7 +721,7 @@ class RentalController extends Controller
         $request->validate($rules);
 
         // Blokir pelanggan blacklist di step 1
-        if ((int)$step === 1 && $request->filled('customer_id')) {
+        if ((int) $step === 1 && $request->filled('customer_id')) {
             $cust = Customer::find($request->customer_id);
             if ($cust && $cust->is_blacklisted) {
                 return response()->json(['status' => false, 'msg' => 'Pelanggan ini diblacklist: '.($cust->blacklist_reason ?? 'tanpa alasan').'. Tidak bisa membuat sewa.'], 422);
@@ -754,8 +785,8 @@ class RentalController extends Controller
         $end = $request->get('end_date');
 
         $rentals = Rental::with(['customer', 'vehicle.model.brand', 'pickupLocation'])
-            ->when($start, fn($q) => $q->where('rental_start_date', '>=', \Carbon\Carbon::parse($start)->startOfDay()))
-            ->when($end, fn($q) => $q->where('rental_end_date', '<=', \Carbon\Carbon::parse($end)->endOfDay()));
+            ->when($start, fn ($q) => $q->where('rental_start_date', '>=', Carbon::parse($start)->startOfDay()))
+            ->when($end, fn ($q) => $q->where('rental_end_date', '<=', Carbon::parse($end)->endOfDay()));
 
         match ($status) {
             'reserved' => $rentals->where('status', 'reserved'),
@@ -772,14 +803,14 @@ class RentalController extends Controller
         $rentals->orderBy('created_at', 'desc');
 
         return datatables()->of($rentals)
-            ->addColumn('rental_code', fn($r) => $r->rental_code)
-            ->addColumn('customer_name', fn($r) => $r->customer?->full_name)
-            ->addColumn('vehicle_info', fn($r) => $r->vehicle?->license_plate . ' - ' . ($r->vehicle?->model?->brand?->brand_name ?? '') . ' ' . ($r->vehicle?->model?->model_name ?? ''))
-            ->addColumn('pickup', fn($r) => $r->pickupLocation?->location_name)
-            ->addColumn('date_range', fn($r) => $r->rental_start_date?->format('d/m/Y') . ' - ' . $r->rental_end_date?->format('d/m/Y'))
-            ->addColumn('total_amount', fn($r) => 'Rp ' . number_format($r->total_amount, 0, ',', '.'))
-            ->addColumn('status_badge', fn($r) => view('components.rental-status-badge', ['status' => $r->status])->render())
-            ->addColumn('status', fn($r) => $r->status)
+            ->addColumn('rental_code', fn ($r) => $r->rental_code)
+            ->addColumn('customer_name', fn ($r) => $r->customer?->full_name)
+            ->addColumn('vehicle_info', fn ($r) => $r->vehicle?->license_plate.' - '.($r->vehicle?->model?->brand?->brand_name ?? '').' '.($r->vehicle?->model?->model_name ?? ''))
+            ->addColumn('pickup', fn ($r) => $r->pickupLocation?->location_name)
+            ->addColumn('date_range', fn ($r) => $r->rental_start_date?->format('d/m/Y').' - '.$r->rental_end_date?->format('d/m/Y'))
+            ->addColumn('total_amount', fn ($r) => 'Rp '.number_format($r->total_amount, 0, ',', '.'))
+            ->addColumn('status_badge', fn ($r) => view('components.rental-status-badge', ['status' => $r->status])->render())
+            ->addColumn('status', fn ($r) => $r->status)
             ->rawColumns(['status_badge'])
             ->toJson();
     }
@@ -803,7 +834,10 @@ class RentalController extends Controller
         try {
             $rental = $this->model->where('status', 'reserved')->findOrFail($id);
             $rental->update(['status' => 'ongoing']);
-            try { $this->sendRentalWA($rental, 'Penjemputan Dikonfirmasi', 'Sewa *'.$rental->rental_code.'* telah dikonfirmasi, kendaraan siap diambil.'); } catch (\Throwable $e) {}
+            try {
+                $this->sendRentalWA($rental, 'Penjemputan Dikonfirmasi', 'Sewa *'.$rental->rental_code.'* telah dikonfirmasi, kendaraan siap diambil.');
+            } catch (\Throwable $e) {
+            }
 
             return response()->json([
                 'status' => true,
@@ -853,7 +887,7 @@ class RentalController extends Controller
 
         $view = [
             'title' => 'Detail Transaksi',
-            'subtitle' => 'Detail Transaksi - ' . $rental->rental_code,
+            'subtitle' => 'Detail Transaksi - '.$rental->rental_code,
             'rental' => $rental,
         ];
 
@@ -868,13 +902,13 @@ class RentalController extends Controller
 
         $view = [
             'title' => 'Edit Sewa',
-            'subtitle' => 'Edit ' . $rental->rental_code,
+            'subtitle' => 'Edit '.$rental->rental_code,
             'rental' => $rental,
             'customers' => Customer::orderBy('first_name')->get(),
             'locations' => Location::active()->get(),
             'drivers' => Driver::active()->licenseValid()->get(),
             'promos' => Promo::active()->get(),
-            'settings' => \App\Support\AppSettings::all(),
+            'settings' => AppSettings::all(),
         ];
 
         return view('rental.edit')->with($view);
@@ -918,7 +952,7 @@ class RentalController extends Controller
                 ));
             }
 
-            $accounting = app(\App\Services\AccountingService::class);
+            $accounting = app(AccountingService::class);
             // Periode terkunci: cek tanggal LAMA dan tanggal BARU (audit sewa §9)
             $accounting->assertPeriodOpen($rental->rental_start_date);
             $accounting->assertPeriodOpen($validated['rental_start_date']);
@@ -939,9 +973,9 @@ class RentalController extends Controller
             $insuranceFee = $rental->vehicle?->model ? $totalBase * ($rental->vehicle->model->insurance_rate / 100) : $rental->insurance_fee;
             // driver_fee tersimpan = TOTAL; jika 0 (dulu flat/hilang) fallback default × hari (precedence diperbaiki)
             $driverFee = ($validated['is_with_driver'] ?? false)
-                ? max(0.0, (float) ($rental->driver_fee ?: (float) (\App\Support\AppSettings::get('driver_fee_default') ?? 150000) * $days))
+                ? max(0.0, (float) ($rental->driver_fee ?: (float) (AppSettings::get('driver_fee_default') ?? 150000) * $days))
                 : 0.0;
-            $youngDriverFee = $this->youngDriverFee($rental->customer, \App\Support\AppSettings::all());
+            $youngDriverFee = $this->youngDriverFee($rental->customer, AppSettings::all());
             $addonsTotal = $this->addonsTotalFor($rental->rental_id);
 
             $subtotal = $totalBase + $insuranceFee + $driverFee + $youngDriverFee + $addonsTotal;
@@ -950,7 +984,7 @@ class RentalController extends Controller
             $oldPromoId = $rental->promo_id;
             $effectivePromoId = null;
 
-            if (!empty($validated['promo_id'])) {
+            if (! empty($validated['promo_id'])) {
                 // Rental ini sendiri sudahconsume 1 slot promo yang sama → kuota dimaafkan
                 $promo = $this->usablePromo(
                     $validated['promo_id'],
@@ -974,7 +1008,7 @@ class RentalController extends Controller
             $afterDiscount = $subtotal - $discountAmount;
             $taxPercent = $this->resolveTaxPercent(
                 $validated['tax_percent'] ?? $rental->tax_percent,
-                \App\Support\AppSettings::all()
+                AppSettings::all()
             );
             $taxAmount = $afterDiscount * ($taxPercent / 100);
             $totalAmount = $afterDiscount + $taxAmount;
@@ -1015,6 +1049,17 @@ class RentalController extends Controller
             DB::commit();
             $inTx = false;
 
+            // FIN-07: invoice draft mengikuti perubahan nilai; invoice terbit dibekukan
+            // (snapshot) — perubahan nilai pada sewa ter-snapshot harus lewat adjustment.
+            // Dipanggil SETELAH commit agar gagal recalc tidak menggagalkan edit sewa.
+            try {
+                app(RentalSettlementService::class)->recalculateDraftInvoice($rental);
+            } catch (\Throwable $e) {
+                return redirect()->route('rental.show', $rental->rental_id)
+                    ->withSuccess('Data sewa berhasil diperbarui.')
+                    ->withErrors('Catatan: '.$e->getMessage());
+            }
+
             return redirect()->route('rental.show', $rental->rental_id)
                 ->withSuccess('Data sewa berhasil diperbarui.');
         } catch (ValidationException $e) {
@@ -1026,6 +1071,7 @@ class RentalController extends Controller
             if ($inTx) {
                 DB::rollback();
             }
+
             return redirect()->back()->withInput()->withErrors($e->getMessage());
         }
     }
@@ -1036,12 +1082,12 @@ class RentalController extends Controller
             'customer', 'vehicle.model.brand', 'driver', 'pickupLocation', 'returnLocation', 'details', 'employee',
         ])->findOrFail($rental);
 
-        $settings = \App\Support\AppSettings::all();
+        $settings = AppSettings::all();
 
-        return \App\Support\PdfDocument::download(
+        return PdfDocument::download(
             'rental.print',
             ['rental' => $rental, 'settings' => $settings],
-            'Kontrak-Sewa-' . $rental->rental_code
+            'Kontrak-Sewa-'.$rental->rental_code
         );
     }
 
@@ -1058,9 +1104,9 @@ class RentalController extends Controller
         $end = $request->get('end_date');
 
         $query = Rental::with(['customer', 'vehicle.model.brand', 'pickupLocation', 'returnLocation'])
-            ->when($status && $status !== 'all', fn($q) => $q->where('status', $status))
-            ->when($start, fn($q) => $q->where('rental_start_date', '>=', \Carbon\Carbon::parse($start)->startOfDay()))
-            ->when($end, fn($q) => $q->where('rental_end_date', '<=', \Carbon\Carbon::parse($end)->endOfDay()))
+            ->when($status && $status !== 'all', fn ($q) => $q->where('status', $status))
+            ->when($start, fn ($q) => $q->where('rental_start_date', '>=', Carbon::parse($start)->startOfDay()))
+            ->when($end, fn ($q) => $q->where('rental_end_date', '<=', Carbon::parse($end)->endOfDay()))
             ->orderBy('rental_start_date', 'desc');
 
         $filename = 'rental_export_'.now()->format('Ymd_His').'.csv';
@@ -1068,7 +1114,7 @@ class RentalController extends Controller
 
         $callback = function () use ($query) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Kode Sewa','Pelanggan','Telepon','Kendaraan','Plat','Penjemputan','Pengembalian','Mulai','Selesai','Hari','Status','Pembayaran','Total (Rp)']);
+            fputcsv($handle, ['Kode Sewa', 'Pelanggan', 'Telepon', 'Kendaraan', 'Plat', 'Penjemputan', 'Pengembalian', 'Mulai', 'Selesai', 'Hari', 'Status', 'Pembayaran', 'Total (Rp)']);
             foreach ($query->cursor() as $r) {
                 fputcsv($handle, [
                     $r->rental_code,
@@ -1107,7 +1153,7 @@ class RentalController extends Controller
             $rental = Rental::whereIn('status', ['reserved', 'ongoing', 'overdue'])->lockForUpdate()->findOrFail($rental);
 
             $validated = $request->validate([
-                'new_end_date' => 'required|date|after:' . $rental->rental_end_date,
+                'new_end_date' => 'required|date|after:'.$rental->rental_end_date,
                 'notes' => 'nullable|string',
             ]);
 
@@ -1124,7 +1170,7 @@ class RentalController extends Controller
 
             $additionalBase = $rental->base_rate_per_day * $days;
             // PPN perpanjangan mengikuti PPN sewa induknya
-            $extensionTaxPercent = (float) ($rental->tax_percent ?? $this->resolveTaxPercent(null, \App\Support\AppSettings::all()));
+            $extensionTaxPercent = (float) ($rental->tax_percent ?? $this->resolveTaxPercent(null, AppSettings::all()));
             $additionalTax = $additionalBase * ($extensionTaxPercent / 100);
 
             $extension = RentalExtension::create([
@@ -1152,6 +1198,7 @@ class RentalController extends Controller
             if ($inTx) {
                 DB::rollback();
             }
+
             return response()->json(['status' => false, 'msg' => $e->getMessage()]);
         }
     }
@@ -1187,12 +1234,18 @@ class RentalController extends Controller
                 'total_amount' => ($rental->total_amount ?? 0) + $extension->additional_total,
             ]);
 
+            // FIN-07: invoice draft ikut direkalkulasi mengikuti nilai sewa baru.
+            // Invoice terbit adalah snapshot yang dibekukan — recalc melempar Exception
+            // sehingga approval ditolak sampai dibuat dokumen adjustment.
+            app(RentalSettlementService::class)->recalculateDraftInvoice($rental->fresh());
+
             DB::commit();
 
             return response()->json(['status' => true, 'msg' => 'Perpanjangan disetujui.']);
         } catch (Exception $e) {
             DB::rollback();
-            return response()->json(['status' => false, 'msg' => $e->getMessage()]);
+
+            return response()->json(['status' => false, 'msg' => $e->getMessage()], 422);
         }
     }
 
@@ -1214,7 +1267,7 @@ class RentalController extends Controller
 
         return view('rental.return')->with([
             'title' => 'Form Pengembalian',
-            'subtitle' => 'Pengembalian ' . $rental->rental_code,
+            'subtitle' => 'Pengembalian '.$rental->rental_code,
             'rental' => $rental,
         ]);
     }
@@ -1258,7 +1311,7 @@ class RentalController extends Controller
                 'return_mileage.min' => 'Odometer pengembalian harus >= odometer saat berangkat (:min km). Nilai yang dimasukkan: :input.',
             ]);
 
-            app(\App\Services\AccountingService::class)->assertPeriodOpen($validated['return_date']);
+            app(AccountingService::class)->assertPeriodOpen($validated['return_date']);
 
             DB::beginTransaction();
             $inTx = true;
@@ -1279,20 +1332,77 @@ class RentalController extends Controller
                 ]);
             }
 
+            // Extra charge menambah kewajiban pelanggan — wajib masuk settlement (FIN-08):
+            // total rental & invoice draft direkalkulasi SEBELUM jurnal, sehingga batas
+            // pembayaran dan pelunasan mengenali kewajiban tambahan ini.
+            $extraCharge = (float) ($validated['extra_charge'] ?? 0);
+            $newBillTotal = (float) $rental->total_amount + $extraCharge;
+
+            if ($extraCharge > 0) {
+                $rental->update(['total_amount' => $newBillTotal]);
+                app(RentalSettlementService::class)->recalculateDraftInvoice($rental);
+            }
+
             // Auto jurnal untuk extra charge (pendapatan tambahan) — FASE 2-10: hard post,
-            // gagal jurnal = rollback transaksi (integritas operasional ↔ akuntansi)
-            if (! empty($validated['extra_charge']) && $validated['extra_charge'] > 0) {
-                app(\App\Services\AccountingService::class)->post($validated['return_date'], 'RET-'.$rental->rental_code, 'Extra charge pengembalian '.$rental->rental_code, 'rental', [
-                    ['account' => $this->resolveCoa('1-2100'), 'debit' => $validated['extra_charge'], 'credit' => 0],
-                    ['account' => $this->resolveCoa('4-1200'), 'debit' => 0, 'credit' => $validated['extra_charge']],
+            // gagal jurnal = rollback transaksi (integritas operasional ↔ akuntansi).
+            // FIN-08: Dr Piutang Sewa (kewajiban penyewa), Cr Pendapatan Sewa Tambahan.
+            if ($extraCharge > 0) {
+                app(AccountingService::class)->post($validated['return_date'], 'RET-'.$rental->rental_code, 'Extra charge pengembalian '.$rental->rental_code, 'rental', [
+                    ['account' => $this->resolveCoa('1-2100'), 'debit' => $extraCharge, 'credit' => 0],
+                    ['account' => $this->resolveCoa('4-1200'), 'debit' => 0, 'credit' => $extraCharge],
                 ]);
+            }
+
+            // FIN-08: pengembalian deposit dicatat sebagai Refund terhubung ke Payment
+            // deposit yang benar-benar diterima (bukan hanya angka di tr_return).
+            $depositRefund = (float) ($validated['deposit_refund'] ?? 0);
+            if ($depositRefund > 0) {
+                $depositPayment = Payment::where('rental_id', $rental->rental_id)
+                    ->where('allocation', Payment::ALLOCATION_DEPOSIT)
+                    ->where('status', 'completed')
+                    ->orderByDesc('payment_id')
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($depositPayment) {
+                    $alreadyRefunded = (float) Refund::where('payment_id', $depositPayment->payment_id)
+                        ->where('status', '!=', 'failed')
+                        ->sum('amount');
+
+                    if ($alreadyRefunded + $depositRefund > (float) $depositPayment->amount + 0.01) {
+                        throw new Exception(sprintf(
+                            'Refund deposit (Rp %s) melebihi sisa deposit yang diterima (Rp %s).',
+                            number_format($depositRefund, 2, ',', '.'),
+                            number_format(max(0, (float) $depositPayment->amount - $alreadyRefunded), 2, ',', '.')
+                        ));
+                    }
+
+                    Refund::create([
+                        'payment_id' => $depositPayment->payment_id,
+                        'rental_id' => $rental->rental_id,
+                        'refund_date' => $validated['return_date'],
+                        'amount' => $depositRefund,
+                        'refund_type' => 'deposit_return',
+                        'status' => 'processed',
+                        'notes' => 'Refund deposit saat pengembalian '.$rental->rental_code,
+                    ]);
+
+                    if ($alreadyRefunded + $depositRefund >= (float) $depositPayment->amount - 0.01) {
+                        $depositPayment->update(['status' => 'refunded']);
+                    }
+                }
+                // Tanpa Payment deposit tercatat: deposit dikelola di luar aplikasi —
+                // batas ini dinyatakan pada UI (lihat catatan FIN-08 di audit).
             }
 
             DB::commit();
             $inTx = false;
 
             // Notifikasi WA pengembalian
-            try { $this->sendRentalWA($rental, 'Pengembalian Selesai', 'Kendaraan *'.$rental->vehicle->license_plate.'* telah dikembalikan. Terima kasih!'); } catch (\Throwable $e) {}
+            try {
+                $this->sendRentalWA($rental, 'Pengembalian Selesai', 'Kendaraan *'.$rental->vehicle->license_plate.'* telah dikembalikan. Terima kasih!');
+            } catch (\Throwable $e) {
+            }
 
             return redirect()->route('rental.show', $rental->rental_id)
                 ->withSuccess('Pengembalian berhasil diproses.');
@@ -1305,6 +1415,7 @@ class RentalController extends Controller
             if ($inTx) {
                 DB::rollback();
             }
+
             return redirect()->back()->withInput()->withErrors($e->getMessage());
         }
     }
@@ -1341,27 +1452,41 @@ class RentalController extends Controller
         }
     }
 
+    /**
+     * Bayar denda via service settlement terpusat (FIN-02/FIN-03): sama persis
+     * dengan jalur Finance — state machine, Payment allocation=fine, jurnal denda.
+     */
     public function finePay(Request $request, $rental, $fineId)
     {
+        $validated = $request->validate([
+            'payment_method' => ['nullable', Rule::in(['cash', 'bank_transfer', 'credit_card', 'debit_card', 'e_wallet', 'other'])],
+            'reference_number' => ['nullable', 'string', 'max:50'],
+        ]);
+
         try {
-            $fine = Fine::where('rental_id', $rental)->where('status', 'unpaid')->findOrFail($fineId);
-            $fine->update(['status' => 'paid', 'paid_date' => now()]);
+            app(FineSettlementService::class)->pay((int) $fineId, (int) $rental, $validated);
 
             return response()->json(['status' => true, 'msg' => 'Denda berhasil dibayar.']);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['status' => false, 'msg' => 'Denda tidak ditemukan atau sudah diselesaikan.'], 409);
         } catch (Exception $e) {
-            return response()->json(['status' => false, 'msg' => $e->getMessage()]);
+            return response()->json(['status' => false, 'msg' => 'Gagal membayar denda: '.$e->getMessage()], 422);
         }
     }
 
+    /**
+     * Bebaskan denda via service settlement terpusat (FIN-02).
+     */
     public function fineWaive(Request $request, $rental, $fineId)
     {
         try {
-            $fine = Fine::where('rental_id', $rental)->where('status', 'unpaid')->findOrFail($fineId);
-            $fine->update(['status' => 'waived']);
+            app(FineSettlementService::class)->waive((int) $fineId, (int) $rental);
 
             return response()->json(['status' => true, 'msg' => 'Denda dibebaskan.']);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['status' => false, 'msg' => 'Denda tidak ditemukan atau sudah diselesaikan.'], 409);
         } catch (Exception $e) {
-            return response()->json(['status' => false, 'msg' => $e->getMessage()]);
+            return response()->json(['status' => false, 'msg' => 'Gagal membebaskan denda: '.$e->getMessage()], 422);
         }
     }
 
@@ -1376,22 +1501,19 @@ class RentalController extends Controller
 
         return view('rental.invoice')->with([
             'title' => 'Buat Invoice',
-            'subtitle' => 'Invoice ' . $rental->rental_code,
+            'subtitle' => 'Invoice '.$rental->rental_code,
             'rental' => $rental,
         ]);
     }
 
+    /**
+     * Penerbitan invoice via service settlement terpusat (FIN-06/FIN-07):
+     * atomik di bawah lock rental, prepayment ditautkan, nomor aman paralel.
+     */
     public function invoiceStore(Request $request, $rental)
     {
-        $inTx = false;
-
         try {
             $rental = Rental::findOrFail($rental);
-
-            if (Invoice::where('rental_id', $rental->rental_id)->exists()) {
-                return redirect()->route('rental.show', $rental->rental_id)
-                    ->withErrors('Invoice untuk sewa ini sudah ada.');
-            }
 
             $validated = $request->validate([
                 // §3.6 audit sewa: jatuh tempo minimal hari ini
@@ -1399,50 +1521,17 @@ class RentalController extends Controller
                 'notes' => 'nullable|string|max:500',
             ]);
 
-            app(\App\Services\AccountingService::class)->assertPeriodOpen(now()->toDateString());
+            $invoice = app(RentalSettlementService::class)->issueInvoice($rental, $validated);
 
-            DB::beginTransaction();
-            $inTx = true;
-
-            $invoiceNumber = $this->gen_number(Invoice::class, 'invoice_number', 'INV-$/#####', now(), 'created_at', true);
-
-            // FASE 1-6 audit sewa: sub_total = komponen kotor SEBELUM diskon (base+asuransi+sopir+
-            // young driver+add-on) supaya tidak double diskon saat dirender (sub - disc + tax = total)
-            $subTotal = (float) $rental->total_base_price
-                + (float) ($rental->insurance_fee ?? 0)
-                + (float) ($rental->driver_fee ?? 0)
-                + (float) ($rental->young_driver_fee ?? 0)
-                + $this->addonsTotalFor($rental->rental_id);
-
-            Invoice::create([
-                'rental_id' => $rental->rental_id,
-                'invoice_number' => $invoiceNumber,
-                'issue_date' => now(),
-                'due_date' => $validated['due_date'],
-                'sub_total' => $subTotal,
-                'tax' => $rental->tax_amount ?? 0,
-                'discount' => $rental->discount_amount ?? 0,
-                'total_amount' => $rental->total_amount,
-                'paid_amount' => $rental->payments()->where('status', 'completed')->sum('amount'),
-                'status' => 'draft',
-                'notes' => $validated['notes'] ?? null,
-            ]);
-
-            DB::commit();
-            $inTx = false;
-
-            try { $this->sendRentalWA($rental, 'Invoice Terbit', 'Invoice *'.$invoiceNumber.'* untuk sewa *'.$rental->rental_code.'* telah terbit. Jatuh tempo: '.Carbon::parse($validated['due_date'])->format('d M Y')); } catch (\Throwable $e) {}
+            try {
+                $this->sendRentalWA($rental, 'Invoice Terbit', 'Invoice *'.$invoice->invoice_number.'* untuk sewa *'.$rental->rental_code.'* telah terbit. Jatuh tempo: '.Carbon::parse($validated['due_date'])->format('d M Y'));
+            } catch (\Throwable $e) {
+            }
 
             return redirect()->route('finance.index')->withSuccess('Invoice berhasil dibuat.');
         } catch (ValidationException $e) {
-            if ($inTx) {
-                DB::rollback();
-            }
             throw $e;
         } catch (Exception $e) {
-            if ($inTx) {
-                DB::rollback();
-            }
             return redirect()->back()->withInput()->withErrors($e->getMessage());
         }
     }
@@ -1460,19 +1549,22 @@ class RentalController extends Controller
             'payments',
         ])->where('rental_id', $rental)->firstOrFail();
 
-        return \App\Support\PdfDocument::download(
+        return PdfDocument::download(
             'finance.invoice.print',
-            ['item' => $invoice, 'settings' => \App\Support\AppSettings::all()],
-            'Invoice-' . ($invoice->invoice_number ?? $invoice->invoice_id)
+            ['item' => $invoice, 'settings' => AppSettings::all()],
+            'Invoice-'.($invoice->invoice_number ?? $invoice->invoice_id)
         );
     }
 
+    /**
+     * Pembayaran pokok sewa via service settlement terpusat (FIN-05): transaksi
+     * dimulai sebelum lock parent, anti-overpay terhadap alokasi pokok, rekonsiliasi
+     * invoice/rental + jurnal. FIN-10: batas nominal sesuai DECIMAL(12,2), ref ≤ 50.
+     */
     public function paymentStore(Request $request, $rental)
     {
-        $inTx = false;
-
         try {
-            $rental = Rental::lockForUpdate()->findOrFail($rental);
+            $rental = Rental::findOrFail($rental);
 
             // FASE 1-2 audit sewa: enum DB = cash|bank_transfer|...; normalize alias lama 'transfer'
             $methodAliases = ['transfer' => 'bank_transfer'];
@@ -1480,87 +1572,33 @@ class RentalController extends Controller
             $request->merge(['payment_method' => $methodAliases[$incomingMethod] ?? $incomingMethod]);
 
             $validated = $request->validate([
-                'amount' => 'required|numeric|min:0.01|max:99999999999',
+                'amount' => 'required|numeric|min:0.01|max:9999999999.99',
                 'payment_method' => 'required|in:cash,bank_transfer,credit_card,debit_card,e_wallet,other',
-                'reference_number' => 'nullable|string|max:100',
+                'reference_number' => 'nullable|string|max:50',
                 'notes' => 'nullable|string|max:500',
             ]);
 
-            app(\App\Services\AccountingService::class)->assertPeriodOpen(now()->toDateString());
+            $result = app(RentalSettlementService::class)->recordPayment($rental, $validated);
 
-            DB::beginTransaction();
-            $inTx = true;
-
-            // FASE 1-4 audit sewa: lock invoice + total pembayaran yang sudah tercatat
-            $invoice = Invoice::where('rental_id', $rental->rental_id)->lockForUpdate()->first();
-            $alreadyPaid = (float) Payment::where('rental_id', $rental->rental_id)
-                ->where('status', 'completed')
-                ->sum('amount');
-            $newlyPaid = $alreadyPaid + (float) $validated['amount'];
-            $billTotal = (float) ($rental->total_amount ?? 0);
-
-            // Cegah overpay terhadap tagihan
-            if ($billTotal > 0 && $newlyPaid > $billTotal + 0.01) {
-                throw new Exception(sprintf(
-                    'Pembayaran melebihi sisa tagihan. Sisa: Rp %s.',
-                    number_format(max(0, $billTotal - $alreadyPaid), 0, ',', '.')
-                ));
+            try {
+                $this->sendRentalWA($rental, 'Pembayaran Diterima', 'Pembayaran *Rp '.number_format((float) $validated['amount'], 0, ',', '.').'* untuk sewa *'.$rental->rental_code.'* telah diterima. Terima kasih!');
+            } catch (\Throwable $e) {
             }
 
-            $payment = Payment::create([
-                'invoice_id' => $invoice?->invoice_id,
-                'rental_id' => $rental->rental_id,
-                'payment_date' => now(),
-                'amount' => $validated['amount'],
-                'payment_method' => $validated['payment_method'],
-                'reference_number' => $validated['reference_number'] ?? null,
-                'status' => 'completed',
-                'notes' => $validated['notes'] ?? null,
-            ]);
-
-            if ($invoice) {
-                $invoicePaid = (float) $invoice->paid_amount + (float) $validated['amount'];
-                $invoice->update([
-                    'paid_amount' => $invoicePaid,
-                    'status' => $invoicePaid >= (float) $invoice->total_amount - 0.01 ? 'paid' : 'partially_paid',
-                ]);
-            }
-
-            // §3.6 audit sewa: partial vs paid (enum tr_rental: unpaid|partial|paid|refunded)
-            $rental->update([
-                'payment_status' => ($billTotal > 0 && $newlyPaid >= $billTotal - 0.01) ? 'paid' : 'partial',
-            ]);
-
-            // Auto jurnal: Dr Kas/Bank, Cr Piutang — FASE 2-10: hard post (gagal = rollback)
-            $cashAccount = $validated['payment_method'] === 'cash' ? $this->resolveCoa('1-1100') : $this->resolveCoa('1-1200');
-            app(\App\Services\AccountingService::class)->post(now()->toDateString(), 'PAY-'.$payment->payment_id, 'Pembayaran sewa '.$rental->rental_code, 'payment', [
-                ['account' => $cashAccount, 'debit' => $validated['amount'], 'credit' => 0],
-                ['account' => $this->resolveCoa('1-2100'), 'debit' => 0, 'credit' => $validated['amount']],
-            ]);
-
-            DB::commit();
-            $inTx = false;
-
-            try { $this->sendRentalWA($rental, 'Pembayaran Diterima', 'Pembayaran *Rp '.number_format($validated['amount'],0,',','.').'* untuk sewa *'.$rental->rental_code.'* telah diterima. Terima kasih!'); } catch (\Throwable $e) {}
-
-            return response()->json(['status' => true, 'msg' => 'Pembayaran berhasil dicatat.', 'data' => $payment]);
+            return response()->json(['status' => true, 'msg' => 'Pembayaran berhasil dicatat.', 'data' => $result['payment']]);
         } catch (ValidationException $e) {
-            if ($inTx) {
-                DB::rollback();
-            }
             throw $e;
         } catch (Exception $e) {
-            if ($inTx) {
-                DB::rollback();
-            }
-            return response()->json(['status' => false, 'msg' => $e->getMessage()]);
+            return response()->json(['status' => false, 'msg' => $e->getMessage()], 422);
         }
     }
 
+    /**
+     * Refund via service settlement terpusat (FIN-04): rekonsiliasi penuh Payment,
+     * Invoice, Rental, dan jurnal reversal secara atomik.
+     */
     public function refundStore(Request $request, $rental)
     {
-        $inTx = false;
-
         try {
             $rental = Rental::findOrFail($rental);
 
@@ -1570,58 +1608,21 @@ class RentalController extends Controller
             $request->merge(['refund_type' => $typeAliases[$incomingType] ?? $incomingType]);
 
             $validated = $request->validate([
+                // FIN-10: sumber wajib completed — divalidasi bersama batas nominal skema
                 'payment_id' => 'required|exists:tr_payment,payment_id',
-                'amount' => 'required|numeric|min:0.01',
+                'amount' => 'required|numeric|min:0.01|max:9999999999.99',
                 'refund_type' => 'required|in:deposit_return,overpayment,cancellation,damage_deposit',
+                'reference_number' => 'nullable|string|max:50',
                 'notes' => 'nullable|string|max:500',
             ]);
 
-            app(\App\Services\AccountingService::class)->assertPeriodOpen(now()->toDateString());
+            $result = app(RentalSettlementService::class)->refundPayment($rental, $validated);
 
-            DB::beginTransaction();
-            $inTx = true;
-
-            // §3.6 audit sewa: refund tidak boleh melebihi pembayaran (dikurangi refund sebelumnya)
-            $payment = Payment::where('rental_id', $rental->rental_id)->lockForUpdate()->findOrFail($validated['payment_id']);
-            $alreadyRefunded = (float) Refund::where('payment_id', $payment->payment_id)
-                ->where('status', '!=', 'failed')
-                ->sum('amount');
-            if ($alreadyRefunded + (float) $validated['amount'] > (float) $payment->amount + 0.01) {
-                throw new Exception(sprintf(
-                    'Refund melebihi nilai pembayaran. Sisa dapat direfund: Rp %s.',
-                    number_format(max(0, (float) $payment->amount - $alreadyRefunded), 0, ',', '.')
-                ));
-            }
-
-            $refund = Refund::create([
-                'payment_id' => $validated['payment_id'],
-                'rental_id' => $rental->rental_id,
-                'refund_date' => now(),
-                'amount' => $validated['amount'],
-                'refund_type' => $validated['refund_type'],
-                'status' => 'processed',
-                'notes' => $validated['notes'] ?? null,
-            ]);
-
-            // Payment dianggap refunded bila seluruh nilainya sudah kembali
-            if ($alreadyRefunded + (float) $validated['amount'] >= (float) $payment->amount - 0.01) {
-                $payment->update(['status' => 'refunded']);
-            }
-
-            DB::commit();
-            $inTx = false;
-
-            return response()->json(['status' => true, 'msg' => 'Refund berhasil dicatat.', 'data' => $refund]);
+            return response()->json(['status' => true, 'msg' => 'Refund berhasil dicatat.', 'data' => $result['refund']]);
         } catch (ValidationException $e) {
-            if ($inTx) {
-                DB::rollback();
-            }
             throw $e;
         } catch (Exception $e) {
-            if ($inTx) {
-                DB::rollback();
-            }
-            return response()->json(['status' => false, 'msg' => $e->getMessage()]);
+            return response()->json(['status' => false, 'msg' => $e->getMessage()], 422);
         }
     }
 
@@ -1723,7 +1724,7 @@ class RentalController extends Controller
 
     private function resolveCoa(string $code): ?int
     {
-        return app(\App\Services\AccountingService::class)->resolveCoa($code);
+        return app(AccountingService::class)->resolveCoa($code);
     }
 
     private function sendRentalWA(Rental $rental, string $subject, string $text): void
@@ -1734,7 +1735,7 @@ class RentalController extends Controller
 
         // FASE 3 audit sewa: via queue + retry, kegagalan tercatat (bukan silent swallow).
         // Dispatch di luar transaksi (pemanggil sudah commit lebih dulu).
-        \App\Jobs\SendWhatsAppNotification::dispatch(
+        SendWhatsAppNotification::dispatch(
             $rental->customer->phone,
             config('app.name').' — '.$subject,
             $text

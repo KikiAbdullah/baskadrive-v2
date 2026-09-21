@@ -70,12 +70,14 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @forelse($item->rental?->details ?? [] as $d)
+                                    {{-- FIN-13: snapshot line item yang sama dengan PDF --}}
+                                    @php $lineItems = \App\Support\InvoiceLineItems::for($item); @endphp
+                                    @forelse($lineItems as $line)
                                         <tr>
-                                            <td>{{ $d->item_name }}</td>
-                                            <td class="text-end">{{ $d->quantity }}</td>
-                                            <td class="text-end">Rp {{ number_format($d->unit_price ?? 0, 0, ',', '.') }}</td>
-                                            <td class="text-end">Rp {{ number_format($d->total_price ?? 0, 0, ',', '.') }}</td>
+                                            <td>{{ $line['name'] }}<br><small class="text-muted">{{ $line['sub'] }}</small></td>
+                                            <td class="text-end">{{ $line['qty'] }}</td>
+                                            <td class="text-end">{{ \App\Support\AppSettings::money($line['unit']) }}</td>
+                                            <td class="text-end">{{ \App\Support\AppSettings::money($line['total']) }}</td>
                                         </tr>
                                     @empty
                                         <tr>
@@ -86,27 +88,27 @@
                                 <tfoot>
                                     <tr>
                                         <th colspan="3" class="text-end">Subtotal</th>
-                                        <th class="text-end">Rp {{ number_format($item->sub_total ?? 0, 0, ',', '.') }}</th>
+                                        <th class="text-end">{{ \App\Support\AppSettings::money($item->sub_total ?? 0) }}</th>
                                     </tr>
                                     <tr>
                                         <th colspan="3" class="text-end">Pajak</th>
-                                        <th class="text-end">Rp {{ number_format($item->tax ?? 0, 0, ',', '.') }}</th>
+                                        <th class="text-end">{{ \App\Support\AppSettings::money($item->tax ?? 0) }}</th>
                                     </tr>
                                     <tr>
                                         <th colspan="3" class="text-end">Diskon</th>
-                                        <th class="text-end">(Rp {{ number_format($item->discount ?? 0, 0, ',', '.') }})</th>
+                                        <th class="text-end">({{ \App\Support\AppSettings::money($item->discount ?? 0) }})</th>
                                     </tr>
                                     <tr class="table-active">
                                         <th colspan="3" class="text-end">Total</th>
-                                        <th class="text-end">Rp {{ number_format($item->total_amount ?? 0, 0, ',', '.') }}</th>
+                                        <th class="text-end">{{ \App\Support\AppSettings::money($item->total_amount ?? 0) }}</th>
                                     </tr>
                                     <tr>
                                         <th colspan="3" class="text-end">Terbayar</th>
-                                        <th class="text-end">Rp {{ number_format($item->paid_amount ?? 0, 0, ',', '.') }}</th>
+                                        <th class="text-end">{{ \App\Support\AppSettings::money($item->paid_amount ?? 0) }}</th>
                                     </tr>
                                     <tr class="text-danger">
                                         <th colspan="3" class="text-end">Sisa</th>
-                                        <th class="text-end">Rp {{ number_format(($item->total_amount ?? 0) - ($item->paid_amount ?? 0), 0, ',', '.') }}</th>
+                                        <th class="text-end">{{ \App\Support\AppSettings::money(($item->total_amount ?? 0) - ($item->paid_amount ?? 0)) }}</th>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -154,7 +156,7 @@
                                 <span class="info-label">
                                     {{ $p->payment_date?->format('d/m/Y') }} ({{ ucfirst($p->payment_method) }})
                                 </span>
-                                <span class="info-value">Rp {{ number_format($p->amount ?? 0, 0, ',', '.') }}</span>
+                                <span class="info-value">{{ \App\Support\AppSettings::money($p->amount ?? 0) }}</span>
                             </div>
                         @empty
                             <p class="text-muted mb-0">Belum ada pembayaran.</p>

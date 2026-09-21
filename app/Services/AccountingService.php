@@ -39,7 +39,24 @@ class AccountingService
     {
         $this->assertPeriodOpen($date);
 
-        $lines = array_values(array_filter($lines, fn ($l) => ! empty($l['account'])));
+        // FIN-09: baris tanpa akun dibuang SETELAH dicek — bila ada baris yang akunnya
+        // gagal diresolusi, itu bug pemetaan COA dan harus gagal, bukan diam-diam di-drop.
+        foreach ($lines as $line) {
+            if (empty($line['account'])) {
+                throw new Exception(sprintf(
+                    'Jurnal "%s" dibatalkan: terdapat baris dengan akun COA tidak terpetakan. Periksa konfigurasi Chart of Accounts.',
+                    $desc
+                ));
+            }
+        }
+
+        // FIN-09: jurnal tanpa detail (semua sisi nol / tanpa baris) tidak boleh tersimpan —
+        // keberadaan header jurnal kosong membuat buku besar tampak terbukui padahal tidak.
+        $lines = array_values(array_filter($lines, fn ($l) => (float) ($l['debit'] ?? 0) != 0.0 || (float) ($l['credit'] ?? 0) != 0.0));
+
+        if (empty($lines)) {
+            throw new Exception('Jurnal dibatalkan: tidak ada baris debit/kredit bernilai nonnol.');
+        }
 
         $totalDebit = array_sum(array_map(fn ($l) => (float) ($l['debit'] ?? 0), $lines));
         $totalCredit = array_sum(array_map(fn ($l) => (float) ($l['credit'] ?? 0), $lines));

@@ -1,4 +1,5 @@
 @php
+    // FLE-12: closed kini status klaim yang valid (enum DB diperluas).
     $map = [
         'draft' => ['label' => 'Draft', 'class' => 'bg-label-secondary'],
         'submitted' => ['label' => 'Diajukan', 'class' => 'bg-label-info'],

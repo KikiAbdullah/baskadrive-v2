@@ -13,8 +13,9 @@ class Fine extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'rental_id', 'return_id', 'fine_type', 'description', 'amount',
-        'status', 'issued_date', 'paid_date', 'issued_by', 'notes',
+        'rental_id', 'return_id', 'damage_id', 'fine_type', 'description', 'amount',
+        'status', 'issued_date', 'paid_date', 'paid_by', 'issued_by',
+        'waived_by', 'waived_at', 'notes',
     ];
 
     protected $casts = [
@@ -33,9 +34,33 @@ class Fine extends Model
         return $this->belongsTo(ReturnCar::class, 'return_id', 'return_id');
     }
 
+    /** Laporan kerusakan sumber bila denda ini tagihan biaya perbaikan (FLE-07). */
+    public function damageReport()
+    {
+        return $this->belongsTo(DamageReport::class, 'damage_id', 'damage_id');
+    }
+
+    /** Denda kerusakan yang sudah pernah ditagihkan untuk satu laporan kerusakan. */
+    public function scopeForDamage($query, int $damageId)
+    {
+        return $query->where('damage_id', $damageId);
+    }
+
     public function issuer()
     {
         return $this->belongsTo(Employee::class, 'issued_by', 'employee_id');
+    }
+
+    /** Petugas yang mencatat pembayaran — terpisah dari penerbit denda (FIN-02). */
+    public function payer()
+    {
+        return $this->belongsTo(Employee::class, 'paid_by', 'employee_id');
+    }
+
+    /** Petugas yang membebaskan denda. */
+    public function waivor()
+    {
+        return $this->belongsTo(Employee::class, 'waived_by', 'employee_id');
     }
 
     public function scopeUnpaid($query)

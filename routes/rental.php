@@ -236,39 +236,41 @@ Route::group(['prefix' => 'rental', 'as' => 'rental.', 'middleware' => ['can:ren
 // ===========================================
 Route::group(['prefix' => 'fleet', 'as' => 'fleet.', 'middleware' => ['can:fleet_view']], function () {
 
-    // Maintenance
+    // Maintenance — FLE-01: mutasi butuh izin fleet_maintain
     Route::group(['prefix' => 'maintenance', 'as' => 'maintenance.'], function () {
         Route::get('/', [FleetController::class, 'maintenanceIndex'])->name('index');
         Route::get('/get-data', [FleetController::class, 'maintenanceData'])->name('data');
         Route::get('/get-button-option', [FleetController::class, 'maintenanceButtonOption'])->name('button-option');
-        Route::get('/create', [FleetController::class, 'maintenanceCreate'])->name('create');
-        Route::post('/store', [FleetController::class, 'maintenanceStore'])->name('store');
-        Route::get('/{id}/edit', [FleetController::class, 'maintenanceEdit'])->name('edit');
-        Route::put('/{id}', [FleetController::class, 'maintenanceUpdate'])->name('update');
-        Route::put('/{id}/complete', [FleetController::class, 'maintenanceComplete'])->name('complete');
-        Route::put('/{id}/reschedule', [FleetController::class, 'maintenanceReschedule'])->name('reschedule');
+        Route::get('/create', [FleetController::class, 'maintenanceCreate'])->middleware('can:fleet_maintain')->name('create');
+        Route::post('/store', [FleetController::class, 'maintenanceStore'])->middleware('can:fleet_maintain')->name('store');
+        Route::get('/{id}/edit', [FleetController::class, 'maintenanceEdit'])->middleware('can:fleet_maintain')->name('edit');
+        Route::put('/{id}', [FleetController::class, 'maintenanceUpdate'])->middleware('can:fleet_maintain')->name('update');
+        Route::put('/{id}/complete', [FleetController::class, 'maintenanceComplete'])->middleware('can:fleet_maintain')->name('complete');
+        Route::put('/{id}/reschedule', [FleetController::class, 'maintenanceReschedule'])->middleware('can:fleet_maintain')->name('reschedule');
     });
 
-    // Damage Report (gabungan Kerusakan + Klaim Asuransi)
+    // Damage Report (gabungan Kerusakan + Klaim Asuransi) — FLE-01: gate per aksi
     Route::group(['prefix' => 'damage', 'as' => 'damage.'], function () {
         Route::get('/', [FleetController::class, 'damageIndex'])->name('index');
         Route::get('/get-data', [FleetController::class, 'damageData'])->name('data');
         Route::get('/get-button-option', [FleetController::class, 'damageButtonOption'])->name('button-option');
-        Route::get('/create', [FleetController::class, 'damageCreate'])->name('create');
-        Route::post('/store', [FleetController::class, 'damageStore'])->name('store');
+        Route::get('/create', [FleetController::class, 'damageCreate'])->middleware('can:fleet_damage_add')->name('create');
+        Route::post('/store', [FleetController::class, 'damageStore'])->middleware('can:fleet_damage_add')->name('store');
         Route::get('/{id}', [FleetController::class, 'damageShow'])->name('show');
-        Route::put('/{id}/status', [FleetController::class, 'damageUpdateStatus'])->name('update-status');
-        Route::put('/{id}/bill-renter', [FleetController::class, 'damageBillRenter'])->name('bill');
-        Route::post('/{id}/photo', [FleetController::class, 'damagePhotoUpload'])->name('photo.upload');
-        Route::delete('/photo/{photoId}', [FleetController::class, 'damagePhotoDelete'])->name('photo.delete');
+        Route::put('/{id}/status', [FleetController::class, 'damageUpdateStatus'])->middleware('can:fleet_damage_manage')->name('update-status');
+        // FLE-12: jalur koreksi biaya aktual (dasar penagihan penyewa)
+        Route::put('/{id}/update-cost', [FleetController::class, 'damageUpdateCost'])->middleware('can:fleet_damage_manage')->name('update-cost');
+        Route::put('/{id}/bill-renter', [FleetController::class, 'damageBillRenter'])->middleware('can:fleet_bill_renter')->name('bill');
+        Route::post('/{id}/photo', [FleetController::class, 'damagePhotoUpload'])->middleware('can:fleet_damage_add')->name('photo.upload');
+        Route::delete('/photo/{photoId}', [FleetController::class, 'damagePhotoDelete'])->middleware('can:fleet_damage_manage')->name('photo.delete');
     });
 
-    // Insurance Claim (form buat & show diakses dari halaman Kerusakan)
+    // Insurance Claim (form buat & show diakses dari halaman Kerusakan) — FLE-01
     Route::group(['prefix' => 'insurance-claim', 'as' => 'insurance-claim.'], function () {
-        Route::get('/create', [FleetController::class, 'claimCreate'])->name('create');
-        Route::post('/store', [FleetController::class, 'claimStore'])->name('store');
+        Route::get('/create', [FleetController::class, 'claimCreate'])->middleware('can:fleet_claim_manage')->name('create');
+        Route::post('/store', [FleetController::class, 'claimStore'])->middleware('can:fleet_claim_manage')->name('store');
         Route::get('/{id}', [FleetController::class, 'claimShow'])->name('show');
-        Route::put('/{id}/status', [FleetController::class, 'claimUpdateStatus'])->name('update-status');
+        Route::put('/{id}/status', [FleetController::class, 'claimUpdateStatus'])->middleware('can:fleet_claim_manage')->name('update-status');
     });
 });
 
@@ -285,8 +287,10 @@ Route::group(['prefix' => 'finance', 'as' => 'finance.', 'middleware' => ['can:f
         Route::get('/get-data', [FinanceController::class, 'invoiceData'])->name('data');
         Route::get('/get-button-option', [FinanceController::class, 'invoiceButtonOption'])->name('button-option');
         Route::get('/{id}', [FinanceController::class, 'invoiceShow'])->name('show');
-        Route::get('/{id}/print', [FinanceController::class, 'invoicePrint'])->name('print');
-        Route::post('/{id}/send-email', [FinanceController::class, 'invoiceSendEmail'])->name('send-email');
+        Route::get('/{id}/print', [FinanceController::class, 'invoicePrint'])->middleware('throttle:30,1')->name('print');
+        // FIN-11: kirim email = aksi mutasi (draft → sent) + render PDF, bukan operasi baca.
+        // Gate aksi finance_invoice_add + throttle mencegah penyalahgunaan/beban berulang.
+        Route::post('/{id}/send-email', [FinanceController::class, 'invoiceSendEmail'])->middleware(['can:finance_invoice_add', 'throttle:6,1'])->name('send-email');
     });
 
     // Fine
@@ -300,7 +304,8 @@ Route::group(['prefix' => 'finance', 'as' => 'finance.', 'middleware' => ['can:f
     // Payment History
     Route::get('/payment/get-data', [FinanceController::class, 'paymentData'])->name('payment.data');
     Route::get('/payment/get-button-option', [FinanceController::class, 'paymentButtonOption'])->name('payment.button-option');
-    Route::get('/payment/{id}/receipt', [FinanceController::class, 'paymentReceipt'])->name('payment.receipt');
+    // FIN-15: render PDF kwitansi dibatasi lajunya (render biner berat bila diulang).
+    Route::get('/payment/{id}/receipt', [FinanceController::class, 'paymentReceipt'])->middleware('throttle:30,1')->name('payment.receipt');
 });
 
 // ===========================================

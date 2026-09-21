@@ -101,6 +101,20 @@ class AppSettings
         return $all[$key] ?? $fallback;
     }
 
+    /**
+     * Formatter uang bersama (FIN-14): dua desimal agar sen ikut tampil dan
+     * rekonsiliasi kwitansi/invoice dengan transaksi tidak kehilangan presisi.
+     * Nilai non-numerik ditampilkan apa adanya (mis. '-').
+     */
+    public static function money(mixed $value): string
+    {
+        if ($value === null || $value === '' || ! is_numeric($value)) {
+            return '-';
+        }
+
+        return 'Rp '.number_format((float) $value, 2, ',', '.');
+    }
+
     public static function set(string $key, mixed $value): void
     {
         AppSetting::updateOrCreate(

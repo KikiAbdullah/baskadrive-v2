@@ -17,6 +17,25 @@ class DamageReport extends Model
         'inspected_by', 'inspected_at', 'notes',
     ];
 
+    /**
+     * FLE-02: satu kontrak status untuk enum DB, validasi controller, dropdown UI,
+     * badge, dan laporan. Menyatukan set skema awal dengan status alur kerja yang
+     * sebelumnya hanya ada di UI (inspected/approved/in_repair/rejected/closed).
+     */
+    public const STATUSES = [
+        'reported', 'inspected', 'assessment', 'approved', 'in_repair',
+        'repair_in_progress', 'repaired', 'rejected', 'claimed_insurance',
+        'written_off', 'closed',
+    ];
+
+    /** FLE-11: enum damage_type sesuai skema database (bukan body/engine versi UI). */
+    public const DAMAGE_TYPES = [
+        'exterior', 'interior', 'mechanical', 'electrical', 'glass', 'tire', 'other',
+    ];
+
+    /** FLE-11: severity lengkap termasuk total_loss. */
+    public const SEVERITIES = ['minor', 'moderate', 'severe', 'total_loss'];
+
     protected $casts = [
         'reported_date' => 'datetime',
         'inspected_at' => 'datetime',
@@ -54,6 +73,12 @@ class DamageReport extends Model
     public function insuranceClaim()
     {
         return $this->hasOne(InsuranceClaim::class, 'damage_id', 'damage_id');
+    }
+
+    /** FLE-07: tagihan denda yang lahir dari laporan kerusakan ini. */
+    public function fines()
+    {
+        return $this->hasMany(Fine::class, 'damage_id', 'damage_id');
     }
 
     public function scopeReported($query)

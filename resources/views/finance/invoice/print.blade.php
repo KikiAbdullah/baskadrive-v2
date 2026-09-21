@@ -20,20 +20,36 @@
             $logoDataUri = 'data:image/svg+xml;base64,' . base64_encode(file_get_contents(public_path('app_local/img/logo-default.svg')));
         }
 
+        // FIN-14: formatter nominal dua desimal (sen) & tanggal bulan Indonesia
+        // selaras dengan helper bertipe modul Laporan; FIN-13: snapshot line item
+        // dari InvoiceLineItems agar layar/PDF menjumlah ke subtotal.
+        use App\Support\AppSettings as FinSettings;
+        use App\Support\InvoiceLineItems;
+
+        $money = fn ($v) => FinSettings::money($v);
+        $idDate = fn ($d) => $d ? $d->locale('id')->translatedFormat('d F Y') : '-';
+        $idDateTime = fn ($d) => $d ? $d->locale('id')->translatedFormat('d M Y, H:i') : '-';
+
+        // FIN-13: status dokumen (tersimpan) dan status settlement (nominal) dipisah
+        // — cancelled/overdue tidak lagi tersembunyi di balik perhitungan nominal.
+        $statusLabels = [
+            'draft' => ['Draft', 'chip-amber'],
+            'sent' => ['Terkirim', 'chip-blue'],
+            'partially_paid' => ['Dibayar Sebagian', 'chip-amber'],
+            'paid' => ['Lunas', 'chip-green'],
+            'overdue' => ['Jatuh Tempo', 'chip-red'],
+            'cancelled' => ['Dibatalkan', 'chip-red'],
+        ];
+        [$statusLabel, $statusChip] = $statusLabels[$item->status] ?? [ucfirst($item->status ?? '-'), 'chip-amber'];
+
         $taxLabel = $settings['tax_label'] ?? 'PPN';
         $taxPercent = $item->rental?->tax_percent ?? ($settings['tax_enabled'] ?? true ? $settings['tax_percent'] : 0);
         $depositAmount = $item->rental?->deposit_amount ?? 0;
         $remaining = ($item->total_amount ?? 0) - ($item->paid_amount ?? 0);
-        if ($remaining <= 0) {
-            $statusLabel = 'Lunas';
-            $statusChip = 'chip-green';
-        } elseif (($item->paid_amount ?? 0) > 0) {
-            $statusLabel = 'Dibayar Sebagian';
-            $statusChip = 'chip-amber';
-        } else {
-            $statusLabel = 'Belum Dibayar';
-            $statusChip = 'chip-red';
-        }
+        $settlementLabel = $remaining <= 0 ? 'Lunas' : ((($item->paid_amount ?? 0) > 0) ? 'Dibayar Sebagian' : 'Belum Dibayar');
+        $settlementChip = $remaining <= 0 ? 'chip-green' : ((($item->paid_amount ?? 0) > 0) ? 'chip-amber' : 'chip-red');
+
+        $lineItems = InvoiceLineItems::for($item);
     @endphp
     <style>
         /* ===== FONT: Inter 400/700/900 (base64 TTF) ===== */
@@ -372,7 +388,7 @@
                     </td>
                     <td class="head-doc">
                         <div class="no">{{ $item->invoice_number ?? '-' }}</div>
-                        <div class="dt">Terbit: {{ $item->issue_date?->format('d F Y') ?? '-' }}</div>
+                        <div class="dt">Terbit: {{ $idDate($item->issue_date) }}</div>
                     </td>
                 </tr>
             </table>
@@ -393,8 +409,9 @@
                     </td>
                     <td style="text-align: right;">
                         <span class="chip {{ $statusChip }}">{{ $statusLabel }}</span>
+                        <span class="chip {{ $settlementChip }}">{{ $settlementLabel }}</span>
                         @if($depositAmount > 0)
-                            <span class="chip chip-blue">Deposit Rp {{ number_format($depositAmount, 0, ',', '.') }}</span>
+                            <span class="chip chip-blue">Deposit {{ $money($depositAmount) }}</span>
                         @endif
                     </td>
                 </tr>
@@ -454,9 +471,9 @@
             </tr>
             <tr>
                 <td>{{ $item->rental?->pickupLocation?->location_name ?? '-' }}</td>
-                <td>{{ $item->rental?->rental_start_date?->format('d M Y, H:i') ?? '-' }}</td>
-                <td>{{ $item->rental?->rental_end_date?->format('d M Y, H:i') ?? '-' }}</td>
-                <td class="r">{{ $item->due_date?->format('d M Y') ?? '-' }}</td>
+                <td>{{ $idDateTime($item->rental?->rental_start_date) }}</td>
+                <td>{{ $idDateTime($item->rental?->rental_end_date) }}</td>
+                <td class="r">{{ $idDate($item->due_date) }}</td>
             </tr>
         </table>
 
@@ -473,42 +490,30 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($item->rental?->details ?? [] as $d)
-                        @php
-                            $typeLabels = [
-                                'vehicle' => 'Sewa kendaraan',
-                                'driver' => 'Layanan sopir',
-                                'insurance' => 'Asuransi perlindungan',
-                                'addon' => 'Layanan tambahan',
-                                'fuel' => 'Bahan bakar',
-                                'other' => 'Layanan tambahan',
-                            ];
-                        @endphp
+                    {{-- FIN-13: snapshot line item lengkap dari sumber kebenaran tersimpan,
+                         komponen nol tidak dirender, jumlah baris = sub_total --}}
+                    @forelse($lineItems as $line)
                         <tr>
                             <td>
-                                <strong>{{ $d->item_name }}</strong><br>
-                                <span class="item-sub">{{ $typeLabels[$d->item_type] ?? 'Layanan tambahan' }}</span>
+                                <strong>{{ $line['name'] }}</strong><br>
+                                <span class="item-sub">{{ $line['sub'] }}</span>
                             </td>
-                            <td class="r">Rp {{ number_format($d->unit_price ?? 0, 0, ',', '.') }}</td>
-                            <td class="r">{{ $d->quantity }} {{ $d->item_type === 'vehicle' ? 'hari' : 'x' }}</td>
-                            <td class="r"><strong>{{ number_format($d->total_price ?? 0, 0, ',', '.') }}</strong></td>
+                            <td class="r">{{ $money($line['unit']) }}</td>
+                            <td class="r">{{ $line['qty'] }}</td>
+                            <td class="r"><strong>{{ $money($line['total']) }}</strong></td>
                         </tr>
                     @empty
                         <tr>
-                            <td>
-                                <strong>Sewa Kendaraan</strong><br>
-                                <span class="item-sub">Tarif harian</span>
+                            <td colspan="4" class="r">
+                                {{ $money($item->sub_total ?? 0) }}
                             </td>
-                            <td class="r">Rp {{ number_format($item->sub_total ?? 0, 0, ',', '.') }}</td>
-                            <td class="r">{{ $item->rental?->rental_days ?? 1 }} hari</td>
-                            <td class="r"><strong>{{ number_format($item->sub_total ?? 0, 0, ',', '.') }}</strong></td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
             <div class="total-bar">
                 TOTAL TAGIHAN
-                <span class="amt">Rp {{ number_format($item->total_amount ?? 0, 0, ',', '.') }}</span>
+                <span class="amt">{{ $money($item->total_amount ?? 0) }}</span>
             </div>
         </div>
 
@@ -518,29 +523,29 @@
             <table class="sum">
                 <tr>
                     <td class="k">Subtotal</td>
-                    <td class="v">Rp {{ number_format($item->sub_total ?? 0, 0, ',', '.') }}</td>
+                    <td class="v">{{ $money($item->sub_total ?? 0) }}</td>
                 </tr>
                 <tr>
                     <td class="k">Diskon</td>
-                    <td class="v">- Rp {{ number_format($item->discount ?? 0, 0, ',', '.') }}</td>
+                    <td class="v">- {{ $money($item->discount ?? 0) }}</td>
                 </tr>
                 @if(($item->tax ?? 0) > 0)
                     <tr>
                         <td class="k">{{ $taxLabel }} ({{ rtrim(rtrim(number_format($taxPercent, 2, ',', '.'), '0'), ',') }}%)</td>
-                        <td class="v">Rp {{ number_format($item->tax ?? 0, 0, ',', '.') }}</td>
+                        <td class="v">{{ $money($item->tax ?? 0) }}</td>
                     </tr>
                 @endif
                 <tr>
                     <td class="k">Terbayar</td>
-                    <td class="v green">Rp {{ number_format($item->paid_amount ?? 0, 0, ',', '.') }}</td>
+                    <td class="v green">{{ $money($item->paid_amount ?? 0) }}</td>
                 </tr>
                 <tr>
                     <td class="k">Sisa Tagihan</td>
-                    <td class="v">Rp {{ number_format($remaining, 0, ',', '.') }}</td>
+                    <td class="v">{{ $money($remaining) }}</td>
                 </tr>
                 <tr>
                     <td class="k">Deposit Jaminan</td>
-                    <td class="v">{{ $depositAmount > 0 ? 'Rp ' . number_format($depositAmount, 0, ',', '.') : 'Tanpa deposit' }}</td>
+                    <td class="v">{{ $depositAmount > 0 ? $money($depositAmount) : 'Tanpa deposit' }}</td>
                 </tr>
             </table>
         </div>
@@ -561,10 +566,10 @@
                     <tbody>
                         @foreach($item->payments->take(5) as $p)
                             <tr>
-                                <td>{{ $p->payment_date?->format('d M Y') ?? '-' }}</td>
+                                <td>{{ $idDate($p->payment_date) }}</td>
                                 <td>{{ ucfirst($p->payment_method ?? '-') }}</td>
                                 <td>{{ $p->reference_number ?? '-' }}</td>
-                                <td class="r">{{ number_format($p->amount ?? 0, 0, ',', '.') }}</td>
+                                <td class="r">{{ $money($p->amount ?? 0) }}</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -576,7 +581,7 @@
         <div class="note">
             <div class="t">Catatan Pembayaran</div>
             {{ $item->notes ?: (($depositAmount > 0)
-                ? 'Deposit jaminan sebesar Rp ' . number_format($depositAmount, 0, ',', '.') . ' dibayarkan terpisah dan dikembalikan setelah kendaraan diterima dalam kondisi baik. Deposit tidak termasuk dalam total tagihan.'
+                ? 'Deposit jaminan sebesar ' . $money($depositAmount) . ' dibayarkan terpisah dan dikembalikan setelah kendaraan diterima dalam kondisi baik. Deposit tidak termasuk dalam total tagihan.'
                 : 'Sewa ini tanpa deposit jaminan.') }}
             Pembayaran via transfer bank a.n. {{ $settings['company_name'] }} — sertakan nomor invoice {{ $item->invoice_number ?? '-' }} pada berita transfer.
         </div>

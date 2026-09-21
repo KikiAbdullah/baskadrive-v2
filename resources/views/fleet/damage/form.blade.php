@@ -53,7 +53,8 @@
                                     <label class="form-label">Jenis Kerusakan <span class="text-danger">*</span></label>
                                     <select class="form-select" name="damage_type" required>
                                         <option value="">Pilih</option>
-                                        @foreach(['body' => 'Body/Karoseri', 'engine' => 'Mesin', 'interior' => 'Interior', 'glass' => 'Kaca', 'tire' => 'Ban', 'electrical' => 'Kelistrikan', 'other' => 'Lainnya'] as $val => $lbl)
+                                        {{-- FLE-11: enum sesuai skema database --}}
+                                        @foreach(['exterior' => 'Eksterior/Body', 'interior' => 'Interior', 'mechanical' => 'Mekanikal/Mesin', 'electrical' => 'Kelistrikan', 'glass' => 'Kaca', 'tire' => 'Ban', 'other' => 'Lainnya'] as $val => $lbl)
                                             <option value="{{ $val }}">{{ $lbl }}</option>
                                         @endforeach
                                     </select>
@@ -61,18 +62,19 @@
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Severity <span class="text-danger">*</span></label>
                                     <select class="form-select" name="severity" required>
-                                        <option value="minor">Minor</option>
-                                        <option value="moderate">Moderate</option>
-                                        <option value="severe">Severe</option>
+                                        {{-- FLE-11: total_loss ikut tersedia (ada di enum DB) --}}
+                                        @foreach(['minor' => 'Minor', 'moderate' => 'Moderate', 'severe' => 'Severe', 'total_loss' => 'Total Loss (Hilang)'] as $val => $lbl)
+                                            <option value="{{ $val }}">{{ $lbl }}</option>
+                                        @endforeach
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Lokasi Kerusakan</label>
                                     <input type="text" class="form-control" name="location">
-                                </div>
-                                <div class="col-md-6 mb-3">
+                                </div>                                <div class="col-md-6 mb-3">
                                     <label class="form-label">Estimasi Biaya (Rp)</label>
-                                    <input type="number" class="form-control" name="repair_cost_estimate">
+                                    <input type="number" class="form-control" name="repair_cost_estimate" min="0" step="0.01" max="9999999999.99">
+                                </div>
                                 </div>
                                 <div class="col-12 mb-3">
                                     <label class="form-label">Deskripsi</label>
