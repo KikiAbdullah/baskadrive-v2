@@ -14,7 +14,10 @@
     <meta name="base-url" content="{{ url('/') }}">
 
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="{{ asset('assets/img/favicon/favicon.ico') }}" />
+    {{-- Favicon = logo.png (aset identitas bawaan, di-resize via BrandAsset) --}}
+    <link rel="icon" type="image/png" sizes="256x256" href="{{ \App\Support\BrandAsset::faviconUrl() }}" />
+    <link rel="icon" type="image/png" href="{{ \App\Support\BrandAsset::logoUrl() }}" />
+    <link rel="apple-touch-icon" href="{{ \App\Support\BrandAsset::logoUrl() }}" />
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
