@@ -11,6 +11,20 @@ use Spatie\Permission\Models\Role;
 class UserSeeder extends Seeder
 {
     /**
+     * Audit keamanan (password seeder): mode demo HANYA bila APP_SEED_DEMO_PASSWORDS=true.
+     * Produksi (default) memaksa password acak unik per akun, dicetak SEKALI ke terminal
+     * saat seeding agar bisa diserahkan ke pemilik akun — bukan tersimpan di repo.
+     */
+    protected bool $demoPasswords;
+
+    protected array $generatedPasswords = [];
+
+    public function __construct()
+    {
+        $this->demoPasswords = (bool) env('APP_SEED_DEMO_PASSWORDS', false);
+    }
+
+    /**
      * Data pengguna utama (akun inti yang selalu tersedia).
      *
      * Format: [username, name, email, password, role, nowa]
@@ -136,7 +150,7 @@ class UserSeeder extends Seeder
                     'name' => $name,
                     'email' => $email,
                     'email_verified_at' => $now,
-                    'password' => $password,  // cast 'hashed' akan meng-hash otomatis
+                    'password' => $this->resolvePassword($username, $password), // cast 'hashed' meng-hash otomatis
                     'nowa' => $nowa,
                     'deleted_at' => null,
                     'token_2fa' => null,
@@ -163,7 +177,7 @@ class UserSeeder extends Seeder
                     'name' => $name,
                     'email' => $email,
                     'email_verified_at' => null,
-                    'password' => $password,
+                    'password' => $this->resolvePassword($username, $password),
                     'nowa' => $nowa,
                     'deleted_at' => $now->subDays(random_int(30, 180)),
                 ]
@@ -177,6 +191,34 @@ class UserSeeder extends Seeder
             $user->wasRecentlyCreated ? $created++ : $updated++;
         }
 
-        $this->command->info("UserSeeder selesai. Total: ".($created + $updated)." user (baru: {$created}, update: {$updated}).");
+        $this->command->info('UserSeeder selesai. Total: '.($created + $updated)." user (baru: {$created}, update: {$updated}).");
+
+        if ($this->demoPasswords) {
+            $this->command->warn('MODE DEMO: password seeder sederhana aktif (APP_SEED_DEMO_PASSWORDS=true). JANGAN pakai di produksi.');
+        } else {
+            $this->command->warn('=== PASSWORD AKUN (cetak sekali — simpan aman, tidak tersimpan di repo) ===');
+            foreach ($this->generatedPasswords as $username => $plain) {
+                $this->command->line(sprintf('  %-20s %s', $username, $plain));
+            }
+            $this->command->warn('=== AKHIR DAFTAR PASSWORD ===');
+        }
+    }
+
+    /**
+     * Password aktual untuk seeding: nilai repo pada mode demo, acak di luar itu.
+     * Password acak dibuat SEKALI per username dan diingat agar update-or-create
+     * idempoten tidak mengganti password user yang sudah ada di environment lama.
+     */
+    protected function resolvePassword(string $username, string $demoValue): string
+    {
+        if ($this->demoPasswords) {
+            return $demoValue;
+        }
+
+        if (! isset($this->generatedPasswords[$username])) {
+            $this->generatedPasswords[$username] = 'Bd-'.bin2hex(random_bytes(9));
+        }
+
+        return $this->generatedPasswords[$username];
     }
 }

@@ -15,9 +15,9 @@
                 $logoDataUri = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($logoPath));
             }
         }
-        if ($logoDataUri === null && is_file(public_path('app_local/img/logo-default.svg'))) {
-            // Logo default SVG vektor BaskaDrive saat logo custom belum diunggah (audit 3)
-            $logoDataUri = 'data:image/svg+xml;base64,' . base64_encode(file_get_contents(public_path('app_local/img/logo-default.svg')));
+        if ($logoDataUri === null) {
+            // Fallback: logo bawaan app_local/img/logo.png (BrandAsset)
+            $logoDataUri = \App\Support\BrandAsset::logoDataUri();
         }
 
         // FIN-14: formatter nominal dua desimal (sen) & tanggal bulan Indonesia

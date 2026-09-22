@@ -14,12 +14,13 @@ class Driver extends Model
 
     protected $fillable = [
         'first_name', 'last_name', 'license_number', 'license_expiry',
-        'phone', 'is_active', 'notes',
+        'phone', 'is_active', 'notes', 'commission_percent',
     ];
 
     protected $casts = [
         'license_expiry' => 'date',
         'is_active' => 'boolean',
+        'commission_percent' => 'decimal:2',
         'created_at' => 'datetime',
     ];
 

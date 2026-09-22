@@ -20,9 +20,9 @@
                 $logoDataUri = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($logoPath));
             }
         }
-        if ($logoDataUri === null && is_file(public_path('app_local/img/logo-default.svg'))) {
-            // Logo default SVG vektor BaskaDrive saat logo custom belum diunggah (audit 3)
-            $logoDataUri = 'data:image/svg+xml;base64,' . base64_encode(file_get_contents(public_path('app_local/img/logo-default.svg')));
+        if ($logoDataUri === null) {
+            // Fallback: logo bawaan app_local/img/logo.png (BrandAsset)
+            $logoDataUri = \App\Support\BrandAsset::logoDataUri();
         }
 
         $taxLabel = $settings['tax_label'] ?? 'PPN';
@@ -719,6 +719,23 @@
             <div class="t">Syarat &amp; Ketentuan</div>
             {!! nl2br(e($settings['contract_terms'] ?? '')) !!}
         </div>
+
+        {{-- ============ QR VERIFIKASI KEASLIAN (butir 3 audit_12092026) ============ --}}
+        <table style="width: 100%; margin-top: 3mm; page-break-inside: avoid; break-inside: avoid;">
+            <tr>
+                <td style="font-size: 7.5px; color: #6b7280; line-height: 1.5;">
+                    <strong>Verifikasi Keaslian Dokumen</strong><br>
+                    Pindai QR di samping menggunakan aplikasi pemindai untuk memeriksa
+                    keaslian kontrak ini pada halaman verifikasi publik {{ $settings['company_name'] }}.
+                    URL tanpa tanda verifikasi tidak sah sebagai bukti.
+                </td>
+                <td style="width: 4mm;"></td>
+                <td style="text-align: right;">
+                    <img src="{{ \App\Support\QrCode::dataUriSvg(route('verify.contract', ['rental' => $rental->rental_id, 't' => \App\Support\QrCode::contractSignature($rental->rental_id)]), 100) }}"
+                        style="width: 18mm; height: 18mm;" alt="QR Verifikasi Kontrak">
+                </td>
+            </tr>
+        </table>
 
         {{-- ============ TTD ============ --}}
         <table class="ttd" style="page-break-inside: avoid; break-inside: avoid;">

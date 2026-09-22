@@ -19,6 +19,7 @@ use App\Models\RentalInspection;
 use App\Models\ReturnCar;
 use App\Models\Vehicle;
 use App\Services\AccountingService;
+use App\Services\DriverCommissionService;
 use App\Services\FineSettlementService;
 use App\Services\RentalSettlementService;
 use App\Support\AppSettings;
@@ -1394,6 +1395,11 @@ class RentalController extends Controller
                 // Tanpa Payment deposit tercatat: deposit dikelola di luar aplikasi —
                 // batas ini dinyatakan pada UI (lihat catatan FIN-08 di audit).
             }
+
+            // Butir 2.2.5 audit_12092026: akrual komisi sopir saat pengembalian —
+            // Dr 5-1100 Beban Gaji / Cr 2-4000 Utang Komisi. Hard post: gagal jurnal
+            // = rollback pengembalian (integritas operasional ↔ akuntansi).
+            app(DriverCommissionService::class)->accrueOnReturn($rental->fresh(), $validated['return_date']);
 
             DB::commit();
             $inTx = false;

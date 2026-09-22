@@ -10,8 +10,11 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
+// Audit keamanan: endpoint auth API dibatasi lajunya (login tanpa throttle dulu
+// bisa dipakai brute force token; refresh/me logout dibatasi anti spam).
 Route::group([
     'prefix' => 'auth',
+    'middleware' => ['throttle:10,1'],
 ], function () {
     Route::post('login', [AuthController::class, 'login']);
     Route::post('logout', [AuthController::class, 'logout']);

@@ -53,3 +53,16 @@
         </select>
     </div>
 </div>
+<div class="row mb-3">
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Komisi Sopir</label>
+    <div class="col-lg-9">
+        <div class="input-group input-group-merge">
+            <input type="number" name="commission_percent" min="0" max="100" step="0.01"
+                value="{{ old('commission_percent', $item->commission_percent ?? 0) }}"
+                class="{{ in_array('commission_percent', $errors->keys()) ? 'form-control is-invalid' : 'form-control' }}"
+                placeholder="0" />
+            <span class="input-group-text">% dari nilai sewa (tanpa PPN)</span>
+        </div>
+        <small class="text-muted">Diakrual otomatis ke jurnal (Dr Beban Gaji / Cr Utang Komisi) saat pengembalian sewa dengan sopir.</small>
+    </div>
+</div>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Traits;
 
 use Carbon\Carbon;
 use File;
+use Illuminate\Database\QueryException;
 use Intervention\Image\Laravel\Facades\Image;
 
 trait CrudHelperTrait
@@ -103,7 +104,7 @@ trait CrudHelperTrait
      * Terjemahkan error constraint database menjadi pesan manusiawi (audit M-04),
      * tanpa membocorkan SQL mentah / struktur skema ke pengguna.
      */
-    protected function friendlyDbError(\Illuminate\Database\QueryException $e): string
+    protected function friendlyDbError(QueryException $e): string
     {
         $code = (int) ($e->errorInfo[1] ?? 0);
 
@@ -252,26 +253,33 @@ trait CrudHelperTrait
         $filename = null;
 
         if (! empty($file)) {
-            if (! File::isDirectory(storage_path().'/app/public/'.$lokasi)) {
-                File::makeDirectory(storage_path().'/app/public/'.$lokasi, 0777, true);
+            // Audit keamanan (upload): folder 0755, bukan 0777 — prinsip least privilege.
+            $directory = storage_path('app/public/'.$lokasi);
+            if (! File::isDirectory($directory)) {
+                File::makeDirectory($directory, 0755, true);
             }
 
-            if (substr($file->getMimeType(), 0, 5) == 'image') {
-                if (! empty($file)) {
-                    $extension = $file->getClientOriginalExtension();
-                    $filename = md5($file->getFilename().Carbon::now()).'.'.$extension;
-
-                    $location = storage_path().'/app/public/'.$lokasi.'/'.$filename;
-                    Image::decode($file)->save($location);
-                }
-            } else {
-                if (! empty($file)) {
-                    $extension = $file->getClientOriginalExtension();
-                    $filename = md5($file->getFilename().Carbon::now()).'.'.$extension;
-
-                    $file->storeAs('public/'.$lokasi, $filename);
-                }
+            // Konten HARUS terdekode sebagai gambar asli — file .php yang diganti
+            // ekstensi .jpg tetap ditolak meski MIME palsu cocok (mime sniffing saja tidak cukup).
+            try {
+                $image = Image::decode($file);
+            } catch (\Throwable $e) {
+                return null;
             }
+
+            if (empty($image)) {
+                return null;
+            }
+
+            // Ekstensi ditetapkan SERVER (dari dekode gambar), bukan getClientOriginalExtension()
+            // yang bisa dipalsukan — file tersimpan selalu ber-ekstensi gambar murni.
+            $extension = strtolower($image->extension ?: 'png');
+            if (! in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) {
+                return null;
+            }
+
+            $filename = md5($file->getFilename().Carbon::now()).'.'.$extension;
+            $image->save($directory.'/'.$filename);
         }
 
         return $filename;
@@ -279,8 +287,22 @@ trait CrudHelperTrait
 
     public function delImage($filename, $lokasi)
     {
-        $path = storage_path().'/app/public/'.$lokasi.'/';
+        // Audit keamanan (path traversal): nilai `filename` pernah berasal dari DB yang
+        // disunting operasional — tolak pemisah direktori dan batasi hanya nama file.
+        $basename = basename((string) $filename);
 
-        return File::delete($path.$filename);
+        if ($basename === '' || $basename === '.' || $basename === '..' || $basename !== $filename) {
+            return false;
+        }
+
+        $path = realpath(storage_path('app/public/'.$lokasi));
+        $target = realpath($path.'/'.$basename);
+
+        // Target wajib masih di dalam folder yang diizinkan (anti ../ escape).
+        if (! $path || ! $target || ! str_starts_with($target, $path.DIRECTORY_SEPARATOR)) {
+            return false;
+        }
+
+        return File::delete($target);
     }
 }

@@ -306,6 +306,12 @@ Route::group(['prefix' => 'finance', 'as' => 'finance.', 'middleware' => ['can:f
     Route::get('/payment/get-button-option', [FinanceController::class, 'paymentButtonOption'])->name('payment.button-option');
     // FIN-15: render PDF kwitansi dibatasi lajunya (render biner berat bila diulang).
     Route::get('/payment/{id}/receipt', [FinanceController::class, 'paymentReceipt'])->middleware('throttle:30,1')->name('payment.receipt');
+
+    // Pembayaran borongan multi-invoice (butir 2.5 audit_12092026):
+    // mutasi uang = tulis → finance_payment_add; kwitansi batch dibatasi lajunya.
+    Route::get('/payment/batch', [FinanceController::class, 'batchPaymentCreate'])->middleware('can:finance_payment_add')->name('payment.batch.create');
+    Route::post('/payment/batch', [FinanceController::class, 'batchPaymentStore'])->middleware(['can:finance_payment_add', 'throttle:10,1'])->name('payment.batch.store');
+    Route::get('/payment/batch/{groupId}/receipt', [FinanceController::class, 'batchPaymentReceipt'])->middleware('throttle:30,1')->name('payment.batch.receipt');
 });
 
 // ===========================================

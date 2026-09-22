@@ -7,6 +7,7 @@ use App\Mail\InvoiceMail;
 use App\Models\Fine;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Services\BatchPaymentService;
 use App\Services\FineSettlementService;
 use App\Support\AppSettings;
 use App\Support\PdfDocument;
@@ -342,6 +343,100 @@ class FinanceController extends Controller
         } catch (Exception $e) {
             return response()->json(['status' => false, 'msg' => 'Pembayaran tidak ditemukan.'], 404);
         }
+    }
+
+    // ============================================================
+    // BATCH PAYMENT MULTI-INVOICE (butir 2.5 audit_12092026)
+    // ============================================================
+
+    /**
+     * Halaman pembayaran borongan: daftar invoice yang masih punya sisa tagihan,
+     * dikelompokkan per pelanggan (target: pelanggan korporat).
+     */
+    public function batchPaymentCreate()
+    {
+        // Invoice dengan sisa tagihan, urut per pelanggan (batch korporat biasanya
+        // menyatukan banyak sewa satu pelanggan).
+        $pendingInvoices = Invoice::with(['rental.customer'])
+            ->whereIn('status', ['sent', 'partially_paid', 'overdue'])
+            ->whereColumn('paid_amount', '<', 'total_amount')
+            ->whereHas('rental.customer')
+            ->get()
+            ->sortBy(fn ($i) => [$i->rental?->customer?->full_name, $i->due_date])
+            ->values();
+
+        return view('finance.payment.batch')->with([
+            'title' => 'Pembayaran Borongan',
+            'subtitle' => 'Satu Pembayaran untuk Banyak Invoice (Korporat)',
+            'pendingInvoices' => $pendingInvoices,
+        ]);
+    }
+
+    /**
+     * Simpan pembayaran borongan via service terpusat — atomik per batch.
+     */
+    public function batchPaymentStore(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'invoices' => ['required', 'array', 'min:1', 'max:50'],
+                'invoices.*.invoice_id' => ['required', 'integer', 'distinct'],
+                'invoices.*.amount' => ['required', 'numeric', 'min:0.01', 'max:9999999999.99'],
+                'payment_method' => ['required', Rule::in(['cash', 'bank_transfer', 'credit_card', 'debit_card', 'e_wallet', 'other'])],
+                'reference_number' => ['nullable', 'string', 'max:50'],
+                'notes' => ['nullable', 'string', 'max:500'],
+            ], [
+                'invoices.required' => 'Pilih minimal satu invoice beserta nominalnya.',
+                'invoices.*.invoice_id.distinct' => 'Terdapat invoice yang dipilih dua kali.',
+            ]);
+
+            $result = app(BatchPaymentService::class)->payMany(
+                $validated['invoices'],
+                $validated['payment_method'],
+                $validated['reference_number'] ?? null,
+                $validated['notes'] ?? null
+            );
+
+            return response()->json([
+                'status' => true,
+                'msg' => 'Pembayaran borongan berhasil dicatat ('.count($result['payments']).' invoice, total Rp '.number_format($result['total'], 2, ',', '.').').',
+                'data' => ['group_id' => $result['group_id'], 'receipt_number' => $result['receipt_number'] ?? null],
+            ]);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (Exception $e) {
+            report($e);
+
+            return response()->json(['status' => false, 'msg' => 'Gagal memproses pembayaran borongan: '.$e->getMessage()], 422);
+        }
+    }
+
+    /**
+     * Kwitansi batch: satu PDF merangkum seluruh pembayaran dalam grup.
+     * QR memakai verifikasi pembayaran pertama (tanda HMAC yang sama dengan
+     * kwitansi tunggal) — halaman publik menampilkan rincian grup via batch_group_id.
+     */
+    public function batchPaymentReceipt(string $groupId)
+    {
+        $payments = BatchPaymentService::batchPayments($groupId);
+
+        if ($payments->isEmpty()) {
+            abort(404);
+        }
+
+        $receiptPayment = $payments->first();
+
+        return PdfDocument::download(
+            'finance.payment.batch-receipt',
+            [
+                'payments' => $payments,
+                'groupId' => $groupId,
+                'total' => (float) $payments->sum('amount'),
+                'item' => $receiptPayment,
+                'settings' => $this->companySettings(),
+            ],
+            'Kwitansi-Batch-'.substr($groupId, 0, 8)
+        );
     }
 
     public function paymentReceipt($id)

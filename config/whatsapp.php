@@ -20,4 +20,8 @@ return [
 
     'number_testing' => env('WA_NUMBER_TESTING', '6285155300552'),
 
+    // Audit keamanan: kredensial dikirim via POST header (bukan query string).
+    // Set true HANYA selama transisi ke gateway yang belum mendukung POST.
+    'allow_get_fallback' => env('APP_WHATSAPP_ALLOW_GET', false),
+
 ];

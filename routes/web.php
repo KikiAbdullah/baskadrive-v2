@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\Auth\VerificationController;
+use App\Http\Controllers\ContractVerificationController;
 use App\Http\Controllers\LogViewerController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ReceiptVerificationController;
@@ -35,9 +36,10 @@ if (config('app.registration_enabled')) {
 }
 
 Route::get('password/reset', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
-Route::post('password/email', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
+// Audit keamanan: anti spam email reset — 5 permintaan / menit per IP.
+Route::post('password/email', [ForgotPasswordController::class, 'sendResetLinkEmail'])->middleware('throttle:5,1')->name('password.email');
 Route::get('password/reset/{token}', [ResetPasswordController::class, 'showResetForm'])->name('password.reset');
-Route::post('password/reset', [ResetPasswordController::class, 'reset'])->name('password.update');
+Route::post('password/reset', [ResetPasswordController::class, 'reset'])->middleware('throttle:5,1')->name('password.update');
 
 Route::get('password/confirm', [ConfirmPasswordController::class, 'showConfirmForm'])->name('password.confirm');
 Route::post('password/confirm', [ConfirmPasswordController::class, 'confirm']);
@@ -46,13 +48,16 @@ Route::get('email/verify', [VerificationController::class, 'notice'])->name('ver
 Route::get('email/verify/{id}/{hash}', [VerificationController::class, 'verify'])->name('verification.verify');
 Route::post('email/resend', [VerificationController::class, 'resend'])->name('verification.resend');
 
-// Verifikasi publik keaslian kwitansi (scan QR di dokumen)
+// Verifikasi publik keaslian kwitansi & kontrak sewa (scan QR di dokumen)
 Route::get('verify/receipt/{payment}', [ReceiptVerificationController::class, 'verify'])->name('verify.receipt');
+Route::get('verify/contract/{rental}', [ContractVerificationController::class, 'verify'])->name('verify.contract');
 
 // Two-Factor Routes
 Route::group(['middleware' => ['auth']], function () {
     Route::get('2fa', [TwoFactorController::class, 'showTwoFactorForm'])->name('2fa.show');
-    Route::post('2fa', [TwoFactorController::class, 'verifyTwoFactor'])->name('verifyTwoFactor');
+    // Audit keamanan: verifikasi OTP dibatasi 5 percobaan/menit (per IP+user session) —
+    // OTP 5 digit (~90 ribu kombinasi) tidak lagi bisa di-brute force tanpa batas laju.
+    Route::post('2fa', [TwoFactorController::class, 'verifyTwoFactor'])->middleware('throttle:5,1')->name('verifyTwoFactor');
 });
 
 /*

@@ -18,6 +18,15 @@ class Payment extends Model
     /** Alokasi penerimaan deposit jaminan — kewajiban terpisah (FIN-08). */
     public const ALLOCATION_DEPOSIT = 'deposit';
 
+    /**
+     * Identitas pembayaran borongan multi-invoice (audit_12092026 2.5):
+     * baris dalam satu batch berbagi group id dan satu kwitansi batch.
+     */
+    public function scopeInBatch($query, string $groupId)
+    {
+        return $query->where('batch_group_id', $groupId);
+    }
+
     protected $table = 'tr_payment';
 
     protected $primaryKey = 'payment_id';
@@ -27,6 +36,7 @@ class Payment extends Model
     protected $fillable = [
         'invoice_id', 'rental_id', 'payment_date', 'amount',
         'payment_method', 'reference_number', 'status', 'allocation', 'notes',
+        'batch_group_id', 'payment_number',
     ];
 
     protected $attributes = [

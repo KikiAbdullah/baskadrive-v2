@@ -54,13 +54,37 @@ class RentalErpCompleteSeeder extends Seeder
         if ($isMysql) {
             DB::statement('SET FOREIGN_KEY_CHECKS=0');
         }
-        foreach ([
-            'tr_journal_detail', 'tr_journal', 'tr_refund', 'tr_payment', 'tr_invoice', 'tr_fine',
-            'tr_maintenance', 'tr_insurance_claim', 'tr_damage_photo', 'tr_damage_report', 'tr_return',
-            'tr_rental_extension', 'tr_rental_detail', 'tr_rental', 'rental_inspections', 'vehicle_location_histories',
-            'm_coa', 'm_promo', 'm_maintenance_type', 'm_workshop', 'm_location', 'm_driver',
-            'm_customer', 'm_vehicle', 'm_vehicle_model', 'm_brand', 'm_employee',
-        ] as $table) {
+        foreach (
+            [
+                'tr_journal_detail',
+                'tr_journal',
+                'tr_refund',
+                'tr_payment',
+                'tr_invoice',
+                'tr_fine',
+                'tr_maintenance',
+                'tr_insurance_claim',
+                'tr_damage_photo',
+                'tr_damage_report',
+                'tr_return',
+                'tr_rental_extension',
+                'tr_rental_detail',
+                'tr_rental',
+                'rental_inspections',
+                'vehicle_location_histories',
+                'm_coa',
+                'm_promo',
+                'm_maintenance_type',
+                'm_workshop',
+                'm_location',
+                'm_driver',
+                'm_customer',
+                'm_vehicle',
+                'm_vehicle_model',
+                'm_brand',
+                'm_employee',
+            ] as $table
+        ) {
             DB::table($table)->truncate();
         }
         if ($isMysql) {
@@ -374,6 +398,8 @@ class RentalErpCompleteSeeder extends Seeder
                 'license_expiry' => $this->now->copy()->addYears(random_int(1, 4))->toDateString(),
                 'phone' => '0857'.random_int(10000000, 99999999),
                 'is_active' => $this->chance(90),
+                // Butir 2.2.5 audit_12092026: komisi sopir realistis 5-15%.
+                'commission_percent' => random_int(5, 15),
                 'notes' => null,
                 'created_at' => $this->now->copy()->subDays(random_int(200, 500)),
             ];
@@ -747,13 +773,27 @@ class RentalErpCompleteSeeder extends Seeder
                 $rid = $seq;
                 $this->map['rentals'][$seq] = $rid;
                 $this->map['rentalMeta'][$seq] = [
-                    'id' => $rid, 'code' => 'RNT-'.$start->format('Y').'-'.str_pad((string) $seq, 5, '0', STR_PAD_LEFT),
-                    'status' => $status, 'pay' => $pay, 'total' => $total, 'subtotal' => $subtotal,
-                    'tax' => $taxAmount, 'discount' => $discount, 'deposit' => $deposit,
-                    'days' => $days, 'start' => $start, 'end' => $end, 'created' => $createdAt,
-                    'customer' => $customer, 'vehicle' => $v['id'], 'with_driver' => $withDriver,
-                    'driver_id' => $driverId, 'driver_total' => $driverTotal, 'return_loc' => $returnLoc,
-                    'is_corporate' => $isCorporate, 'deposit_total' => $deposit,
+                    'id' => $rid,
+                    'code' => 'RNT-'.$start->format('Y').'-'.str_pad((string) $seq, 5, '0', STR_PAD_LEFT),
+                    'status' => $status,
+                    'pay' => $pay,
+                    'total' => $total,
+                    'subtotal' => $subtotal,
+                    'tax' => $taxAmount,
+                    'discount' => $discount,
+                    'deposit' => $deposit,
+                    'days' => $days,
+                    'start' => $start,
+                    'end' => $end,
+                    'created' => $createdAt,
+                    'customer' => $customer,
+                    'vehicle' => $v['id'],
+                    'with_driver' => $withDriver,
+                    'driver_id' => $driverId,
+                    'driver_total' => $driverTotal,
+                    'return_loc' => $returnLoc,
+                    'is_corporate' => $isCorporate,
+                    'deposit_total' => $deposit,
                 ];
 
                 // ===== DETAIL ADD-ON (30%) =====
@@ -901,13 +941,27 @@ class RentalErpCompleteSeeder extends Seeder
                 ];
 
                 $this->map['rentalMeta'][$seq] = [
-                    'id' => $seq, 'code' => 'RNT-'.$start->format('Y').'-'.str_pad((string) $seq, 5, '0', STR_PAD_LEFT),
-                    'status' => $status, 'pay' => $pay, 'total' => $total, 'subtotal' => $subtotal,
-                    'tax' => $taxAmount, 'discount' => $discount, 'deposit' => $deposit,
-                    'days' => $days, 'start' => $start, 'end' => $end, 'created' => $createdAt,
-                    'customer' => $customer, 'vehicle' => $v['id'], 'with_driver' => $withDriver,
-                    'driver_id' => $driverId, 'driver_total' => $driverTotal, 'return_loc' => $pickup,
-                    'is_corporate' => $isCorporate, 'deposit_total' => $deposit,
+                    'id' => $seq,
+                    'code' => 'RNT-'.$start->format('Y').'-'.str_pad((string) $seq, 5, '0', STR_PAD_LEFT),
+                    'status' => $status,
+                    'pay' => $pay,
+                    'total' => $total,
+                    'subtotal' => $subtotal,
+                    'tax' => $taxAmount,
+                    'discount' => $discount,
+                    'deposit' => $deposit,
+                    'days' => $days,
+                    'start' => $start,
+                    'end' => $end,
+                    'created' => $createdAt,
+                    'customer' => $customer,
+                    'vehicle' => $v['id'],
+                    'with_driver' => $withDriver,
+                    'driver_id' => $driverId,
+                    'driver_total' => $driverTotal,
+                    'return_loc' => $pickup,
+                    'is_corporate' => $isCorporate,
+                    'deposit_total' => $deposit,
                 ];
 
                 if ($status === 'ongoing') {
