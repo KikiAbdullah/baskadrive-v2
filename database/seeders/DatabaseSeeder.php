@@ -9,11 +9,12 @@ class DatabaseSeeder extends Seeder
     /**
      * Seed the application's database.
      *
-     * Urutan:
-     * 1. Admin (users, roles, permissions, logs, tokens)
-     * 2. Rental ERP Master (brand, model, vehicle, customer, driver, location, workshop, maintenance_type, promo, coa, employee)
-     * 3. Rental ERP Transaksi (rental, detail, extension, return, damage, photo, claim, maintenance, fine)
-     * 4. Rental ERP Finance (invoice, payment, refund, journal, journal_detail)
+     * Urutan (remediasi SED-01):
+     * 1. Admin (users, roles, permissions, logs, tokens, settings)
+     * 2. RentalErpCompleteSeeder — SATU-SATUNYA sumber data ERP (master + transaksi
+     *    + keuangan 12 bulan). Pipeline lama (RentalErpMaster/Employee/Coa/Rental/
+     *    Operational/Finance) dipertahankan sebagai arsip opsional tetapi tidak lagi
+     *    dipanggil karena seluruh hasilnya di-truncate oleh CompleteSeeder.
      */
     public function run(): void
     {
@@ -26,19 +27,7 @@ class DatabaseSeeder extends Seeder
             SanctumTokenSeeder::class,
             SettingsSeeder::class,
 
-            // Rental ERP Master
-            RentalErpMasterSeeder::class,
-            RentalErpEmployeeSeeder::class,
-            RentalErpCoaSeeder::class,
-
-            // Rental ERP Transaksi
-            RentalErpRentalSeeder::class,
-            RentalErpOperationalSeeder::class,
-
-            // Rental ERP Keuangan
-            RentalErpFinanceSeeder::class,
-
-            // Rental ERP — DATA LENGKAP 12 BULAN (realistis, jumlah besar)
+            // Rental ERP — dataset lengkap 12 bulan (sumber tunggal)
             RentalErpCompleteSeeder::class,
         ]);
     }

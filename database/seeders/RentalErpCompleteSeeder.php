@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\AppSetting as AppSettingModel;
 use App\Support\AppSettings;
+use Arr;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -31,10 +32,13 @@ use Illuminate\Support\Str;
 class RentalErpCompleteSeeder extends Seeder
 {
     protected array $map = [];       // peta id: brands, models, vehicles, dst.
+
     protected Carbon $now;
 
     protected array $maleFirst = ['Budi', 'Ahmad', 'Agus', 'Bambang', 'Joko', 'Hendra', 'Rizky', 'Bayu', 'Doni', 'Fajar', 'Yoga', 'Eko', 'Andi', 'Rudi', 'Gilang', 'Dimas', 'Arif', 'Taufik', 'Wahyu', 'Adi', 'Dwi', 'Rendra', 'Ferry', 'Ilham', 'Reza', 'Galih', 'Angga', 'Bagus', 'Dedi', 'Hari'];
+
     protected array $femaleFirst = ['Siti', 'Dewi', 'Citra', 'Rina', 'Fitri', 'Wulan', 'Maya', 'Indah', 'Sari', 'Lestari', 'Putri', 'Ratna', 'Ayu', 'Dian', 'Novi', 'Yuni', 'Rina', 'Endang', 'Tuti', 'Nurul', 'Anisa', 'Melati', 'Kartika', 'Sri'];
+
     protected array $lastNames = ['Santoso', 'Wijaya', 'Pratama', 'Maharani', 'Kusuma', 'Saputra', 'Utami', 'Hidayat', 'Nugraha', 'Setiawan', 'Wibowo', 'Handayani', 'Rahayu', 'Firmansyah', 'Purnama', 'Siregar', 'Simanjuntak', 'Halim', 'Permana', 'Susanto', 'Nurhayati', 'Maulana', 'Anggraini', 'Kurniawan'];
 
     public function run(): void
@@ -54,7 +58,6 @@ class RentalErpCompleteSeeder extends Seeder
             'tr_journal_detail', 'tr_journal', 'tr_refund', 'tr_payment', 'tr_invoice', 'tr_fine',
             'tr_maintenance', 'tr_insurance_claim', 'tr_damage_photo', 'tr_damage_report', 'tr_return',
             'tr_rental_extension', 'tr_rental_detail', 'tr_rental', 'rental_inspections', 'vehicle_location_histories',
-            'user_logs',
             'm_coa', 'm_promo', 'm_maintenance_type', 'm_workshop', 'm_location', 'm_driver',
             'm_customer', 'm_vehicle', 'm_vehicle_model', 'm_brand', 'm_employee',
         ] as $table) {
@@ -76,6 +79,7 @@ class RentalErpCompleteSeeder extends Seeder
         $this->seedCoa();
         $this->seedEmployees();
         $this->seedRentals();        // rental + detail + extension
+        $this->syncVehicleStatuses(); // SED-07: status unit mengikuti sewa aktif
         $this->seedVehicleHistories();
         $this->seedInspections();
         $this->seedReturns();        // return + mileage progression
@@ -228,7 +232,7 @@ class RentalErpCompleteSeeder extends Seeder
         foreach ($plan as [$model, $color, $year, $city, $qty]) {
             for ($u = 1; $u <= $qty; $u++) {
                 $seq++;
-                $plate = $city . ' ' . (1000 + $seq * 37) % 9000 . ' ' . $letters[$seq % count($letters)];
+                $plate = $city.' '.(1000 + $seq * 37) % 9000 .' '.$letters[$seq % count($letters)];
                 $this->map['vehicles'][] = [
                     'id' => $seq,
                     'plate' => $plate,
@@ -240,7 +244,7 @@ class RentalErpCompleteSeeder extends Seeder
                 ];
                 $rows[] = [
                     'license_plate' => $plate,
-                    'vin' => 'MH' . strtoupper(Str::random(2)) . random_int(100000000, 999999999),
+                    'vin' => 'MH'.strtoupper(Str::random(2)).random_int(100000000, 999999999),
                     'model_id' => $this->map['models'][$model]['id'],
                     'location_id' => random_int(1, 8),
                     'color' => $color === '-' ? $colorsSet[$seq % count($colorsSet)] : $color,
@@ -250,7 +254,7 @@ class RentalErpCompleteSeeder extends Seeder
                     'purchase_date' => Carbon::create($year, random_int(1, 12), random_int(1, 28))->toDateString(),
                     'purchase_price' => $this->map['models'][$model]['price'] * 480,
                     'current_value' => $this->map['models'][$model]['price'] * 380,
-                    'engine_number' => 'EN' . random_int(1000000, 9999999),
+                    'engine_number' => 'EN'.random_int(1000000, 9999999),
                     'photo_url' => null,
                     'notes' => null,
                     'created_at' => Carbon::create($year, random_int(1, 6), 1)->toDateString(),
@@ -259,7 +263,7 @@ class RentalErpCompleteSeeder extends Seeder
             }
         }
         DB::table('m_vehicle')->insert($rows);
-        $this->command->info('✓ m_vehicle (' . count($rows) . ' unit)');
+        $this->command->info('✓ m_vehicle ('.count($rows).' unit)');
     }
 
     protected function seedCustomers(): void
@@ -305,8 +309,10 @@ class RentalErpCompleteSeeder extends Seeder
         while ($seq < 48) {
             $first = $this->pick($this->femaleFirst);
             $last = $this->pick($this->lastNames);
-            if (isset($usedNames[$first . $last])) continue;
-            $usedNames[$first . $last] = true;
+            if (isset($usedNames[$first.$last])) {
+                continue;
+            }
+            $usedNames[$first.$last] = true;
             $seq++;
             [$city, $prov, $zip, $nikPrefix] = $cities[$seq % count($cities)];
             $rows[] = $this->customerRow($seq, 'individual', $first, $last, null, $city, $prov, $zip, $nikPrefix, $streets);
@@ -321,8 +327,8 @@ class RentalErpCompleteSeeder extends Seeder
 
     protected function customerRow(int $seq, string $type, string $first, string $last, ?string $company, string $city, string $prov, string $zip, string $nikPrefix, array $streets): array
     {
-        $slug = strtolower(str_replace(' ', '.', $company ?: ($first . ' ' . $last)));
-        $phone = $type === 'corporate' ? '021' . random_int(50000000, 79999999) : '08' . random_int(1111111111, 8999999999);
+        $slug = strtolower(str_replace(' ', '.', $company ?: ($first.' '.$last)));
+        $phone = $type === 'corporate' ? '021'.random_int(50000000, 79999999) : '08'.random_int(1111111111, 8999999999);
         $dob = Carbon::create(random_int(1975, 2004), random_int(1, 12), random_int(1, 28));
         $blacklisted = $this->chance(7);
 
@@ -332,17 +338,17 @@ class RentalErpCompleteSeeder extends Seeder
             'first_name' => $first,
             'last_name' => $last,
             'company_name' => $company,
-            'email' => str_replace('..', '.', $slug) . '@' . $this->pick(['gmail.com', 'yahoo.co.id', 'outlook.com', 'mail.com']),
+            'email' => str_replace('..', '.', $slug).'@'.$this->pick(['gmail.com', 'yahoo.co.id', 'outlook.com', 'mail.com']),
             'phone' => $phone,
             'address' => sprintf($this->pick($streets), random_int(1, 120)),
             'city' => $city,
             'province' => $prov,
             'postal_code' => $zip,
             'country' => 'Indonesia',
-            'driver_license_number' => 'SIM-' . str_pad((string) $seq, 4, '0', STR_PAD_LEFT),
+            'driver_license_number' => 'SIM-'.str_pad((string) $seq, 4, '0', STR_PAD_LEFT),
             'driver_license_expiry' => $this->now->copy()->addYears(random_int(1, 4))->toDateString(),
             'driver_license_photo' => null,
-            'id_card_number' => $type === 'individual' ? $nikPrefix . $dob->format('dmy') . str_pad((string) random_int(1, 9999), 4, '0', STR_PAD_LEFT) : null,
+            'id_card_number' => $type === 'individual' ? $nikPrefix.$dob->format('dmy').str_pad((string) random_int(1, 9999), 4, '0', STR_PAD_LEFT) : null,
             'id_card_photo' => null,
             'date_of_birth' => $dob->toDateString(),
             'is_verified' => $this->chance(85),
@@ -364,9 +370,9 @@ class RentalErpCompleteSeeder extends Seeder
                 'driver_id' => $i,
                 'first_name' => $first,
                 'last_name' => $last,
-                'license_number' => 'SIM-A-' . random_int(10000000, 99999999),
+                'license_number' => 'SIM-A-'.random_int(10000000, 99999999),
                 'license_expiry' => $this->now->copy()->addYears(random_int(1, 4))->toDateString(),
-                'phone' => '0857' . random_int(10000000, 99999999),
+                'phone' => '0857'.random_int(10000000, 99999999),
                 'is_active' => $this->chance(90),
                 'notes' => null,
                 'created_at' => $this->now->copy()->subDays(random_int(200, 500)),
@@ -485,16 +491,10 @@ class RentalErpCompleteSeeder extends Seeder
             ['REFERRAL25', 'Referral pelanggan', 'percentage', 25, 3, 365],
         ];
         $rows = [];
-        $cats = ['SUV', 'MPV', 'Hatchback', 'Sedan', 'Pickup', 'Van', 'Luxury'];
+        $cats = [['SUV', 'MPV'], ['Hatchback', 'MPV'], ['SUV', 'Van'], ['MPV', 'Sedan']];
         foreach ($promos as $i => $p) {
             $start = $this->now->copy()->subDays(random_int(60, 300));
-            $applicable = $this->chance(35) ? json_encode($this->pick(array_slice($cats, 0, 3), 2)) : null;
-            // pick helper not for array; use random selection
-            if ($applicable && $this->chance(50)) {
-                $applicable = json_encode(['SUV', 'MPV']);
-            } elseif ($applicable) {
-                $applicable = json_encode(['Hatchback', 'MPV']);
-            }
+            $applicable = $this->chance(35) ? json_encode($this->pick($cats)) : null;
             $rows[] = [
                 'promo_id' => $i + 1,
                 'promo_code' => $p[0],
@@ -564,7 +564,7 @@ class RentalErpCompleteSeeder extends Seeder
         }
         DB::table('m_coa')->insert($rows);
         $this->map['coa'] = $ids;
-        $this->command->info('✓ m_coa (' . count($coa) . ' akun)');
+        $this->command->info('✓ m_coa ('.count($coa).' akun)');
     }
 
     protected function seedEmployees(): void
@@ -591,8 +591,8 @@ class RentalErpCompleteSeeder extends Seeder
                 'employee_id' => $i + 1,
                 'first_name' => $e[1],
                 'last_name' => $e[2],
-                'email' => $e[0] . '@baskadrive.com',
-                'phone' => '0812' . random_int(10000000, 99999999),
+                'email' => $e[0].'@baskadrive.com',
+                'phone' => '0812'.random_int(10000000, 99999999),
                 'position' => $e[3],
                 'hire_date' => $this->now->copy()->subDays(random_int(200, 1000))->toDateString(),
                 'username' => $e[4],
@@ -663,7 +663,7 @@ class RentalErpCompleteSeeder extends Seeder
                     $status = 'ongoing';
                 }
 
-                // ===== EKONOMI =====
+                // ===== EKONOMI (SED-02: gross-up — subtotal bruto sebelum diskon) =====
                 $withDriver = $this->chance($isCorporate ? 55 : 35);
                 $driverId = $withDriver ? $this->pick($this->map['drivers']) : null;
                 $driverFee = $withDriver ? random_int(13, 20) * 10000 : 0;
@@ -681,20 +681,20 @@ class RentalErpCompleteSeeder extends Seeder
                     }
                 }
 
-                $insuranceFee = round($totalBase = $model['price'] * $days) * $model['rate'] / 100;
-                $insuranceFee = (int) round($insuranceFee);
+                $totalBase = $model['price'] * $days;
+                $insuranceFee = (int) round($totalBase * $model['rate'] / 100);
                 $driverTotal = $withDriver ? $driverFee * $days : 0;
                 $youngDriverFee = $this->chance(6) ? random_int(1, 3) * 50000 : 0;
 
                 // ===== PPN: per sewa =====
                 $taxPercent = $isCorporate && $this->chance(30) ? 0 : ($this->chance(8) ? 5 : 11);
-                $subtotal = $totalBase + $insuranceFee + $driverTotal + $youngDriverFee - $discount;
-                $taxAmount = (int) round($subtotal * $taxPercent / 100);
-                $total = $subtotal + $taxAmount;
+                $subtotal = $totalBase + $insuranceFee + $driverTotal + $youngDriverFee;   // bruto sebelum diskon
+                $taxAmount = (int) round(($subtotal - $discount) * $taxPercent / 100);
+                $total = $subtotal - $discount + $taxAmount;
 
                 // ===== DEPOSIT: per sewa =====
                 $deposit = $this->chance(12) ? 0 : $model['deposit'] - ($isCorporate ? random_int(0, 2) * 100000 : 0);
-                $deposit = max(0, $deposit);
+                $deposit = max(0, min($deposit, (int) $total));   // SED-04: deposit ≤ nilai sewa
 
                 // ===== LOKASI =====
                 $pickup = $this->pick($this->map['locations']);
@@ -714,7 +714,7 @@ class RentalErpCompleteSeeder extends Seeder
                 $createdAt = $start->copy()->subDays(random_int(1, 5))->setTime(random_int(8, 20), random_int(0, 59));
                 $rentalRows[] = [
                     'rental_id' => $seq,
-                    'rental_code' => 'RNT-' . $start->format('Y') . '-' . str_pad((string) $seq, 5, '0', STR_PAD_LEFT),
+                    'rental_code' => 'RNT-'.$start->format('Y').'-'.str_pad((string) $seq, 5, '0', STR_PAD_LEFT),
                     'customer_id' => $customer,
                     'vehicle_id' => $v['id'],
                     'employee_id' => $this->map['employees'][$this->pick($cashiers)],
@@ -747,13 +747,13 @@ class RentalErpCompleteSeeder extends Seeder
                 $rid = $seq;
                 $this->map['rentals'][$seq] = $rid;
                 $this->map['rentalMeta'][$seq] = [
-                    'id' => $rid, 'code' => 'RNT-' . $start->format('Y') . '-' . str_pad((string) $seq, 5, '0', STR_PAD_LEFT),
+                    'id' => $rid, 'code' => 'RNT-'.$start->format('Y').'-'.str_pad((string) $seq, 5, '0', STR_PAD_LEFT),
                     'status' => $status, 'pay' => $pay, 'total' => $total, 'subtotal' => $subtotal,
                     'tax' => $taxAmount, 'discount' => $discount, 'deposit' => $deposit,
                     'days' => $days, 'start' => $start, 'end' => $end, 'created' => $createdAt,
                     'customer' => $customer, 'vehicle' => $v['id'], 'with_driver' => $withDriver,
                     'driver_id' => $driverId, 'driver_total' => $driverTotal, 'return_loc' => $returnLoc,
-                    'is_corporate' => $isCorporate,
+                    'is_corporate' => $isCorporate, 'deposit_total' => $deposit,
                 ];
 
                 // ===== DETAIL ADD-ON (30%) =====
@@ -809,7 +809,9 @@ class RentalErpCompleteSeeder extends Seeder
                 $units++;
                 $cursor = $end;
 
-                if ($status === 'reserved' || $hasActive) break;
+                if ($status === 'reserved' || $hasActive) {
+                    break;
+                }
             }
 
             // ===== SEWA AKTIF SAAT INI (65% kendaraan punya) =====
@@ -842,10 +844,10 @@ class RentalErpCompleteSeeder extends Seeder
                 $insuranceFee = (int) round($totalBase * $model['rate'] / 100);
                 $driverTotal = $withDriver ? $driverFee * $days : 0;
                 $taxPercent = $isCorporate && $this->chance(30) ? 0 : 11;
-                $subtotal = $totalBase + $insuranceFee + $driverTotal - $discount;
-                $taxAmount = (int) round($subtotal * $taxPercent / 100);
-                $total = $subtotal + $taxAmount;
-                $deposit = $this->chance(12) ? 0 : $model['deposit'];
+                $subtotal = $totalBase + $insuranceFee + $driverTotal;   // bruto sebelum diskon (SED-02)
+                $taxAmount = (int) round(($subtotal - $discount) * $taxPercent / 100);
+                $total = $subtotal - $discount + $taxAmount;
+                $deposit = $this->chance(12) ? 0 : min($model['deposit'], (int) $total);   // SED-04: deposit ≤ nilai sewa
                 $pickup = $this->pick($this->map['locations']);
                 $createdAt = $this->now->copy()->subDays(random_int(1, 8));
 
@@ -868,7 +870,7 @@ class RentalErpCompleteSeeder extends Seeder
 
                 $rentalRows[] = [
                     'rental_id' => $seq,
-                    'rental_code' => 'RNT-' . $start->format('Y') . '-' . str_pad((string) $seq, 5, '0', STR_PAD_LEFT),
+                    'rental_code' => 'RNT-'.$start->format('Y').'-'.str_pad((string) $seq, 5, '0', STR_PAD_LEFT),
                     'customer_id' => $customer,
                     'vehicle_id' => $v['id'],
                     'employee_id' => $this->map['employees'][$this->pick($cashiers)],
@@ -899,16 +901,18 @@ class RentalErpCompleteSeeder extends Seeder
                 ];
 
                 $this->map['rentalMeta'][$seq] = [
-                    'id' => $seq, 'code' => 'RNT-' . $start->format('Y') . '-' . str_pad((string) $seq, 5, '0', STR_PAD_LEFT),
+                    'id' => $seq, 'code' => 'RNT-'.$start->format('Y').'-'.str_pad((string) $seq, 5, '0', STR_PAD_LEFT),
                     'status' => $status, 'pay' => $pay, 'total' => $total, 'subtotal' => $subtotal,
                     'tax' => $taxAmount, 'discount' => $discount, 'deposit' => $deposit,
                     'days' => $days, 'start' => $start, 'end' => $end, 'created' => $createdAt,
                     'customer' => $customer, 'vehicle' => $v['id'], 'with_driver' => $withDriver,
                     'driver_id' => $driverId, 'driver_total' => $driverTotal, 'return_loc' => $pickup,
-                    'is_corporate' => $isCorporate,
+                    'is_corporate' => $isCorporate, 'deposit_total' => $deposit,
                 ];
 
-                if ($status === 'ongoing') $km[$v['id']] += random_int(100, 1200);
+                if ($status === 'ongoing') {
+                    $km[$v['id']] += random_int(100, 1200);
+                }
             }
         }
 
@@ -916,20 +920,55 @@ class RentalErpCompleteSeeder extends Seeder
         foreach (array_chunk($rentalRows, 100) as $chunk) {
             DB::table('tr_rental')->insert($chunk);
         }
-        if ($detailRows) foreach (array_chunk($detailRows, 100) as $chunk) {
-            DB::table('tr_rental_detail')->insert($chunk);
+        if ($detailRows) {
+            foreach (array_chunk($detailRows, 100) as $chunk) {
+                DB::table('tr_rental_detail')->insert($chunk);
+            }
         }
-        if ($extensionRows) foreach (array_chunk($extensionRows, 50) as $chunk) {
-            DB::table('tr_rental_extension')->insert($chunk);
+        if ($extensionRows) {
+            foreach (array_chunk($extensionRows, 50) as $chunk) {
+                DB::table('tr_rental_extension')->insert($chunk);
+            }
         }
 
         foreach ($this->map['vehicles'] as $i => $v) {
             $this->map['vehicles'][$i]['km'] = $km[$v['id']];
         }
 
+        // SED-04: rental berdeposit akan ditahan sebagai payment terpisah
+        // (allocation=deposit, lawan 2-3000) — invoice sewa hanya memuat pokok sewa.
+        $this->map['depositPayments'] = [];
+        foreach ($this->map['rentalMeta'] as $meta) {
+            if ($meta['deposit'] > 0) {
+                $this->map['depositPayments'][$meta['id']] = true;
+            }
+        }
+
         $counts = array_count_values(array_column($this->map['rentalMeta'], 'status'));
-        $this->command->info('✓ tr_rental (' . count($rentalRows) . '): ' . http_build_query($counts ?: [], '', ', '));
-        $this->command->info('✓ tr_rental_detail (' . count($detailRows) . ') + tr_rental_extension (' . count($extensionRows) . ')');
+        $this->command->info('✓ tr_rental ('.count($rentalRows).'): '.http_build_query($counts ?: [], '', ', '));
+        $this->command->info('✓ tr_rental_detail ('.count($detailRows).') + tr_rental_extension ('.count($extensionRows).')');
+    }
+
+    protected function syncVehicleStatuses(): void
+    {
+        // SED-07: status unit mengikuti sewa aktif — ongoing/overdue → rented,
+        // reserved → reserved. Sebelumnya semua unit dibiarkan 'available'.
+        $statusByVehicle = [];
+        foreach ($this->map['rentalMeta'] as $meta) {
+            if ($meta['status'] === 'ongoing') {
+                $statusByVehicle[$meta['vehicle']] = 'rented';
+            } elseif ($meta['status'] === 'reserved') {
+                $statusByVehicle[$meta['vehicle']] ??= 'reserved';
+            }
+        }
+
+        if ($statusByVehicle) {
+            foreach ($statusByVehicle as $vehicleId => $status) {
+                DB::table('m_vehicle')->where('vehicle_id', $vehicleId)
+                    ->update(['status' => $status, 'updated_at' => $this->now]);
+            }
+        }
+        $this->command->info('✓ sinkronisasi status unit ('.count($statusByVehicle).' rented/reserved)');
     }
 
     protected function seedReturns(): void
@@ -939,7 +978,9 @@ class RentalErpCompleteSeeder extends Seeder
         $kmByVehicle = array_column($this->map['vehicles'], 'km', 'id');
 
         foreach ($this->map['rentalMeta'] as $meta) {
-            if ($meta['status'] !== 'completed') continue;
+            if ($meta['status'] !== 'completed') {
+                continue;
+            }
 
             $seq++;
             $condition = $this->weightedPick(['excellent' => 30, 'good' => 46, 'fair' => 15, 'damaged' => 9]);
@@ -950,7 +991,9 @@ class RentalErpCompleteSeeder extends Seeder
             };
             $deposit = $meta['deposit'];
             $refund = $condition === 'good' ? $deposit : max(0, $deposit - $extra);
-            if ($meta['pay'] === 'refunded') $refund = 0;
+            if ($meta['pay'] === 'refunded') {
+                $refund = 0;
+            }
 
             $returnDate = $meta['end']->copy()->addHours(random_int(0, 20));
 
@@ -974,18 +1017,22 @@ class RentalErpCompleteSeeder extends Seeder
         foreach (array_chunk($rows, 100) as $chunk) {
             DB::table('tr_return')->insert($chunk);
         }
-        $this->command->info('✓ tr_return (' . count($rows) . ')');
+        $this->command->info('✓ tr_return ('.count($rows).')');
     }
 
     protected function seedDamagesAndClaims(): void
     {
         $damageRows = $photoRows = $claimRows = [];
         $dSeq = $pSeq = $cSeq = 0;
+        $this->map['claims'] = [];
+        $this->map['damages'] = [];
         $providers = ['ACSA Insurance', 'Jasa Raharja Putera', 'Adira Autocall', 'Astra Buana', 'Zurich Takaful', 'Sinarmas MSIG'];
 
         foreach ($this->map['rentalMeta'] as $meta) {
             $ret = $this->map['returns'][$meta['id']] ?? null;
-            if (! $ret || in_array($ret['condition'], ['excellent', 'good'])) continue;
+            if (! $ret || in_array($ret['condition'], ['excellent', 'good'])) {
+                continue;
+            }
 
             $dSeq++;
             $severity = $ret['condition'] === 'damaged' ? $this->pick(['severe', 'moderate']) : 'minor';
@@ -1003,12 +1050,20 @@ class RentalErpCompleteSeeder extends Seeder
                 'description' => $this->pick(['Kerusakan akibat tabrakan ringan', 'Terkena object saat parkir', 'Kecelakaan kecil di jalan tol', 'Kelalaian saat berkendara', 'Benda jatuh mengenai bodi']),
                 'repair_cost_estimate' => $ret['extra'],
                 'actual_repair_cost' => $this->chance(75) ? (int) round($ret['extra'] * (random_int(85, 120) / 100)) : 0,
-                'status' => $this->weightedPick(['repaired' => 45, 'claimed_insurance' => 25, 'repair_in_progress' => 15, 'assessment' => 10, 'reported' => 5]),
+                'status' => $this->weightedPick(['repaired' => 45, 'claimed_insurance' => 25, 'repair_in_progress' => 15, 'assessment' => 10, 'inspected' => 5]),
                 'inspected_by' => $this->map['employees']['mekanik1'],
                 'inspected_at' => $reportedAt->copy()->addDays(1),
                 'notes' => null,
                 'created_at' => $reportedAt,
                 'updated_at' => $reportedAt,
+            ];
+
+            // SED-06: identitas kerusakan utk penautan denda (FLE-07)
+            $this->map['damages'][$meta['id']] = [
+                'id' => $dSeq,
+                'code' => 'DMG-'.str_pad((string) $dSeq, 5, '0', STR_PAD_LEFT),
+                'actual' => $damageRows[$dSeq - 1]['actual_repair_cost'],
+                'estimate' => $ret['extra'],
             ];
 
             // foto 1-4 per kerusakan
@@ -1017,8 +1072,8 @@ class RentalErpCompleteSeeder extends Seeder
                 $photoRows[] = [
                     'photo_id' => $pSeq,
                     'damage_id' => $dSeq,
-                    'photo_url' => 'damage-photos/damage-' . $dSeq . '-view-' . $n . '.jpg',
-                    'caption' => 'Foto kerusakan sudut ' . $n,
+                    'photo_url' => 'damage-photos/damage-'.$dSeq.'-view-'.$n.'.jpg',
+                    'caption' => 'Foto kerusakan sudut '.$n,
                     'uploaded_at' => $reportedAt,
                 ];
             }
@@ -1027,27 +1082,55 @@ class RentalErpCompleteSeeder extends Seeder
             if (in_array($severity, ['severe', 'moderate']) && $this->chance(60)) {
                 $cSeq++;
                 $claimAmount = (int) round($ret['extra'] * random_int(70, 100) / 100);
+                $claimStatus = $this->weightedPick(['approved' => 40, 'paid' => 25, 'under_review' => 20, 'submitted' => 15]);
+                $approvedAmount = $this->chance(70) ? (int) round($claimAmount * random_int(70, 100) / 100) : 0;
                 $claimRows[] = [
                     'claim_id' => $cSeq,
                     'rental_id' => $meta['id'],
                     'damage_id' => $dSeq,
-                    'claim_number' => 'CLM-' . $reportedAt->format('Y') . '-' . str_pad((string) $cSeq, 5, '0', STR_PAD_LEFT),
+                    'claim_number' => 'CLM-'.$reportedAt->format('Y').'-'.str_pad((string) $cSeq, 5, '0', STR_PAD_LEFT),
                     'insurance_provider' => $this->pick($providers),
-                    'policy_number' => 'POL-' . random_int(100000, 999999),
+                    'policy_number' => 'POL-'.random_int(100000, 999999),
                     'claim_date' => $reportedAt->copy()->addDays(random_int(1, 5)),
                     'claim_amount' => $claimAmount,
-                    'approved_amount' => $this->chance(70) ? (int) round($claimAmount * random_int(70, 100) / 100) : 0,
-                    'status' => $this->weightedPick(['approved' => 40, 'paid' => 25, 'under_review' => 20, 'submitted' => 15]),
+                    'approved_amount' => $approvedAmount,
+                    'status' => $claimStatus,
                     'approved_date' => $this->chance(65) ? $reportedAt->copy()->addDays(random_int(6, 25)) : null,
                     'notes' => null,
                     'created_at' => $reportedAt,
                 ];
+
+                // SED-05: metadata klaim utk jurnal pencairan (FLE-09)
+                if ($claimStatus === 'paid' && $approvedAmount > 0) {
+                    $paidAt = $reportedAt->copy()->addDays(random_int(26, 60));
+                    if ($paidAt->greaterThan($this->now)) {
+                        $paidAt = $this->now->copy()->subDays(random_int(0, 5));
+                    }
+                    $this->map['claims'][] = [
+                        'number' => 'CLM-'.$reportedAt->format('Y').'-'.str_pad((string) $cSeq, 5, '0', STR_PAD_LEFT),
+                        'provider' => $claimRows[$cSeq - 1]['insurance_provider'] ?? 'Asuransi',
+                        'approved' => $approvedAmount,
+                        'paid_at' => $paidAt->toDateString(),
+                    ];
+                }
             }
         }
 
-        if ($damageRows) foreach (array_chunk($damageRows, 100) as $ch) DB::table('tr_damage_report')->insert($ch);
-        if ($photoRows) foreach (array_chunk($photoRows, 100) as $ch) DB::table('tr_damage_photo')->insert($ch);
-        if ($claimRows) foreach (array_chunk($claimRows, 50) as $ch) DB::table('tr_insurance_claim')->insert($ch);
+        if ($damageRows) {
+            foreach (array_chunk($damageRows, 100) as $ch) {
+                DB::table('tr_damage_report')->insert($ch);
+            }
+        }
+        if ($photoRows) {
+            foreach (array_chunk($photoRows, 100) as $ch) {
+                DB::table('tr_damage_photo')->insert($ch);
+            }
+        }
+        if ($claimRows) {
+            foreach (array_chunk($claimRows, 50) as $ch) {
+                DB::table('tr_insurance_claim')->insert($ch);
+            }
+        }
 
         $this->command->info("✓ tr_damage_report ($dSeq) + tr_damage_photo ($pSeq) + tr_insurance_claim ($cSeq)");
     }
@@ -1072,6 +1155,9 @@ class RentalErpCompleteSeeder extends Seeder
                 $cost = random_int($typeCosts[$typeId][0], $typeCosts[$typeId][1]) * 1000;
                 $workshop = $this->pick($this->map['workshops']);
 
+                // SED-08: odometer wajar — tidak negatif, tidak melebihi km tercatat
+                $currentKm = max(500, $v['km'] - random_int(500, 15000));
+
                 $rows[] = [
                     'maintenance_id' => $seq,
                     'vehicle_id' => $v['id'],
@@ -1079,7 +1165,7 @@ class RentalErpCompleteSeeder extends Seeder
                     'maintenance_type_id' => $typeId,
                     'scheduled_date' => $scheduled->toDateString(),
                     'actual_date' => $isFuture ? null : $scheduled->copy()->addDays(random_int(0, 2))->toDateString(),
-                    'current_mileage' => $v['km'] - random_int(500, 15000),
+                    'current_mileage' => $currentKm,
                     'cost' => $cost,
                     'description' => $descriptions[$typeId],
                     'status' => $isFuture ? 'scheduled' : ($this->chance(10) ? 'in_progress' : 'completed'),
@@ -1091,9 +1177,11 @@ class RentalErpCompleteSeeder extends Seeder
             }
         }
 
-        foreach (array_chunk($rows, 100) as $ch) DB::table('tr_maintenance')->insert($ch);
+        foreach (array_chunk($rows, 100) as $ch) {
+            DB::table('tr_maintenance')->insert($ch);
+        }
         $this->map['maintenances'] = $rows;
-        $this->command->info('✓ tr_maintenance (' . $seq . ')');
+        $this->command->info('✓ tr_maintenance ('.$seq.')');
     }
 
     protected function seedFines(): void
@@ -1106,37 +1194,106 @@ class RentalErpCompleteSeeder extends Seeder
             ['other', 'Tilang ETLE pelanggaran lalu lintas', [250000, 750000]],
             ['other', 'Bukti merokok di dalam kendaraan', [150000, 300000]],
             ['cleaning', 'Kendaraan kotor berat saat dikembalikan', [100000, 250000]],
-            ['damage', 'Kerusakan ringan di luar polis asuransi', [100000, 500000]],
             ['lost_item', 'Kehilangan aksesori kendaraan', [150000, 600000]],
         ];
+        $officers = ['kasir1', 'kasir2', 'spv.lapangan'];
 
         foreach ($this->map['rentalMeta'] as $meta) {
-            if (! in_array($meta['status'], ['completed', 'ongoing'])) continue;
-            if (! $this->chance(20)) continue;
+            if (! in_array($meta['status'], ['completed', 'ongoing'])) {
+                continue;
+            }
+
+            $officer = $this->map['employees'][$this->pick($officers)];
+
+            // ===== Denda kerusakan (SED-06): tertaut damage_id, jalur akrual FLE-08 =====
+            $damage = $this->map['damages'][$meta['id']] ?? null;
+            if ($damage && $this->chance(45)) {
+                $seq++;
+                $amount = max(100000, (int) round(($damage['actual'] ?: $damage['estimate']) * random_int(30, 60) / 100));
+                $status = $this->weightedPick(['paid' => 60, 'unpaid' => 30, 'waived' => 10]);
+                $issuedAt = $meta['end']->copy()->addDays(random_int(0, 3));
+                if ($issuedAt->greaterThan($this->now)) {
+                    // Denda tidak boleh diterbitkan di masa depan.
+                    $issuedAt = $this->now->copy()->subDays(random_int(0, 2));
+                }
+                $paidDate = $issuedAt->copy()->addDays(random_int(0, 10));
+                $waiveDate = $issuedAt->copy()->addDays(random_int(1, 7));
+                if ($status === 'paid' && $paidDate->greaterThan($this->now)) {
+                    $status = 'unpaid';
+                }
+                if ($status === 'waived' && $waiveDate->greaterThan($this->now)) {
+                    $waiveDate = $this->now->copy()->subDays(random_int(0, 2));
+                }
+
+                $rows[] = [
+                    'fine_id' => $seq,
+                    'rental_id' => $meta['id'],
+                    'return_id' => $this->map['returns'][$meta['id']]['id'] ?? null,
+                    'damage_id' => $damage['id'],
+                    'fine_type' => 'damage',
+                    'description' => 'Tagihan kerusakan '.$damage['code'].' — bagian tanggungan penyewa di luar polis',
+                    'amount' => $amount,
+                    'status' => $status,
+                    'issued_date' => $issuedAt,
+                    'paid_date' => $status === 'paid' ? $paidDate : null,
+                    'paid_by' => $status === 'paid' ? $officer : null,
+                    'waived_by' => $status === 'waived' ? $this->map['employees']['manajer.ops'] : null,
+                    'waived_at' => $status === 'waived' ? $waiveDate : null,
+                    'issued_by' => $officer,
+                    'notes' => null,
+                ];
+                $rows[$seq - 1]['code'] = 'FND-'.str_pad((string) $seq, 5, '0', STR_PAD_LEFT);
+            }
+
+            // ===== Denda operasional lain =====
+            if (! $this->chance(20)) {
+                continue;
+            }
 
             $seq++;
             [$type, $desc, $range] = $this->pick($fineTypes);
             $issuedAt = $meta['end']->copy();
-            $isPaid = $this->chance(68);
+            if ($issuedAt->greaterThan($this->now)) {
+                // Sewa ongoing berakhir di masa depan — denda operasional diterbitkan hari ini.
+                $issuedAt = $this->now->copy()->subDays(random_int(0, 3));
+            }
+            $status = $this->chance(68) ? 'paid' : ($this->chance(75) ? 'unpaid' : 'waived');
+            $paidDate = $issuedAt->copy()->addDays(random_int(0, 10));
+            $waiveDate = $issuedAt->copy()->addDays(random_int(1, 7));
+            if ($status === 'paid' && $paidDate->greaterThan($this->now)) {
+                $status = 'unpaid';
+            }
+            if ($status === 'waived' && $waiveDate->greaterThan($this->now)) {
+                $waiveDate = $this->now->copy()->subDays(random_int(0, 2));
+            }
 
             $rows[] = [
                 'fine_id' => $seq,
                 'rental_id' => $meta['id'],
                 'return_id' => $this->map['returns'][$meta['id']]['id'] ?? null,
+                'damage_id' => null,
                 'fine_type' => $type,
                 'description' => $desc,
                 'amount' => random_int($range[0], $range[1]),
-                'status' => $isPaid ? 'paid' : ($this->chance(75) ? 'unpaid' : 'waived'),
+                'status' => $status,
                 'issued_date' => $issuedAt,
-                'paid_date' => $isPaid ? $issuedAt->copy()->addDays(random_int(0, 10)) : null,
-                'issued_by' => $this->map['employees'][$this->pick(['kasir1', 'kasir2', 'spv.lapangan'])],
+                'paid_date' => $status === 'paid' ? $paidDate : null,
+                'paid_by' => $status === 'paid' ? $officer : null,
+                'waived_by' => $status === 'waived' ? $this->map['employees']['manajer.ops'] : null,
+                'waived_at' => $status === 'waived' ? $waiveDate : null,
+                'issued_by' => $officer,
                 'notes' => null,
+                'code' => 'FND-'.str_pad((string) $seq, 5, '0', STR_PAD_LEFT),
             ];
         }
 
-        foreach (array_chunk($rows, 50) as $ch) DB::table('tr_fine')->insert($ch);
+        // 'code' hanya metadata internal utk deskripsi jurnal — bukan kolom tabel.
+        $fineRows = array_map(fn (array $r) => Arr::except($r, ['code']), $rows);
+        foreach (array_chunk($fineRows, 50) as $ch) {
+            DB::table('tr_fine')->insert($ch);
+        }
         $this->map['fines'] = $rows;
-        $this->command->info('✓ tr_fine (' . $seq . ')');
+        $this->command->info('✓ tr_fine ('.count($rows).', termasuk denda kerusakan tertaut damage_id)');
     }
 
     /* =========================================================
@@ -1154,8 +1311,11 @@ class RentalErpCompleteSeeder extends Seeder
         $piutang = $coa['1-2100'];
         $pendSewa = $coa['4-1100'];
         $pendDenda = $coa['4-2000'];
+        $pendKlaim = $coa['4-3000'];
+        $uangMuka = $coa['2-3000'];
         $bebanServis = $coa['5-2100'];
         $bebanSukucadang = $coa['5-2200'];
+        $bebanOperasional = $coa['5-1000'];
 
         $methods = [
             'bank_transfer' => ['weight' => 35, 'ref' => 'TRF'],
@@ -1171,7 +1331,7 @@ class RentalErpCompleteSeeder extends Seeder
             $journalRows[] = [
                 'journal_id' => $jid,
                 'transaction_date' => $date,
-                'reference_number' => 'JRNL-' . Carbon::parse($date)->format('Ym') . '-' . str_pad((string) $jSeq, 5, '0', STR_PAD_LEFT),
+                'reference_number' => 'JRNL-'.Carbon::parse($date)->format('Ym').'-'.str_pad((string) $jSeq, 5, '0', STR_PAD_LEFT),
                 'description' => $entries['desc'],
                 'journal_type' => $type,
                 'created_by' => $accountant,
@@ -1188,14 +1348,59 @@ class RentalErpCompleteSeeder extends Seeder
             }
         };
 
-        
+        // ===== TAHANAN DEPOSIT (SED-04): Dr Kas/Bank, Cr Uang Muka Pelanggan =====
+        // Dibuat untuk SEMUA rental berdeposit (termasuk cancelled — deposit
+        // tetap tertahan dan dapat dikembalikan lewat refund pembatalan).
+        foreach ($this->map['rentalMeta'] as $meta) {
+            if ($meta['deposit_total'] <= 0) {
+                continue;
+            }
+            $pSeq++;
+            $depMethod = $this->chance(70) ? 'bank_transfer' : 'cash';
+            $depDate = $meta['start']->copy()->subDays(random_int(0, 2));
+            if ($depDate->greaterThan($this->now)) {
+                // Rental reserved: deposit diterima saat booking (hari ini atau lebih awal).
+                $depDate = $this->now->copy()->subDays(random_int(0, 3));
+            }
+
+            $paymentRows[] = [
+                'payment_id' => $pSeq,
+                'invoice_id' => null,
+                'rental_id' => $meta['id'],
+                'payment_date' => $depDate->toDateString(),
+                'amount' => $meta['deposit_total'],
+                'payment_method' => $depMethod,
+                'reference_number' => $depMethod === 'bank_transfer' ? 'DEP-'.random_int(100000, 999999) : null,
+                'status' => 'completed',
+                'allocation' => 'deposit',
+                'notes' => 'Tahanan deposit sewa '.$meta['code'],
+                'created_at' => $depDate,
+            ];
+
+            $journals($depDate->toDateString(), 'payment', [
+                'desc' => 'Penerimaan deposit sewa '.$meta['code'],
+                'lines' => [
+                    ['account' => $depMethod === 'cash' ? $kas : $bank, 'debit' => $meta['deposit_total'], 'credit' => 0, 'desc' => 'Kas diterima (deposit)'],
+                    ['account' => $uangMuka, 'debit' => 0, 'credit' => $meta['deposit_total'], 'desc' => 'Uang muka pelanggan'],
+                ],
+            ]);
+        }
 
         // ===== INVOICE utk semua sewa non-cancelled =====
+        // Kontrak FIN-07 (SED-02): total = sub_total (bruto) - discount + tax.
+        // Deposit (SED-04) ditahan terpisah sbg payment allocation=deposit (2-3000)
+        // sehingga invoice hanya memuat pokok sewa.
         foreach ($this->map['rentalMeta'] as $meta) {
-            if ($meta['status'] === 'cancelled') continue;
+            if ($meta['status'] === 'cancelled') {
+                continue;
+            }
 
             $iSeq++;
             $issue = $meta['start']->copy()->subDays(random_int(0, 2));
+            if ($issue->greaterThan($this->now)) {
+                // Booking masa depan: invoice konfirmasi diterbitkan hari ini.
+                $issue = $this->now->copy()->subDays(random_int(0, 2));
+            }
             $due = $issue->copy()->addDays(7);
             $paid = $meta['pay'];
 
@@ -1214,39 +1419,42 @@ class RentalErpCompleteSeeder extends Seeder
             $invoiceRows[] = [
                 'invoice_id' => $iSeq,
                 'rental_id' => $meta['id'],
-                'invoice_number' => 'INV-' . $issue->format('Y') . '-' . str_pad((string) $iSeq, 5, '0', STR_PAD_LEFT),
+                'invoice_number' => 'INV-'.$issue->format('Y').'-'.str_pad((string) $iSeq, 5, '0', STR_PAD_LEFT),
                 'issue_date' => $issue->toDateString(),
                 'due_date' => $due->toDateString(),
-                'sub_total' => $meta['total'] - $meta['tax'],
+                'sub_total' => $meta['subtotal'],
                 'tax' => $meta['tax'],
                 'discount' => $meta['discount'],
                 'total_amount' => $meta['total'],
                 'paid_amount' => $paidAmount,
                 'status' => $status,
-                'notes' => $meta['deposit'] > 0 ? 'Deposit Rp ' . number_format($meta['deposit'], 0, ',', '.') . ' di luar tagihan.' : null,
+                'notes' => $meta['deposit_total'] > 0 ? 'Deposit Rp '.number_format($meta['deposit_total'], 0, ',', '.').' ditahan terpisah (tidak termasuk tagihan).' : null,
                 'created_at' => $issue,
                 'updated_at' => $issue,
             ];
-            $this->map['invoices'][$meta['id']] = ['id' => $iSeq, 'total' => $meta['total'], 'paid' => $paidAmount, 'issue' => $issue, 'status' => $status, 'code' => 'INV-' . $issue->format('Y') . '-' . str_pad((string) $iSeq, 5, '0', STR_PAD_LEFT)];
+            $this->map['invoices'][$meta['id']] = ['id' => $iSeq, 'total' => $meta['total'], 'paid' => $paidAmount, 'issue' => $issue, 'status' => $status, 'code' => 'INV-'.$issue->format('Y').'-'.str_pad((string) $iSeq, 5, '0', STR_PAD_LEFT)];
 
-            // Jurnal: Dr Piutang, Cr Pendapatan
+            // Jurnal akrual piutang: Dr Piutang Sewa, Cr Pendapatan Sewa
             $journals($issue->toDateString(), 'rental', [
-                'desc' => 'Pencatatan invoice ' . 'INV-' . $issue->format('Y') . '-' . str_pad((string) $iSeq, 5, '0', STR_PAD_LEFT),
+                'desc' => 'Akrual piutang invoice '.'INV-'.$issue->format('Y').'-'.str_pad((string) $iSeq, 5, '0', STR_PAD_LEFT),
                 'lines' => [
-                    ['account' => $piutang, 'debit' => $meta['total'], 'credit' => 0, 'desc' => 'Piutang sewa ' . $meta['code']],
+                    ['account' => $piutang, 'debit' => $meta['total'], 'credit' => 0, 'desc' => 'Piutang sewa '.$meta['code']],
                     ['account' => $pendSewa, 'debit' => 0, 'credit' => $meta['total'], 'desc' => 'Pendapatan sewa'],
                 ],
             ]);
 
-            // ===== PAYMENT =====
+            // ===== PAYMENT POKOK SEWA =====
             if ($paidAmount > 0) {
                 $pSeq++;
                 $method = $this->weightedPick(array_column($methods, 'weight'));
                 $methodNames = array_keys($methods);
                 $methodName = $methodNames[$method];
-                $ref = $methods[$methodName]['ref'] ? $methods[$methodName]['ref'] . '-' . random_int(100000, 999999) : null;
+                $ref = $methods[$methodName]['ref'] ? $methods[$methodName]['ref'].'-'.random_int(100000, 999999) : null;
                 $payDate = $issue->copy()->addDays(random_int(0, 6));
-                $account = $methodName === 'cash' ? $kas : $bank;
+                if ($payDate->greaterThan($this->now)) {
+                    // Rental reserved/ongoing: pembayaran DP terjadi saat booking (hari ini atau lebih awal).
+                    $payDate = $this->now->copy()->subDays(random_int(0, 5));
+                }
 
                 $paymentRows[] = [
                     'payment_id' => $pSeq,
@@ -1257,30 +1465,52 @@ class RentalErpCompleteSeeder extends Seeder
                     'payment_method' => $methodName,
                     'reference_number' => $ref,
                     'status' => 'completed',
+                    'allocation' => 'rental',
                     'notes' => null,
                     'created_at' => $payDate,
                 ];
 
                 $journals($payDate->toDateString(), 'payment', [
-                    'desc' => 'Pembayaran invoice ' . $meta['code'],
+                    'desc' => 'Pembayaran invoice '.$meta['code'],
                     'lines' => [
-                        ['account' => $account, 'debit' => $paidAmount, 'credit' => 0, 'desc' => 'Penerimaan pembayaran'],
+                        ['account' => $methodName === 'cash' ? $kas : $bank, 'debit' => $paidAmount, 'credit' => 0, 'desc' => 'Penerimaan pembayaran'],
                         ['account' => $piutang, 'debit' => 0, 'credit' => $paidAmount, 'desc' => 'Pelunasan piutang'],
                     ],
                 ]);
             }
         }
 
-        // ===== REFUND =====
+        // ===== REFUND (SED-04) =====
         foreach ($this->map['rentalMeta'] as $meta) {
             $ret = $this->map['returns'][$meta['id']] ?? null;
-            $refundDeposit = $ret && $ret['condition'] === 'good' && $meta['deposit'] > 0 && $this->chance(70);
-            $cancelRefund = $meta['status'] === 'cancelled' && $meta['pay'] === 'refunded';
+            $hasDepositPayment = isset($this->map['depositPayments'][$meta['id']]);
+            $depositCut = $ret ? (int) $ret['extra'] : 0;
+            $refundDeposit = $hasDepositPayment && $meta['status'] === 'completed' && $meta['deposit_total'] > 0 && $this->chance(70);
+            $cancelRefund = $meta['status'] === 'cancelled' && $meta['pay'] === 'refunded' && $hasDepositPayment;
 
             if ($refundDeposit || $cancelRefund) {
                 $rSeq++;
-                $amount = $cancelRefund ? (int) round($meta['total'] / 2) : $meta['deposit'];
                 $date = ($ret['date'] ?? $meta['end'])->copy()->addDays(random_int(1, 5));
+                if ($date->greaterThan($this->now)) {
+                    // Pembatalan booking masa depan: refund sudah diproses hari ini.
+                    $date = $this->now->copy()->subDays(random_int(0, 3));
+                }
+
+                if ($cancelRefund) {
+                    // Pembatalan sewa: deposit yang tertahan dikembalikan penuh.
+                    $amount = $meta['deposit_total'];
+                    $note = 'Pengembalian deposit pembatalan sewa';
+                } else {
+                    // Deposit kembali dikurangi extra charge; potongan jadi pendapatan sewa.
+                    $amount = max(0, $meta['deposit_total'] - $depositCut);
+                    $note = $depositCut > 0
+                        ? 'Pengembalian deposit dikurangi biaya kerusakan Rp '.number_format($depositCut, 0, ',', '.')
+                        : 'Pengembalian deposit';
+                }
+
+                if ($amount <= 0 && ! $cancelRefund) {
+                    continue;   // deposit ludes tertelan biaya — tidak ada refund
+                }
 
                 $refundRows[] = [
                     'refund_id' => $rSeq,
@@ -1290,25 +1520,32 @@ class RentalErpCompleteSeeder extends Seeder
                     'amount' => $amount,
                     'refund_type' => $cancelRefund ? 'cancellation' : 'deposit_return',
                     'status' => 'processed',
-                    'reference_number' => 'RFD-' . random_int(100000, 999999),
-                    'notes' => $cancelRefund ? 'Pembatalan sewa oleh pelanggan' : 'Pengembalian deposit',
+                    'reference_number' => 'RFD-'.random_int(100000, 999999),
+                    'notes' => $note,
                 ];
 
+                $lines = [
+                    ['account' => $uangMuka, 'debit' => $meta['deposit_total'], 'credit' => 0, 'desc' => 'Pelunasan kewajiban uang muka'],
+                ];
+                if ($depositCut > 0 && ! $cancelRefund) {
+                    $lines[] = ['account' => $pendSewa, 'debit' => 0, 'credit' => $depositCut, 'desc' => 'Pendapatan dari potongan deposit'];
+                }
+                $lines[] = ['account' => $bank, 'debit' => 0, 'credit' => $amount, 'desc' => 'Transfer deposit kembali'];
+
                 $journals($date->toDateString(), 'refund', [
-                    'desc' => 'Refund ' . ($cancelRefund ? 'pembatalan' : 'deposit') . ' ' . $meta['code'],
-                    'lines' => [
-                        ['account' => $pendSewa, 'debit' => $amount, 'credit' => 0, 'desc' => 'Pengeluaran refund'],
-                        ['account' => $bank, 'debit' => 0, 'credit' => $amount, 'desc' => 'Transfer keluar'],
-                    ],
+                    'desc' => 'Refund '.($cancelRefund ? 'pembatalan' : 'deposit').' '.$meta['code'],
+                    'lines' => $lines,
                 ]);
             }
         }
 
         // ===== JURNAL MAINTENANCE =====
         foreach ($this->map['maintenances'] as $m) {
-            if ($m['status'] !== 'completed' || $m['cost'] <= 0) continue;
+            if ($m['status'] !== 'completed' || $m['cost'] <= 0) {
+                continue;
+            }
             $journals($m['scheduled_date'], 'maintenance', [
-                'desc' => 'Biaya maintenance kendaraan #' . $m['vehicle_id'],
+                'desc' => 'Biaya maintenance kendaraan #'.$m['vehicle_id'],
                 'lines' => [
                     ['account' => $this->chance(60) ? $bebanServis : $bebanSukucadang, 'debit' => $m['cost'], 'credit' => 0, 'desc' => 'Beban servis'],
                     ['account' => $kas, 'debit' => 0, 'credit' => $m['cost'], 'desc' => 'Pembayaran bengkel'],
@@ -1316,38 +1553,99 @@ class RentalErpCompleteSeeder extends Seeder
             ]);
         }
 
-        // ===== JURNAL DENDA (paid) =====
+        // ===== JURNAL DENDA (SED-06: akrual + settlement/waive sesuai kontrak FLE-08) =====
         foreach ($this->map['fines'] as $f) {
-            if ($f['status'] !== 'paid') continue;
-            $journals($f['paid_date']->toDateString(), 'fine', [
-                'desc' => 'Penerimaan denda sewa',
+            $isDamage = $f['fine_type'] === 'damage' && $f['damage_id'] !== null;
+
+            if ($isDamage) {
+                // Akrual saat denda diterbitkan: Dr Piutang Sewa, Cr Pendapatan Denda
+                $journals($f['issued_date']->toDateString(), 'fine', [
+                    'desc' => 'Akrual piutang denda kerusakan '.$f['code'],
+                    'lines' => [
+                        ['account' => $piutang, 'debit' => $f['amount'], 'credit' => 0, 'desc' => 'Piutang denda kerusakan'],
+                        ['account' => $pendDenda, 'debit' => 0, 'credit' => $f['amount'], 'desc' => 'Pendapatan denda (akrual)'],
+                    ],
+                ]);
+            }
+
+            if ($f['status'] === 'paid') {
+                if ($isDamage) {
+                    // Settlement piutang: Dr Kas/Bank, Cr Piutang Sewa (bukan pendapatan ganda)
+                    $journals($f['paid_date']->toDateString(), 'fine', [
+                        'desc' => 'Pelunasan piutang denda kerusakan '.$f['code'],
+                        'lines' => [
+                            ['account' => $kas, 'debit' => $f['amount'], 'credit' => 0, 'desc' => 'Denda diterima'],
+                            ['account' => $piutang, 'debit' => 0, 'credit' => $f['amount'], 'desc' => 'Pelunasan piutang denda'],
+                        ],
+                    ]);
+                } else {
+                    // Denda non-damage langsung kas (kontrak FIN-03)
+                    $journals($f['paid_date']->toDateString(), 'fine', [
+                        'desc' => 'Penerimaan denda sewa',
+                        'lines' => [
+                            ['account' => $kas, 'debit' => $f['amount'], 'credit' => 0, 'desc' => 'Denda diterima'],
+                            ['account' => $pendDenda, 'debit' => 0, 'credit' => $f['amount'], 'desc' => 'Pendapatan denda'],
+                        ],
+                    ]);
+                }
+            } elseif ($f['status'] === 'waived') {
+                if ($isDamage) {
+                    // Waive membalik akrual: Dr Pendapatan Denda, Cr Piutang Sewa
+                    $journals($f['waived_at']->toDateString(), 'fine', [
+                        'desc' => 'Penghapusan piutang denda kerusakan (waive) '.$f['code'],
+                        'lines' => [
+                            ['account' => $pendDenda, 'debit' => $f['amount'], 'credit' => 0, 'desc' => 'Reversal pendapatan denda'],
+                            ['account' => $piutang, 'debit' => 0, 'credit' => $f['amount'], 'desc' => 'Hapus piutang denda'],
+                        ],
+                    ]);
+                }
+                // Denda non-damage waived tidak berdampak jurnal (belum pernah diakui).
+            }
+        }
+
+        // ===== JURNAL KLAIM ASURANSI CAIR (SED-05, FLE-09): Dr Bank, Cr Pendapatan Klaim =====
+        // map['claims'] hanya berisi klaim berstatus paid dengan approved > 0.
+        foreach ($this->map['claims'] ?? [] as $c) {
+            $journals($c['paid_at'], 'insurance', [
+                'desc' => 'Pencairan klaim asuransi '.$c['number'],
                 'lines' => [
-                    ['account' => $kas, 'debit' => $f['amount'], 'credit' => 0, 'desc' => 'Denda diterima'],
-                    ['account' => $pendDenda, 'debit' => 0, 'credit' => $f['amount'], 'desc' => 'Pendapatan denda'],
+                    ['account' => $bank, 'debit' => $c['approved'], 'credit' => 0, 'desc' => 'Klaim diterima dari '.$c['provider']],
+                    ['account' => $pendKlaim, 'debit' => 0, 'credit' => $c['approved'], 'desc' => 'Pendapatan klaim asuransi'],
                 ],
             ]);
         }
 
-        // ===== beberapa jurnal adjustment manual =====
+        // ===== beberapa jurnal adjustment manual (SED-03: bernilai nyata) =====
         for ($i = 0; $i < 4; $i++) {
             $date = $this->now->copy()->subDays(random_int(5, 100));
+            $amount = random_int(12, 85) * 1000 + 500;
             $journals($date->toDateString(), 'adjustment', [
-                'desc' => 'Penyesuaian saldo kas akhir bulan',
+                'desc' => 'Penyesuaian selisih kas akhir bulan',
                 'lines' => [
-                    ['account' => $kas, 'debit' => 0, 'credit' => 0, 'desc' => 'Penyesuaian administratif'],
-                    ['account' => $bank, 'debit' => 0, 'credit' => 0, 'desc' => 'Penyesuaian administratif'],
+                    ['account' => $bebanOperasional, 'debit' => $amount, 'credit' => 0, 'desc' => 'Selisih kas tidak terjelaskan'],
+                    ['account' => $kas, 'debit' => 0, 'credit' => $amount, 'desc' => 'Penyesuaian saldo kas'],
                 ],
             ]);
         }
 
-        foreach (array_chunk($invoiceRows, 100) as $ch) DB::table('tr_invoice')->insert($ch);
-        foreach (array_chunk($paymentRows, 100) as $ch) DB::table('tr_payment')->insert($ch);
-        foreach (array_chunk($refundRows, 50) as $ch) DB::table('tr_refund')->insert($ch);
-        foreach (array_chunk($journalRows, 100) as $ch) DB::table('tr_journal')->insert($ch);
-        foreach (array_chunk($journalDetailRows, 200) as $ch) DB::table('tr_journal_detail')->insert($ch);
+        foreach (array_chunk($invoiceRows, 100) as $ch) {
+            DB::table('tr_invoice')->insert($ch);
+        }
+        foreach (array_chunk($paymentRows, 100) as $ch) {
+            DB::table('tr_payment')->insert($ch);
+        }
+        foreach (array_chunk($refundRows, 50) as $ch) {
+            DB::table('tr_refund')->insert($ch);
+        }
+        foreach (array_chunk($journalRows, 100) as $ch) {
+            DB::table('tr_journal')->insert($ch);
+        }
+        foreach (array_chunk($journalDetailRows, 200) as $ch) {
+            DB::table('tr_journal_detail')->insert($ch);
+        }
 
         $this->command->info("✓ tr_invoice ($iSeq) + tr_payment ($pSeq) + tr_refund ($rSeq)");
-        $this->command->info("✓ tr_journal ($jSeq) + tr_journal_detail (" . count($journalDetailRows) . ') — balanced');
+        $this->command->info("✓ tr_journal ($jSeq) + tr_journal_detail (".count($journalDetailRows).') — balanced');
     }
 
     protected function seedUserLogs(): void
@@ -1369,11 +1667,20 @@ class RentalErpCompleteSeeder extends Seeder
             ['delete', 'master.vehicle', 'Menghapus data unit kendaraan'],
         ];
 
+        // SED-09: pakai user aktual (bukan rent angka) agar log valid bila
+        // jumlah user berubah.
+        $userIds = DB::table('users')->pluck('id')->all();
+        if (! $userIds) {
+            $this->command->warn('seedUserLogs: tidak ada user — log dilewati');
+
+            return;
+        }
+
         $rows = [];
         for ($i = 0; $i < 90; $i++) {
             [$action, $menu, $msg] = $this->pick($menus);
             $rows[] = [
-                'user_id' => random_int(1, 20),
+                'user_id' => $this->pick($userIds),
                 'action' => $action,
                 'menu' => $menu,
                 'message' => $msg,
@@ -1381,7 +1688,9 @@ class RentalErpCompleteSeeder extends Seeder
                 'updated_at' => $this->now,
             ];
         }
-        foreach (array_chunk($rows, 50) as $ch) DB::table('user_logs')->insert($ch);
+        foreach (array_chunk($rows, 50) as $ch) {
+            DB::table('user_logs')->insert($ch);
+        }
         $this->command->info('✓ user_logs (90)');
     }
 
@@ -1410,19 +1719,26 @@ class RentalErpCompleteSeeder extends Seeder
         if ($rows) {
             DB::table('vehicle_location_histories')->insert($rows);
         }
-        $this->command->info('✓ vehicle_location_histories (' . count($rows) . ')');
+        $this->command->info('✓ vehicle_location_histories ('.count($rows).')');
     }
 
     protected function seedInspections(): void
     {
         $rows = [];
+        // SED-08: odometer inspeksi konsisten dengan km unit dan
+        // handover_in ≥ handover_out utk rental yang sama.
+        $kmByVehicle = array_column($this->map['vehicles'], 'km', 'id');
+
         foreach ($this->map['rentalMeta'] as $meta) {
+            $baseKm = $kmByVehicle[$meta['vehicle']] ?? random_int(8000, 48000);
+
             if ($this->chance(80)) {
+                $outKm = max(500, $baseKm - random_int(200, 3000));
                 $rows[] = [
                     'rental_id' => $meta['id'],
                     'vehicle_id' => $meta['vehicle'],
                     'inspection_type' => 'handover_out',
-                    'odometer' => random_int(8000, 48000),
+                    'odometer' => $outKm,
                     'fuel_level' => $this->pick(['full', 'three_quarter', 'half', 'quarter']),
                     'body_damage_points' => json_encode($this->chance(70) ? [] : [['x' => random_int(10, 90), 'y' => random_int(10, 90), 'note' => 'Baret halus']]),
                     'checklist' => json_encode(['stnk' => true, 'dongkrak' => true, 'ban_serep' => $this->chance(90), 'segitiga' => true, 'p3k' => true]),
@@ -1439,7 +1755,7 @@ class RentalErpCompleteSeeder extends Seeder
                     'rental_id' => $meta['id'],
                     'vehicle_id' => $meta['vehicle'],
                     'inspection_type' => 'handover_in',
-                    'odometer' => random_int(9000, 50000),
+                    'odometer' => $baseKm + random_int(50, 2500),
                     'fuel_level' => $this->pick(['full', 'three_quarter', 'half', 'quarter', 'empty']),
                     'body_damage_points' => json_encode([]),
                     'checklist' => json_encode(['stnk' => true, 'dongkrak' => true, 'ban_serep' => true, 'segitiga' => true, 'p3k' => true]),
@@ -1455,7 +1771,7 @@ class RentalErpCompleteSeeder extends Seeder
         if ($rows) {
             DB::table('rental_inspections')->insert($rows);
         }
-        $this->command->info('✓ rental_inspections (' . count($rows) . ')');
+        $this->command->info('✓ rental_inspections ('.count($rows).')');
     }
 
     /* =========================================================
@@ -1478,8 +1794,11 @@ class RentalErpCompleteSeeder extends Seeder
         $rand = random_int(1, $total);
         foreach ($weights as $key => $w) {
             $rand -= $w;
-            if ($rand <= 0) return $key;
+            if ($rand <= 0) {
+                return $key;
+            }
         }
+
         return array_key_first($weights);
     }
 
