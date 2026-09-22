@@ -5,7 +5,7 @@
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-2 row-gap-4">
             <div class="d-flex flex-column justify-content-center">
                 <h4 class="mb-1">{{ $title }}</h4>
-                <p class="mb-6">{{ $subtitle }} &mdash; per {{ \Carbon\Carbon::parse($end)->format('d/m/Y') }}</p>
+                <p class="mb-6">{{ $subtitle }} &mdash; per {{ \Carbon\Carbon::parse($end)->locale('id')->translatedFormat('d M Y') }}</p>
             </div>
             <form method="GET" class="d-flex align-items-center gap-2">
                 <input type="text" name="end_date" class="form-control form-control-sm flatpickr-date" value="{{ $end }}" autocomplete="off" style="width:150px">
@@ -27,12 +27,13 @@
                                     <tr>
                                         <td>{{ $row->account_code }}</td>
                                         <td>{{ $row->account_name }}</td>
-                                        <td class="text-end">Rp {{ number_format($row->signed_balance, 0, ',', '.') }}</td>
+                                        {{-- AKN-02: dua desimal agar sen ikut tampil --}}
+                                        <td class="text-end">{{ \App\Support\AppSettings::money($row->signed_balance) }}</td>
                                     </tr>
                                 @endforeach
                                 <tr class="table-primary fw-bold">
                                     <td colspan="2">TOTAL ASET</td>
-                                    <td class="text-end">Rp {{ number_format($report['total_assets'], 0, ',', '.') }}</td>
+                                    <td class="text-end">{{ \App\Support\AppSettings::money($report['total_assets']) }}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -50,12 +51,13 @@
                                     <tr>
                                         <td>{{ $row->account_code }}</td>
                                         <td>{{ $row->account_name }}</td>
-                                        <td class="text-end">Rp {{ number_format($row->signed_balance, 0, ',', '.') }}</td>
+                                        {{-- AKN-02: dua desimal agar sen ikut tampil --}}
+                                        <td class="text-end">{{ \App\Support\AppSettings::money($row->signed_balance) }}</td>
                                     </tr>
                                 @endforeach
                                 <tr class="table-warning fw-bold">
                                     <td colspan="2">TOTAL KEWAJIBAN</td>
-                                    <td class="text-end">Rp {{ number_format($report['total_liabilities'], 0, ',', '.') }}</td>
+                                    <td class="text-end">{{ \App\Support\AppSettings::money($report['total_liabilities']) }}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -71,21 +73,28 @@
                                     <tr>
                                         <td>{{ $row->account_code }}</td>
                                         <td>{{ $row->account_name }}</td>
-                                        <td class="text-end">Rp {{ number_format($row->signed_balance, 0, ',', '.') }}</td>
+                                        {{-- AKN-02: dua desimal agar sen ikut tampil --}}
+                                        <td class="text-end">{{ \App\Support\AppSettings::money($row->signed_balance) }}</td>
                                     </tr>
                                 @endforeach
                                 <tr>
                                     <td>&mdash;</td>
                                     <td>Laba Tahun Berjalan</td>
-                                    <td class="text-end">Rp {{ number_format($report['current_period_profit'], 0, ',', '.') }}</td>
+                                    <td class="text-end">{{ \App\Support\AppSettings::money($report['current_period_profit']) }}</td>
+                                </tr>
+                                {{-- AKN-03: laba tahun-tahun sebelumnya yang belum ditutup ke ekuitas --}}
+                                <tr>
+                                    <td>&mdash;</td>
+                                    <td>Laba Tahun Lalu (belum ditutup)</td>
+                                    <td class="text-end">{{ \App\Support\AppSettings::money($report['prior_years_profit']) }}</td>
                                 </tr>
                                 <tr class="table-success fw-bold">
                                     <td colspan="2">TOTAL EKUITAS</td>
-                                    <td class="text-end">Rp {{ number_format($report['total_equity_with_profit'], 0, ',', '.') }}</td>
+                                    <td class="text-end">{{ \App\Support\AppSettings::money($report['total_equity_with_profit']) }}</td>
                                 </tr>
                                 <tr class="fw-bold">
                                     <td colspan="2">TOTAL KEWAJIBAN + EKUITAS</td>
-                                    <td class="text-end">Rp {{ number_format($report['total_liabilities'] + $report['total_equity_with_profit'], 0, ',', '.') }}</td>
+                                    <td class="text-end">{{ \App\Support\AppSettings::money($report['total_liabilities'] + $report['total_equity_with_profit']) }}</td>
                                 </tr>
                             </tbody>
                         </table>

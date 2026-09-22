@@ -5,7 +5,7 @@
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-2 row-gap-4">
             <div class="d-flex flex-column justify-content-center">
                 <h4 class="mb-1">{{ $title }}</h4>
-                <p class="mb-6">{{ $subtitle }} &mdash; {{ \Carbon\Carbon::parse($start)->format('d/m/Y') }} s.d {{ \Carbon\Carbon::parse($end)->format('d/m/Y') }}</p>
+                <p class="mb-6">{{ $subtitle }} &mdash; {{ \Carbon\Carbon::parse($start)->locale('id')->translatedFormat('d M Y') }} s.d {{ \Carbon\Carbon::parse($end)->locale('id')->translatedFormat('d M Y') }}</p>
             </div>
             <form method="GET" class="d-flex align-items-center gap-2">
                 <input type="text" class="form-control form-control-sm" id="flatpickr-range" data-range-start="#rangeStartDate" data-range-end="#rangeEndDate" value="{{ $start }} to {{ $end }}" autocomplete="off" style="width:250px" aria-label="Rentang tanggal laporan">
@@ -22,7 +22,7 @@
                 <div class="card">
                     <div class="card-body">
                         <p class="mb-1 text-muted">Arus Kas Operasional</p>
-                        <h5 class="mb-0 {{ $report['operating'] >= 0 ? 'text-success' : 'text-danger' }}">Rp {{ number_format($report['operating'], 0, ',', '.') }}</h5>
+                        <h5 class="mb-0 {{ $report['operating'] >= 0 ? 'text-success' : 'text-danger' }}">{{ \App\Support\AppSettings::money($report['operating']) }}</h5>
                     </div>
                 </div>
             </div>
@@ -30,7 +30,7 @@
                 <div class="card">
                     <div class="card-body">
                         <p class="mb-1 text-muted">Arus Kas Investasi</p>
-                        <h5 class="mb-0 {{ $report['investing'] >= 0 ? 'text-success' : 'text-danger' }}">Rp {{ number_format($report['investing'], 0, ',', '.') }}</h5>
+                        <h5 class="mb-0 {{ $report['investing'] >= 0 ? 'text-success' : 'text-danger' }}">{{ \App\Support\AppSettings::money($report['investing']) }}</h5>
                     </div>
                 </div>
             </div>
@@ -38,7 +38,7 @@
                 <div class="card">
                     <div class="card-body">
                         <p class="mb-1 text-muted">Arus Kas Pendanaan</p>
-                        <h5 class="mb-0 {{ $report['financing'] >= 0 ? 'text-success' : 'text-danger' }}">Rp {{ number_format($report['financing'], 0, ',', '.') }}</h5>
+                        <h5 class="mb-0 {{ $report['financing'] >= 0 ? 'text-success' : 'text-danger' }}">{{ \App\Support\AppSettings::money($report['financing']) }}</h5>
                     </div>
                 </div>
             </div>
@@ -47,7 +47,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0">Rincian Transaksi Kas</h6>
-                <span class="badge bg-label-{{ $report['net_change'] >= 0 ? 'success' : 'danger' }}">Netto: Rp {{ number_format($report['net_change'], 0, ',', '.') }}</span>
+                <span class="badge bg-label-{{ $report['net_change'] >= 0 ? 'success' : 'danger' }}">Netto: {{ \App\Support\AppSettings::money($report['net_change']) }}</span>
             </div>
             <div class="card-datatable table-responsive">
                 <table class="table table-xxs">
@@ -63,12 +63,13 @@
                     <tbody>
                         @forelse($report['details'] as $d)
                             <tr>
-                                <td>{{ $d['date']?->format('d/m/Y') ?? '-' }}</td>
+                                <td>{{ $d['date']?->locale('id')->translatedFormat('d/m/Y') ?? '-' }}</td>
                                 <td>{{ $d['reference'] ?? '-' }}</td>
                                 <td>{{ $d['description'] ?? '-' }}</td>
                                 <td><span class="badge bg-label-info">{{ ucfirst($d['category']) }}</span></td>
+                                {{-- AKN-02: dua desimal --}}
                                 <td class="text-end {{ $d['amount'] >= 0 ? 'text-success' : 'text-danger' }}">
-                                    {{ $d['amount'] >= 0 ? '+' : '' }}Rp {{ number_format($d['amount'], 0, ',', '.') }}
+                                    {{ $d['amount'] >= 0 ? '+' : '' }}{{ \App\Support\AppSettings::money($d['amount']) }}
                                 </td>
                             </tr>
                         @empty

@@ -129,7 +129,8 @@
         }
 
         function numberFormat(n) {
-            return new Intl.NumberFormat('id-ID').format(n || 0);
+            // AKN-02: dua desimal agar sen ikut tampil di form jurnal manual.
+            return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
         }
 
         $(document).ready(function() {
@@ -151,7 +152,29 @@
                 if (Math.abs(d - c) >= 0.01) {
                     e.preventDefault();
                     Swal.fire('Gagal', 'Total Debit harus sama dengan Total Kredit.', 'error');
+                    return false;
                 }
+                // AKN-07: cermin validasi server — tepat satu sisi per baris.
+                let rowError = '';
+                $('.num-debit').each(function(i) {
+                    const dv = parseFloat($(this).val() || 0);
+                    const cv = parseFloat($('.num-credit').eq(i).val() || 0);
+                    if (dv > 0 && cv > 0) {
+                        rowError = 'Baris ' + (i + 1) + ': debit dan kredit tidak boleh terisi bersamaan.';
+                        return false;
+                    }
+                    if (dv === 0 && cv === 0) {
+                        rowError = 'Baris ' + (i + 1) + ': salah satu sisi harus bernilai lebih dari nol.';
+                        return false;
+                    }
+                });
+                if (rowError) {
+                    e.preventDefault();
+                    Swal.fire('Gagal', rowError, 'error');
+                    return false;
+                }
+                const btn = $('#btnSubmit');
+                btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...');
             });
         });
     </script>

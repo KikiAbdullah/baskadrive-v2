@@ -9,7 +9,7 @@
             class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-2 row-gap-4">
             <div class="d-flex flex-column justify-content-center">
                 <h4 class="mb-1">{{ $account->account_code }} - {{ $account->account_name }}</h4>
-                <p class="mb-6">Buku Besar &mdash; {{ $account->account_type }}</p>
+                <p class="mb-6">Buku Besar &mdash; saldo normal {{ $isCreditNormal ? 'kredit' : 'debit' }}</p>
             </div>
             <div class="d-flex align-content-center flex-wrap gap-2">
                 <a href="{{ route('accounting.ledger.index') }}" class="btn btn-outline-secondary">
@@ -36,12 +36,13 @@
                     <tbody>
                         @forelse($entries as $e)
                             <tr>
-                                <td>{{ $e->journal?->transaction_date?->format('d/m/Y') ?? '-' }}</td>
+                                <td>{{ $e->journal?->transaction_date?->locale('id')->translatedFormat('d/m/Y') ?? '-' }}</td>
                                 <td>{{ $e->journal?->reference_number ?? '-' }}</td>
                                 <td>{{ $e->description ?? '-' }}</td>
-                                <td class="text-end">Rp {{ number_format($e->debit ?? 0, 0, ',', '.') }}</td>
-                                <td class="text-end">Rp {{ number_format($e->credit ?? 0, 0, ',', '.') }}</td>
-                                <td class="text-end">Rp {{ number_format($e->balance ?? 0, 0, ',', '.') }}</td>
+                                {{-- AKN-02 + AKN-04: dua desimal, saldo mengikuti saldo normal akun --}}
+                                <td class="text-end">{{ \App\Support\AppSettings::money($e->debit ?? 0) }}</td>
+                                <td class="text-end">{{ \App\Support\AppSettings::money($e->credit ?? 0) }}</td>
+                                <td class="text-end">{{ \App\Support\AppSettings::money($e->balance ?? 0) }}</td>
                             </tr>
                         @empty
                             <tr>

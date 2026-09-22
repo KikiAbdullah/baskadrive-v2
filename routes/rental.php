@@ -313,19 +313,20 @@ Route::group(['prefix' => 'finance', 'as' => 'finance.', 'middleware' => ['can:f
 // ===========================================
 Route::group(['prefix' => 'accounting', 'as' => 'accounting.', 'middleware' => ['can:accounting_view']], function () {
 
-    // Jurnal Umum
+    // Jurnal Umum — AKN-11: ekspor data sensitif butuh izin tersendiri + throttle;
+    // AKN-01: rute memakai placeholder {id} (ditempatkan sebelum /{id} show).
     Route::group(['prefix' => 'journal', 'as' => 'journal.'], function () {
         Route::get('/', [AccountingController::class, 'journalIndex'])->name('index');
         Route::get('/get-data', [AccountingController::class, 'journalData'])->name('data');
         Route::get('/get-button-option', [AccountingController::class, 'journalButtonOption'])->name('button-option');
-        Route::get('/export', [AccountingController::class, 'journalExport'])->name('export');
+        Route::get('/{id}/export', [AccountingController::class, 'journalExport'])->middleware(['can:accounting_export', 'throttle:30,1'])->name('export');
         Route::get('/{id}', [AccountingController::class, 'journalShow'])->name('show');
     });
 
-    // Posting Jurnal Manual
+    // Posting Jurnal Manual — AKN-07: menulis jurnal butuh izin tulis terpisah.
     Route::group(['prefix' => 'manual-journal', 'as' => 'manual-journal.'], function () {
-        Route::get('/', [AccountingController::class, 'manualJournalCreate'])->name('create');
-        Route::post('/store', [AccountingController::class, 'manualJournalStore'])->name('store');
+        Route::get('/', [AccountingController::class, 'manualJournalCreate'])->middleware('can:accounting_journal_add')->name('create');
+        Route::post('/store', [AccountingController::class, 'manualJournalStore'])->middleware('can:accounting_journal_add')->name('store');
         Route::get('/validate', [AccountingController::class, 'manualJournalValidate'])->name('validate');
     });
 

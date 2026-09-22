@@ -62,11 +62,11 @@
                         </div>
                         <div class="info-row">
                             <span class="info-label">Tanggal</span>
-                            <span class="info-value">{{ $item->transaction_date?->format('d F Y') ?? '-' }}</span>
+                            <span class="info-value">{{ $item->transaction_date?->locale('id')->translatedFormat('d F Y') ?? '-' }}</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">Tipe</span>
-                            <span class="info-value">{{ ucfirst($item->journal_type ?? '-') }}</span>
+                            <span class="info-value">{{ \App\Models\Journal::TYPES[$item->journal_type] ?? ($item->journal_type ?? '-') }}</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">Dibuat Oleh</span>
@@ -103,16 +103,17 @@
                                             <td>{{ $d->account?->account_code ?? '-' }}</td>
                                             <td>{{ $d->account?->account_name ?? '-' }}</td>
                                             <td>{{ $d->description ?? '-' }}</td>
-                                            <td class="text-end">Rp {{ number_format($d->debit ?? 0, 0, ',', '.') }}</td>
-                                            <td class="text-end">Rp {{ number_format($d->credit ?? 0, 0, ',', '.') }}</td>
+                                            {{-- AKN-02: dua desimal agar sen ikut tampil --}}
+                                            <td class="text-end">{{ \App\Support\AppSettings::money($d->debit ?? 0) }}</td>
+                                            <td class="text-end">{{ \App\Support\AppSettings::money($d->credit ?? 0) }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
                                 <tfoot>
                                     <tr class="table-active">
                                         <th colspan="3" class="text-end">Total</th>
-                                        <th class="text-end">Rp {{ number_format($item->details->sum('debit') ?? 0, 0, ',', '.') }}</th>
-                                        <th class="text-end">Rp {{ number_format($item->details->sum('credit') ?? 0, 0, ',', '.') }}</th>
+                                        <th class="text-end">{{ \App\Support\AppSettings::money($item->details->sum('debit') ?? 0) }}</th>
+                                        <th class="text-end">{{ \App\Support\AppSettings::money($item->details->sum('credit') ?? 0) }}</th>
                                     </tr>
                                 </tfoot>
                             </table>

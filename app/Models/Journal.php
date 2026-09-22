@@ -12,6 +12,21 @@ class Journal extends Model
 
     public $timestamps = false;
 
+    /**
+     * AKN-06: kontrak label tipe jurnal selaras enum kolom `journal_type` —
+     * sumber tunggal untuk filter UI, validasi, dan penyajian.
+     */
+    public const TYPES = [
+        'rental' => 'Rental',
+        'payment' => 'Pembayaran',
+        'refund' => 'Refund',
+        'maintenance' => 'Maintenance',
+        'fine' => 'Denda',
+        'adjustment' => 'Penyesuaian',
+        'manual' => 'Manual',
+        'insurance' => 'Asuransi',
+    ];
+
     protected $fillable = [
         'transaction_date', 'reference_number', 'description',
         'journal_type', 'created_by',

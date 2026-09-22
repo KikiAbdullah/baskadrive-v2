@@ -61,6 +61,9 @@ class PermissionSeeder extends Seeder
         'accounting' => [
             'accounting_view',
             'accounting_export',
+            // AKN-07 (audit Akuntansi): menulis jurnal manual = aksi mutasi buku besar,
+            // dipisah dari accounting_view agar tidak semua pembaca bisa menulis.
+            'accounting_journal_add',
         ],
 
         // ===========================================

@@ -21,12 +21,13 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0">Filter</h6>
+                {{-- AKN-06: 'revenue' diganti 'income' sesuai enum kolom account_type --}}
                 <select class="form-select form-select-sm w-auto" id="typeFilter">
                     <option value="">Semua Tipe</option>
                     <option value="asset">Aset</option>
                     <option value="liability">Kewajiban</option>
                     <option value="equity">Ekuitas</option>
-                    <option value="revenue">Pendapatan</option>
+                    <option value="income">Pendapatan</option>
                     <option value="expense">Beban</option>
                 </select>
             </div>

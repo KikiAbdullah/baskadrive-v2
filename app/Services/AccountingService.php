@@ -19,6 +19,61 @@ class AccountingService
     protected array $coaCache = [];
 
     /**
+     * AKN-06: label tipe jurnal selaras enum DB `journal_type` — dipakai penyaji
+     * dan filter agar opsi UI tidak pernah tidak valid.
+     */
+    public const JOURNAL_TYPES = [
+        'rental' => 'Rental',
+        'payment' => 'Pembayaran',
+        'refund' => 'Refund',
+        'maintenance' => 'Maintenance',
+        'fine' => 'Denda',
+        'adjustment' => 'Penyesuaian',
+        'manual' => 'Manual',
+        'insurance' => 'Asuransi',
+    ];
+
+    /**
+     * AKN-10: klasifikasi arus kas berbasis kode akun lawan (bukan sekadar tipe akun).
+     * Piutang sewa (1-2xxx) dan pendapatan diterima dimuka (2-3xxx) adalah siklus
+     * operasional; aset tetap (1-3xxx) investasi; utang jangka panjang (2-2xxx)
+     * dan ekuitas (3-xxxx) pendanaan. Fallback: tipe akun.
+     */
+    public function classifyCashFlow(string $counterCode, ?string $counterType): string
+    {
+        $prefix = substr(trim($counterCode), 0, 3);
+
+        if (preg_match('/^1-2/', $prefix) || preg_match('/^2-3/', $counterCode)) {
+            return 'operating';
+        }
+
+        if (preg_match('/^1-3/', $counterCode)) {
+            return 'investing';
+        }
+
+        if (preg_match('/^2-2/', $counterCode) || preg_match('/^3-/', $counterCode)) {
+            return 'financing';
+        }
+
+        return match ($counterType) {
+            'asset' => 'investing',
+            'liability', 'equity' => 'financing',
+            default => 'operating',
+        };
+    }
+
+    /**
+     * AKN-04: arah saldo normal akun — asset/expense bertambah dari debit,
+     * liability/equity/income bertambah dari kredit.
+     */
+    public static function signedBalance(string $accountType, float $debit, float $credit): float
+    {
+        return in_array($accountType, ['liability', 'equity', 'income'], true)
+            ? $credit - $debit
+            : $debit - $credit;
+    }
+
+    /**
      * Kunci kode akun COA ke account_id.
      */
     public function resolveCoa(string $code): ?int
@@ -169,17 +224,29 @@ class AccountingService
 
     /**
      * Neraca: posisi aset/kewajiban/ekuitas s.d. tanggal akhir (akumulasi sepanjang masa).
+     *
+     * AKN-03: profit yang dilebur ke ekuitas adalah laba AKUMULASI sejak awal masa
+     * hingga `asOf` — bukan hanya tahun berjalan — agar Aset = Kewajiban + Ekuitas
+     * tetap berimbang pada tahun kedua dan seterusnya (tidak ada jurnal penutupan
+     * otomatis). Laba tahun berjalan tetap disajikan sebagai baris informasi.
      */
     public function balanceSheet(Carbon $asOf): array
     {
         $from = Carbon::create(2000, 1, 1)->startOfDay();
-        $rows = $this->accountBalances($from, $asOf->copy()->endOfDay());
+        $end = $asOf->copy()->endOfDay();
+        $rows = $this->accountBalances($from, $end);
 
-        $pnl = $this->incomeStatement(Carbon::create(date('Y'), 1, 1)->startOfDay(), $asOf->copy()->endOfDay());
+        // AKN-03: laba akumulasi sepanjang masa hingga asOf.
+        $accumulatedPnl = $this->incomeStatement($from, $end);
+        // Laba tahun berjalan (informasi presentasi).
+        $ytdPnl = $this->incomeStatement(Carbon::create($asOf->year, 1, 1)->startOfDay(), $end);
 
         $assets = $rows->where('account_type', 'asset')->sortBy('account_code')->values();
         $liabilities = $rows->where('account_type', 'liability')->sortBy('account_code')->values();
         $equity = $rows->where('account_type', 'equity')->sortBy('account_code')->values();
+
+        $totalEquity = (float) $equity->sum('signed_balance');
+        $accumulatedProfit = (float) $accumulatedPnl['net_profit'];
 
         return [
             'assets' => $assets->all(),
@@ -187,9 +254,13 @@ class AccountingService
             'equity' => $equity->all(),
             'total_assets' => (float) $assets->sum('signed_balance'),
             'total_liabilities' => (float) $liabilities->sum('signed_balance'),
-            'total_equity' => (float) $equity->sum('signed_balance'),
-            'current_period_profit' => $pnl['net_profit'],
-            'total_equity_with_profit' => (float) $equity->sum('signed_balance') + $pnl['net_profit'],
+            'total_equity' => $totalEquity,
+            // Informasi presentasi: laba tahun berjalan dan komponen laba ditahan implisit.
+            'current_period_profit' => (float) $ytdPnl['net_profit'],
+            'prior_years_profit' => $accumulatedProfit - (float) $ytdPnl['net_profit'],
+            // Laba akumulasi (tahun berjalan + tahun-tahun sebelumnya) yang melengkapi ekuitas.
+            'accumulated_profit' => $accumulatedProfit,
+            'total_equity_with_profit' => $totalEquity + $accumulatedProfit,
         ];
     }
 
@@ -221,16 +292,13 @@ class AccountingService
                     continue;
                 }
 
-                $counterType = $journal->details
+                $counter = $journal->details
                     ->reject(fn ($d) => in_array($d->account_id, $cashAccountIds, true))
                     ->sortByDesc(fn ($d) => max((float) $d->debit, (float) $d->credit))
-                    ->first()?->account?->account_type;
+                    ->first()?->account;
 
-                $category = match ($counterType) {
-                    'asset' => 'investing',
-                    'liability', 'equity' => 'financing',
-                    default => 'operating',
-                };
+                // AKN-10: klasifikasi berbasis kode akun lawan, fallback tipe akun.
+                $category = $this->classifyCashFlow($counter?->account_code ?? '', $counter?->account_type);
 
                 $totals[$category] += $cashMovement;
 

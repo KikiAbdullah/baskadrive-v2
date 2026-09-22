@@ -37,7 +37,7 @@ class RoleSeeder extends Seeder
             'finance_view', 'finance_invoice_add', 'finance_payment_add', 'finance_refund_add',
             'fleet_view', 'fleet_maintain', 'fleet_damage_add', 'fleet_damage_manage',
             'fleet_claim_manage', 'fleet_bill_renter',
-            'accounting_view', 'accounting_export',
+            'accounting_view', 'accounting_export', 'accounting_journal_add',
             'master_view', 'master_add', 'master_edit', 'master_delete',
         ],
 
@@ -52,7 +52,7 @@ class RoleSeeder extends Seeder
             'finance_view', 'finance_invoice_add', 'finance_payment_add', 'finance_refund_add',
             'fleet_view', 'fleet_maintain', 'fleet_damage_add', 'fleet_damage_manage',
             'fleet_claim_manage', 'fleet_bill_renter',
-            'accounting_view', 'accounting_export',
+            'accounting_view', 'accounting_export', 'accounting_journal_add',
             'master_view', 'master_add', 'master_edit', 'master_delete',
         ],
 

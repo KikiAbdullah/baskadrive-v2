@@ -13,10 +13,12 @@
             </div>
             <div class="d-flex align-content-center flex-wrap gap-4">
                 <span class="menuoption"></span>
-                <a href="{{ route('accounting.manual-journal.create') }}" class="action-link-icon-text">
-                    <i class="ri-add-line"></i>
-                    <span class="fw-semibold text-uppercase">Jurnal Manual</span>
-                </a>
+                @can('accounting_journal_add')
+                    <a href="{{ route('accounting.manual-journal.create') }}" class="action-link-icon-text">
+                        <i class="ri-add-line"></i>
+                        <span class="fw-semibold text-uppercase">Jurnal Manual</span>
+                    </a>
+                @endcan
             </div>
         </div>
 
@@ -25,12 +27,12 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0">Filter</h6>
+                {{-- AKN-06: opsi filter disinkronkan dengan enum kolom journal_type --}}
                 <select class="form-select form-select-sm w-auto" id="typeFilter">
                     <option value="">Semua Tipe</option>
-                    <option value="manual">Manual</option>
-                    <option value="auto">Otomatis</option>
-                    <option value="adjustment">Penyesuaian</option>
-                    <option value="closing">Penutup</option>
+                    @foreach(\App\Models\Journal::TYPES as $value => $label)
+                        <option value="{{ $value }}">{{ $label }}</option>
+                    @endforeach
                 </select>
             </div>
             <div class="card-datatable table-responsive">
