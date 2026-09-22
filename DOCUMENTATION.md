@@ -54,7 +54,7 @@ Pelanggan → Reservasi/Sewa → Kontrak (PDF) → Perpanjangan → Pengembalian
 | Role/Permission | Spatie Laravel-Permission |
 | PDF | Spatie Laravel-PDF (Brave/Chrome headless → Dompdf fallback) |
 | Gambar | Intervention Image |
-| API Mobile | Laravel Sanctum (JWT-like token) |
+| API Mobile | tymon/jwt-auth (JWT asli: access token + refresh) |
 
 ---
 
@@ -66,7 +66,7 @@ baskadrive-webapp/
 │   ├── Helpers/                    # Global helper (WA, log, util)
 │   ├── Http/
 │   │   ├── Controllers/
-│   │   │   ├── Api/                # AuthController (Sanctum)
+│   │   │   ├── Api/                # AuthController (JWT)
 │   │   │   ├── Auth/               # Login, register, verifikasi, 2FA
 │   │   │   ├── Master/             # 11 controller master data (CrudTrait)
 │   │   │   ├── Rental/             # 8 controller modul bisnis utama
@@ -102,7 +102,7 @@ baskadrive-webapp/
 └── routes/
     ├── web.php                     # Auth, dashboard, user-setup, debug
     ├── rental.php                  # SEMUA route modul bisnis (rental/fleet/finance/accounting/report/system)
-    └── api.php                     # Sanctum API
+    └── api.php                     # API mobile (JWT guard)
 ```
 
 ### Controller Modul Bisnis (app/Http/Controllers/Rental/)
@@ -169,8 +169,9 @@ php artisan serve               # http://127.0.0.1:8000
 - Seeder: `PermissionSeeder`, `RoleSeeder`, `UserSeeder`.
 
 ### 4.4 API Token
-- Mobile/eksternal login via `POST /api/auth/login` → token Sanctum.
-- `POST /api/auth/me` untuk identitas; `refresh`/`logout` tersedia.
+- Mobile/eksternal login via `POST /api/auth/login` → JWT (`tymon/jwt-auth`, guard `api`).
+- Token berlaku `JWT_TTL` menit (default 60) + jendela refresh `JWT_REFRESH_TTL` (default 14 hari).
+- `POST /api/auth/me` untuk identitas; `refresh` menerbitkan token baru (lama masuk blacklist); `logout` mencabut token.
 
 ---
 
@@ -470,7 +471,7 @@ Aksi AJAX (konfirmasi/batal/bayar/dll.) memakai SweetAlert2 konfirmasi → reloa
 
 ## 17. API (Mobile/External)
 
-Base: `/api` · Auth: Sanctum token.
+Base: `/api` · Auth: JWT Bearer token (tymon/jwt-auth, guard `api`).
 
 | Endpoint | Fungsi |
 |---|---|
@@ -478,7 +479,7 @@ Base: `/api` · Auth: Sanctum token.
 | `POST /api/auth/refresh` | Perbarui token |
 | `POST /api/auth/me` | Profil user aktif |
 | `POST /api/auth/logout` | Cabut token |
-| `GET /api/user` | User dari token (middleware sanctum) |
+| `GET /api/user` | User dari token (middleware auth:api) |
 
 ---
 

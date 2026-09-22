@@ -29,6 +29,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        // API mobile `/api/v1/field`: FieldApiException → envelope kode khusus
+        // mobile (konsep B.7): ALREADY_PROCESSED, RENTAL_STATE_CHANGED, dst.
+        $exceptions->render(function (
+            \App\Http\Controllers\Api\V1\Field\Concerns\FieldApiException $e,
+            Request $request,
+        ) {
+            return \App\Http\Middleware\RenderFieldApiException::render($request, $e);
+        });
     })
     ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
         $schedule->command('app:cleanup-temp')->dailyAt('02:00');

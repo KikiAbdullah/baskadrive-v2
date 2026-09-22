@@ -19,6 +19,7 @@
         "picqer/php-barcode-generator": "*",
         "spatie/laravel-pdf": "^2.13",
         "spatie/laravel-permission": "^8.3",
+        "tymon/jwt-auth": "^2.3",
         "yajra/laravel-datatables-oracle": "^13.3"
     },
     "require-dev": {
