@@ -1,6 +1,6 @@
 <a href="{{ route('finance.invoice.show', $item->invoice_id) }}" class="action-link-icon-text btnShow">
     <i class="ri-search-line"></i>
-    <span class="fw-semibold text-uppercase">SHOW</span>
+    <span class="fw-semibold text-uppercase">Detail</span>
 </a>
 
 <a href="{{ route('finance.invoice.print', $item->invoice_id) }}"
