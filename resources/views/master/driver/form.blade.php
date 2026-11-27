@@ -26,7 +26,7 @@
 <div class="row mb-3">
     <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Masa Berlaku SIM</label>
     <div class="col-lg-9">
-        <input type="text" name="license_expiry" value="{{ $item->license_expiry?->format('Y-m-d') ?? old('license_expiry') }}"
+        <input type="text" name="license_expiry" value="{{ $item?->license_expiry?->format('Y-m-d') ?? old('license_expiry') }}"
             class="form-control flatpickr-date" autocomplete="off" />
     </div>
 </div>
