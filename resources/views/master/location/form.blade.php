@@ -10,19 +10,19 @@
 <div class="row mb-3">
     <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Alamat</label>
     <div class="col-lg-9">
-        <textarea name="address" rows="2" class="form-control" placeholder="Alamat">{{ $item->address ?? old('address') }}</textarea>
+        <textarea name="address" id="locationAddress" rows="2" class="form-control" placeholder="Alamat">{{ $item->address ?? old('address') }}</textarea>
     </div>
 </div>
 <div class="row mb-3">
     <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Kota</label>
     <div class="col-lg-9">
-        <input type="text" name="city" value="{{ $item->city ?? old('city') }}" class="form-control" placeholder="Kota" />
+        <input type="text" name="city" id="locationCity" value="{{ $item->city ?? old('city') }}" class="form-control" placeholder="Kota" />
     </div>
 </div>
 <div class="row mb-3">
     <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Provinsi</label>
     <div class="col-lg-9">
-        <input type="text" name="province" value="{{ $item->province ?? old('province') }}" class="form-control" placeholder="Provinsi" />
+        <input type="text" name="province" id="locationProvince" value="{{ $item->province ?? old('province') }}" class="form-control" placeholder="Provinsi" />
     </div>
 </div>
 <div class="row mb-3">
@@ -59,9 +59,12 @@
             </div>
         </div>
         <div id="locationMap" class="location-map border rounded mt-2"></div>
-        <small class="text-muted d-block mt-1">
-            Klik pada peta atau geser pin untuk menentukan lokasi — koordinat terisi otomatis.
-        </small>
+        <div class="d-flex align-items-center flex-wrap gap-2 mt-2">
+            <button type="button" class="btn btn-sm btn-outline-primary" id="btnReverseGeocode">
+                <i class="ri-map-pin-2-line me-1"></i> Ambil alamat dari peta
+            </button>
+            <small class="text-muted" id="geoStatus">Klik peta / geser pin — koordinat &amp; alamat terisi otomatis.</small>
+        </div>
     </div>
 </div>
 <div class="row mb-3">

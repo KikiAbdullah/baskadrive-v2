@@ -75,6 +75,52 @@
 
         var locationMap = null;
         var locationMarker = null;
+        var geoController = null;
+        var geoTimer = null;
+
+        function scheduleReverseGeocode(lat, lng) {
+            clearTimeout(geoTimer);
+            geoTimer = setTimeout(function () { reverseGeocode(lat, lng); }, 900);
+        }
+
+        function reverseGeocode(lat, lng) {
+            var status = document.getElementById('geoStatus');
+            if (typeof fetch === 'undefined') return;
+
+            if (geoController) geoController.abort();
+            geoController = new AbortController();
+            if (status) status.textContent = 'Mencari alamat…';
+
+            fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' + lat +
+                    '&lon=' + lng + '&zoom=18&addressdetails=1',
+                { signal: geoController.signal, headers: { 'Accept': 'application/json' } })
+                .then(function (r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                })
+                .then(function (data) {
+                    var a = data.address || {};
+                    var address = document.getElementById('locationAddress');
+                    var city = document.getElementById('locationCity');
+                    var province = document.getElementById('locationProvince');
+
+                    if (address) {
+                        var parts = [];
+                        if (a.house_number) parts.push(a.house_number);
+                        if (a.road) parts.push(a.road);
+                        if (a.neighbourhood) parts.push(a.neighbourhood);
+                        address.value = parts.length ? parts.join(' ') : (data.display_name || '');
+                        city.value = a.city_district || a.town || a.municipality || a.village || a.city || a.county || '';
+                        province.value = a.state || a.province || a.city || '';
+                    }
+                    if (status) status.textContent = 'Alamat terisi dari peta.';
+                })
+                .catch(function (err) {
+                    if (err.name !== 'AbortError' && status) {
+                        status.textContent = 'Gagal mengambil alamat. Isi manual atau coba lagi.';
+                    }
+                });
+        }
 
         function initLocationMap() {
             var el = document.getElementById('locationMap');
@@ -105,6 +151,7 @@
                 var p = locationMarker.getLatLng();
                 latInput.value = p.lat.toFixed(7);
                 lngInput.value = p.lng.toFixed(7);
+                scheduleReverseGeocode(p.lat, p.lng);
             }
 
             function fromInputs() {
@@ -113,6 +160,7 @@
                 if (!isNaN(a) && !isNaN(b) && a >= -90 && a <= 90 && b >= -180 && b <= 180) {
                     locationMarker.setLatLng([a, b]);
                     locationMap.setView([a, b], locationMap.getZoom());
+                    scheduleReverseGeocode(a, b);
                 }
             }
 
@@ -130,6 +178,17 @@
         $(document).ready(function($) {
             const swalInit = Swal;
             initLocationMap();
+
+            $(document).on('click', '#btnReverseGeocode', function (e) {
+                e.preventDefault();
+                var lat = parseFloat(document.getElementById('latitude').value);
+                var lng = parseFloat(document.getElementById('longitude').value);
+                if (isNaN(lat) || isNaN(lng)) {
+                    alert('Tentukan titik pada peta terlebih dahulu.');
+                    return;
+                }
+                reverseGeocode(lat, lng);
+            });
             dtable = $('#dtable').DataTable({
                 "select": {
                     style: "single",
