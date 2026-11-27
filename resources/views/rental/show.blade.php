@@ -22,45 +22,98 @@
         font-weight: 600;
         text-align: right;
     }
+
+    .rnt-hero {
+        background: linear-gradient(135deg, #575df0, #666cff 55%, #8a5cf6);
+        color: #fff;
+        border: 0;
+        overflow: hidden;
+    }
+    .rnt-hero::after {
+        content: "";
+        position: absolute;
+        width: 260px;
+        height: 260px;
+        right: -80px;
+        top: -140px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, .1);
+    }
+    .rnt-hero .badge { color: #1d1d33 !important; }
+    .rnt-avatar {
+        display: grid;
+        place-items: center;
+        width: 68px;
+        height: 68px;
+        flex: none;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, .2);
+        color: #fff;
+        font-size: 1.9rem;
+    }
 </style>
 @endsection
 
 @section('content')
     <div class="container-xxl flex-grow-1 container-p-y">
-        <div
-            class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-2 row-gap-4">
-            <div class="d-flex flex-column justify-content-center">
-                <div class="d-flex align-items-center gap-2">
-                    <h4 class="mb-1">{{ $rental->rental_code }}</h4>
-                    @include('components.rental-status-badge', ['status' => $rental->status])
+        <div class="card rnt-hero shadow-sm mb-4">
+            <div class="card-body position-relative p-4">
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <div class="rnt-avatar"><i class="ri-car-line"></i></div>
+                    <div class="flex-grow-1">
+                        <h4 class="mb-1 text-white">{{ $rental->rental_code }}</h4>
+                        <div class="d-flex flex-wrap gap-2">
+                            @include('components.rental-status-badge', ['status' => $rental->status])
+                            <span class="badge bg-label-light">{{ (int) $rental->rental_days }} hari</span>
+                            <span class="badge bg-label-light">{{ ucfirst($rental->payment_status ?: '-') }}</span>
+                        </div>
+                    </div>
+                    <div class="d-none d-md-block text-end">
+                        <small class="d-block" style="color:rgba(255,255,255,.75)">Periode sewa</small>
+                        <strong>{{ optional($rental->rental_start_date)->format('d M Y') }} s.d. {{ optional($rental->rental_end_date)->format('d M Y') }}</strong>
+                    </div>
                 </div>
-                <p class="mb-6">{{ $subtitle }}</p>
-            </div>
-            <div class="d-flex align-content-center flex-wrap gap-4">
-                <a href="{{ route('rental.index') }}" class="action-link-icon-text">
-                    <i class="ri-arrow-left-line"></i>
-                    <span class="fw-semibold text-uppercase">Kembali</span>
-                </a>
-                <a href="{{ route('rental.print', $rental->rental_id) }}" class="action-link-icon-text">
-                    <i class="ri-printer-line"></i>
-                    <span class="fw-semibold text-uppercase">Cetak Kontrak</span>
-                </a>
-                @if(in_array($rental->status, ['reserved','ongoing']))
-                    <a href="{{ route('rental.detail.handover.form', [$rental->rental_id, 'out']) }}" class="action-link-icon-text">
-                        <i class="ri-car-line"></i>
-                        <span class="fw-semibold text-uppercase">Inspeksi Awal</span>
+
+                <div class="d-flex flex-wrap gap-4 mt-4 pt-3" style="border-top:1px solid rgba(255,255,255,.2)">
+                    <div>
+                        <small class="d-block" style="color:rgba(255,255,255,.75)">Pelanggan</small>
+                        <strong><i class="ri-user-line me-1"></i>{{ $rental->customer?->full_name ?: '-' }}</strong>
+                    </div>
+                    <div>
+                        <small class="d-block" style="color:rgba(255,255,255,.75)">Kendaraan</small>
+                        <strong><i class="ri-car-line me-1"></i>{{ $rental->vehicle?->license_plate ?: '-' }}</strong>
+                    </div>
+                    <div>
+                        <small class="d-block" style="color:rgba(255,255,255,.75)">Total</small>
+                        <strong>{{ \App\Support\AppSettings::money($rental->total_amount ?? 0) }}</strong>
+                    </div>
+                    <div>
+                        <small class="d-block" style="color:rgba(255,255,255,.75)">Deposit</small>
+                        <strong>{{ \App\Support\AppSettings::money($rental->deposit_amount ?? 0) }}</strong>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 mt-4">
+                    <a href="{{ route('rental.index') }}" class="btn btn-sm btn-light">
+                        <i class="ri-arrow-left-line me-1"></i> Kembali
                     </a>
-                @endif
-                @if($rental->status === 'ongoing')
-                    <a href="{{ route('rental.detail.handover.form', [$rental->rental_id, 'in']) }}" class="action-link-icon-text">
-                        <i class="ri-checkbox-line"></i>
-                        <span class="fw-semibold text-uppercase">Inspeksi Akhir</span>
+                    <a href="{{ route('rental.print', $rental->rental_id) }}" class="btn btn-sm btn-light">
+                        <i class="ri-printer-line me-1"></i> Cetak Kontrak
                     </a>
-                @endif
-                <a href="{{ route('rental.edit', $rental->rental_id) }}" class="action-link-icon-text">
-                    <i class="ri-edit-line"></i>
-                    <span class="fw-semibold text-uppercase">Edit</span>
-                </a>
+                    @if (in_array($rental->status, ['reserved', 'ongoing']))
+                        <a href="{{ route('rental.detail.handover.form', [$rental->rental_id, 'out']) }}" class="btn btn-sm btn-light">
+                            <i class="ri-car-line me-1"></i> Inspeksi Awal
+                        </a>
+                    @endif
+                    @if ($rental->status === 'ongoing')
+                        <a href="{{ route('rental.detail.handover.form', [$rental->rental_id, 'in']) }}" class="btn btn-sm btn-light">
+                            <i class="ri-checkbox-line me-1"></i> Inspeksi Akhir
+                        </a>
+                    @endif
+                    <a href="{{ route('rental.edit', $rental->rental_id) }}" class="btn btn-sm btn-light">
+                        <i class="ri-edit-line me-1"></i> Edit
+                    </a>
+                </div>
             </div>
         </div>
 
