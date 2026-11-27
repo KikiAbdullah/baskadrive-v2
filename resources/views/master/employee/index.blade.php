@@ -62,7 +62,7 @@
                 if (auth()->user()->can('master_delete')) { $btnList['destroy'] = $url['destroy']; }
                 if (auth()->user()->can('master_edit')) $btnList['toggle_active'] = 'master.employee.toggle-active';
             @endphp
-            @php $btnList['detail'] = true; @endphp
+            @php $btnList['show'] = true; @endphp
             window.detailTitleKey = 'full_name';
             const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();

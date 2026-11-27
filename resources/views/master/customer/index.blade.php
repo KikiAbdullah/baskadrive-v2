@@ -64,7 +64,6 @@
                 if (auth()->user()->can('master_edit')) $btnList['verify'] = 'master.customer.verify';
                 if (auth()->user()->can('master_add')) $btnList['rental_now'] = 'master.customer.rental-now';
             @endphp
-            @php $btnList['detail'] = true; @endphp
             window.detailTitleKey = 'full_name';
             const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();

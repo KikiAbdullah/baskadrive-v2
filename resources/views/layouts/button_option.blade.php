@@ -12,7 +12,13 @@
     </a>
 @endif
 
-@if (array_key_exists('show', $url))
+@php $showPopup = array_key_exists('show', $url) && filter_var($url['show'], FILTER_VALIDATE_BOOLEAN); @endphp
+@if ($showPopup)
+    <a href="#" class="action-link-icon-text detailBtn">
+        <i class="ri-search-line"></i>
+        <span class="fw-semibold text-uppercase">SHOW</span>
+    </a>
+@elseif (array_key_exists('show', $url))
     <a href="{{ route($url['show'], $id) }}" class="action-link-icon-text btnShow">
         <i class="ri-search-line"></i>
         <span class="fw-semibold text-uppercase">SHOW</span>
@@ -102,9 +108,4 @@
     </form>
 @endif
 
-@if (array_key_exists('detail', $url))
-    <a href="#" class="action-link-icon-text detailBtn">
-        <i class="ri-file-list-3-line"></i>
-        <span class="fw-semibold text-uppercase">DETAIL</span>
-    </a>
-@endif
+

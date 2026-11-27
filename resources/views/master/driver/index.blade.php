@@ -62,7 +62,7 @@
                 if (auth()->user()->can('master_delete')) { $btnList['destroy'] = $url['destroy']; }
                 $btnList['history'] = 'master.driver.history';
             @endphp
-            @php $btnList['detail'] = true; @endphp
+            @php $btnList['show'] = true; @endphp
             window.detailTitleKey = 'full_name';
             const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();

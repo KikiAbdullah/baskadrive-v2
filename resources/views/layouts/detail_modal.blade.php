@@ -44,7 +44,7 @@
 
         const data = row.detail || row;
         const titleKey = window.detailTitleKey || 'name';
-        const title = data[titleKey] || data.location_name || data.promo_code || data.plate || '';
+        const title = data[titleKey] || row[titleKey] || data.location_name || data.promo_code || data.plate || '';
 
         let html = '<div class="table-responsive"><table class="table table-sm table-borderless mb-0">';
         Object.keys(data).forEach(function (key) {

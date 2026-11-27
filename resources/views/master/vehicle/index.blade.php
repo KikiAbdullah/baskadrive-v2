@@ -66,7 +66,7 @@
                 $btnList['barcode_pdf'] = 'master.vehicle.barcode-pdf';
                 $btnList['history'] = 'master.vehicle.history';
             @endphp
-            @php $btnList['detail'] = true; @endphp
+            @php $btnList['show'] = 'master.vehicle.show'; @endphp
             window.detailTitleKey = 'license_plate';
             const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();
