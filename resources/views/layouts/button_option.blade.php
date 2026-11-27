@@ -16,12 +16,12 @@
 @if ($showPopup)
     <a href="#" class="action-link-icon-text detailBtn">
         <i class="ri-search-line"></i>
-        <span class="fw-semibold text-uppercase">SHOW</span>
+        <span class="fw-semibold text-uppercase">DETAIL</span>
     </a>
 @elseif (array_key_exists('show', $url))
     <a href="{{ route($url['show'], $id) }}" class="action-link-icon-text btnShow">
         <i class="ri-search-line"></i>
-        <span class="fw-semibold text-uppercase">SHOW</span>
+        <span class="fw-semibold text-uppercase">DETAIL</span>
     </a>
 @endif
 

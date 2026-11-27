@@ -1,6 +1,6 @@
 <a href="{{ route($url['show'], $id) }}" class="action-link-icon-text btnShow">
     <i class="ri-search-line"></i>
-    <span class="fw-semibold text-uppercase">Show</span>
+    <span class="fw-semibold text-uppercase">Detail</span>
 </a>
 
 @can('master_edit')
