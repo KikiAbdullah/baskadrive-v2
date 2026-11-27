@@ -7,6 +7,6 @@
         'cancelled' => ['label' => 'Batal', 'class' => 'bg-label-dark'],
         'overdue' => ['label' => 'Jatuh Tempo', 'class' => 'bg-label-danger'],
     ];
-    $badge = $map[$status] ?? ['label' => ucfirst($status), 'class' => 'bg-label-secondary'];
+    $badge = $map[$status] ?? ['label' => ucfirst((string) $status), 'class' => 'bg-label-secondary'];
 @endphp
 <span class="badge {{ $badge['class'] }}">{{ $badge['label'] }}</span>
