@@ -1,6 +1,11 @@
 @extends('layouts.header')
 
 @section('customcss')
+    <link rel="stylesheet" href="{{ asset('assets/libs/leaflet/leaflet.css') }}" />
+    <style>
+        .location-map { height: 260px; width: 100%; z-index: 0; }
+        .leaflet-container { font-family: inherit; }
+    </style>
 @endsection
 
 @section('content')
@@ -53,6 +58,7 @@
 @endsection
 
 @section('customjs')
+    <script src="{{ asset('assets/libs/leaflet/leaflet.js') }}"></script>
     <script type="text/javascript">
         var dtable;
         const urlAjax = '{{ route('master.location.data') }}';
@@ -67,8 +73,63 @@
         var button_temp =
             '<a href="#!" class="action-link-icon-text btnBack"><i class="ri-arrow-left-s-line"></i><span class="fw-semibold text-uppercase">CANCEL</span></a>';
 
+        var locationMap = null;
+        var locationMarker = null;
+
+        function initLocationMap() {
+            var el = document.getElementById('locationMap');
+            var latInput = document.getElementById('latitude');
+            var lngInput = document.getElementById('longitude');
+            if (!el || !latInput || !lngInput || typeof L === 'undefined') return;
+
+            if (locationMap) {
+                locationMap.remove();
+                locationMap = null;
+                locationMarker = null;
+            }
+
+            var lat = parseFloat(latInput.value);
+            var lng = parseFloat(lngInput.value);
+            var valid = !isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+            var center = valid ? [lat, lng] : [-6.2088, 106.8456];
+
+            locationMap = L.map(el).setView(center, valid ? 15 : 11);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(locationMap);
+
+            locationMarker = L.marker(center, { draggable: true }).addTo(locationMap);
+
+            function syncInputs() {
+                var p = locationMarker.getLatLng();
+                latInput.value = p.lat.toFixed(7);
+                lngInput.value = p.lng.toFixed(7);
+            }
+
+            function fromInputs() {
+                var a = parseFloat(latInput.value);
+                var b = parseFloat(lngInput.value);
+                if (!isNaN(a) && !isNaN(b) && a >= -90 && a <= 90 && b >= -180 && b <= 180) {
+                    locationMarker.setLatLng([a, b]);
+                    locationMap.setView([a, b], locationMap.getZoom());
+                }
+            }
+
+            locationMarker.on('dragend', syncInputs);
+            locationMap.on('click', function (e) {
+                locationMarker.setLatLng(e.latlng);
+                syncInputs();
+            });
+            latInput.addEventListener('change', fromInputs);
+            lngInput.addEventListener('change', fromInputs);
+
+            setTimeout(function () { locationMap.invalidateSize(); }, 200);
+        }
+
         $(document).ready(function($) {
             const swalInit = Swal;
+            initLocationMap();
             dtable = $('#dtable').DataTable({
                 "select": {
                     style: "single",
@@ -155,6 +216,7 @@
                         if (response.status) {
                             $("#dynamic-form").html(response.view);
                             $('.select').select2();
+                            initLocationMap();
                             $('.menuoption').prepend(button_temp);
                             button_temp = $('.editBtn').clone();
                             $('.menuoption').find('.editBtn').remove();
@@ -256,6 +318,7 @@
             $('.menuoption').html('');
             button_temp = '<a href="#!" class="action-link-icon-text btnBack"><i class="ri-arrow-left-s-line"></i><span class="fw-semibold text-uppercase">CANCEL</span></a>';
             $('.select').select2();
+            initLocationMap();
         }
     </script>
 @endsection

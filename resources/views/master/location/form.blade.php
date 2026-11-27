@@ -40,16 +40,28 @@
     </div>
 </div>
 <div class="row mb-3">
-    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Latitude</label>
+    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Koordinat</label>
     <div class="col-lg-9">
-        <input type="text" name="latitude" value="{{ $item->latitude ?? old('latitude') }}" class="form-control" placeholder="-6.2000000" />
-    </div>
-</div>
-<div class="row mb-3">
-    <label class="col-lg-3 col-form-label text-lg-end d-none d-lg-block">Longitude</label>
-    <div class="col-lg-9">
-        <input type="text" name="longitude" value="{{ $item->longitude ?? old('longitude') }}" class="form-control" placeholder="106.8000000" />
-        <small class="text-muted">Untuk peta armada & monitoring.</small>
+        <div class="row g-2">
+            <div class="col-sm-6">
+                <input type="number" step="any" id="latitude" name="latitude"
+                    value="{{ old('latitude', $item->latitude ?? '') }}"
+                    class="form-control {{ $errors->has('latitude') ? 'is-invalid' : '' }}"
+                    placeholder="-6.2000000" />
+                <small class="text-muted">Latitude</small>
+            </div>
+            <div class="col-sm-6">
+                <input type="number" step="any" id="longitude" name="longitude"
+                    value="{{ old('longitude', $item->longitude ?? '') }}"
+                    class="form-control {{ $errors->has('longitude') ? 'is-invalid' : '' }}"
+                    placeholder="106.8000000" />
+                <small class="text-muted">Longitude</small>
+            </div>
+        </div>
+        <div id="locationMap" class="location-map border rounded mt-2"></div>
+        <small class="text-muted d-block mt-1">
+            Klik pada peta atau geser pin untuk menentukan lokasi — koordinat terisi otomatis.
+        </small>
     </div>
 </div>
 <div class="row mb-3">

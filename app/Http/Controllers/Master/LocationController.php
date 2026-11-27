@@ -49,7 +49,18 @@ class LocationController extends Controller
     public function ajaxData()
     {
         return DataTables::of($this->model->query())
-            ->addColumn('coords', fn ($l) => $l->latitude && $l->longitude ? $l->latitude.','.$l->longitude : '<span class="text-muted">-</span>')
+            ->addColumn('coords', function ($l) {
+                if (! $l->latitude || ! $l->longitude) {
+                    return '<span class="text-muted">-</span>';
+                }
+
+                $url = 'https://www.openstreetmap.org/?mlat='.$l->latitude.'&mlon='.$l->longitude
+                    .'#map=15/'.$l->latitude.'/'.$l->longitude;
+
+                return '<a href="'.$url.'" target="_blank" rel="noopener" class="action-link-icon-text">'
+                    .'<i class="ri-map-pin-line me-1"></i>'.$l->latitude.', '.$l->longitude
+                    .'</a>';
+            })
             ->editColumn('is_active', fn ($l) => $l->is_active
                 ? '<span class="badge bg-success">Aktif</span>'
                 : '<span class="badge bg-secondary">Nonaktif</span>')
