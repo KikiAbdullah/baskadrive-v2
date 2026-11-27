@@ -30,24 +30,9 @@
                                 </div>
                             </div>
 
-                            @if ($role->name != 'SUPERADMIN')
-                                <div class="d-flex justify-content-between">
-                                    <a href="{{ route('user-setup.role.edit', $role->id) }}" onclick="editRole(this, event)"
-                                        class="role-edit-modal">
-                                        Edit Role
-                                    </a>
-
-                                    <form method="POST" action="{{ route('user-setup.role.destroy', $role->id) }}" class="delete" style="display: contents">
-                                        @csrf
-                                        @method('DELETE')
-                                    <a href="#" class="text-danger deleteBtn">
-                                        <i class="ri-close-circle-line"></i>
-                                    </a>
-                                    </form>
-                                </div>
-                            @else
-                                <a href="#">&nbsp;</a>
-                            @endif
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                @include('user-setup.role.menuoption', ['role' => $role])
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -50,7 +50,14 @@
         var dtable;
         const urlAjax = '{{ route('user-setup.permission.get-data') }}';
         const getButtonOption = '{{ route('get.button-option') }}';
-        const buttons = {!! json_encode(['vedit' => $url['edit']]) !!};
+        const buttons = {!! json_encode([
+            'vedit' => $url['edit'],
+            'show' => true,
+            'menu' => 'user-setup.permission.menuoption',
+        ]) !!};
+        window.detailTitleKey = 'name';
+        window.detailIdKey = 'id';
+        window.detailUrlTemplate = '{{ route('user-setup.permission.show', ['permission' => '__ID__']) }}';
         var html_temp = $("#dynamic-form").html();
         var button_temp =
             '<a href="#!" class="btn flex-column btn-float py-2 mx-2 text-uppercase text-dark fw-semibold btnBack"><i class="ph-caret-left ph-2x text-indigo"></i>CANCEL</a>';

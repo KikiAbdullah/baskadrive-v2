@@ -53,7 +53,15 @@
         var dtable;
         const urlAjax = '{{ route('user-setup.user.get-data') }}';
         const getButtonOption = '{{ route('get.button-option') }}';
-        const buttons = {!! json_encode(['vedit' => $url['edit'], 'destroy' => $url['destroy']]) !!};
+        const buttons = {!! json_encode([
+            'vedit' => $url['edit'],
+            'destroy' => $url['destroy'],
+            'show' => true,
+            'menu' => 'user-setup.user.menuoption',
+        ]) !!};
+        window.detailTitleKey = 'name';
+        window.detailIdKey = 'id';
+        window.detailUrlTemplate = '{{ route('user-setup.user.show', ['user' => '__ID__']) }}';
         var html_temp = $("#dynamic-form").html();
         var button_temp =
             '<a href="#!" class="btn flex-column btn-float py-2 mx-2 text-uppercase text-dark fw-semibold btnBack"><i class="ri-arrow-left-s-line ri-24px text-primary"></i>CANCEL</a>';
