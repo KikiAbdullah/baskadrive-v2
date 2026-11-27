@@ -20,7 +20,45 @@
 
         @include('layouts.alert')
 
+        @php
+            $totalDebit = $entries->sum('debit');
+            $totalCredit = $entries->sum('credit');
+            $endingBalance = $entries->last()?->balance ?? 0;
+        @endphp
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <small class="text-muted d-block mb-1">Total Debit</small>
+                        <h5 class="mb-0 text-primary">{{ \App\Support\AppSettings::money($totalDebit) }}</h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <small class="text-muted d-block mb-1">Total Kredit</small>
+                        <h5 class="mb-0 text-warning">{{ \App\Support\AppSettings::money($totalCredit) }}</h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <small class="text-muted d-block mb-1">Saldo Akhir</small>
+                        <h5 class="mb-0 {{ $endingBalance >= 0 ? 'text-success' : 'text-danger' }}">
+                            {{ \App\Support\AppSettings::money($endingBalance) }}
+                        </h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="ri-list-check-2 me-1"></i> Mutasi Akun</h6>
+            </div>
             <div class="card-datatable table-responsive">
                 <table class="table table-xxs">
                     <thead>

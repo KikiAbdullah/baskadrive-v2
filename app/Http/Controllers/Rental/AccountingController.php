@@ -208,10 +208,14 @@ class AccountingController extends Controller
     {
         $account = Coa::with(['parent'])->findOrFail($accountId);
 
-        $entries = JournalDetail::with(['journal'])
-            ->where('account_id', $accountId)
-            ->orderBy('created_at')
-            ->orderBy('detail_id')
+        // tr_journal_detail tidak memiliki created_at — urutkan memakai tanggal jurnal induk
+        $entries = JournalDetail::query()
+            ->join('tr_journal as j', 'j.journal_id', '=', 'tr_journal_detail.journal_id')
+            ->where('tr_journal_detail.account_id', $accountId)
+            ->select('tr_journal_detail.*')
+            ->with(['journal'])
+            ->orderBy('j.transaction_date')
+            ->orderBy('tr_journal_detail.detail_id')
             ->get();
 
         $isCreditNormal = in_array($account->account_type, ['liability', 'equity', 'income'], true);

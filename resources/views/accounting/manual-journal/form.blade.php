@@ -81,7 +81,17 @@
 
 @section('customjs')
     <script>
-        const accounts = @json($accounts->map(function($a){ return ['id'=>$a->account_id,'code'=>$a->account_code,'name'=>$a->account_name,'children'=>$a->children_count]; }));
+        @php
+            $accountOptionsData = $accounts->map(function ($a) {
+                return [
+                    'id' => $a->account_id,
+                    'code' => $a->account_code,
+                    'name' => $a->account_name,
+                    'children' => (int) $a->children_count,
+                ];
+            })->values();
+        @endphp
+        const accounts = @json($accountOptionsData);
 
         function accountOptions(selected) {
             let opts = '<option value="">Pilih Akun</option>';
