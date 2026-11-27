@@ -93,6 +93,7 @@ Route::group(['prefix' => 'master', 'as' => 'master.', 'middleware' => ['can:mas
         Route::get('/get-data', [EmployeeController::class, 'ajaxData'])->name('data');
         Route::get('/create', [EmployeeController::class, 'create'])->middleware('can:master_add')->name('create');
         Route::post('/store', [EmployeeController::class, 'store'])->middleware('can:master_add')->name('store');
+        Route::get('/{id}', [EmployeeController::class, 'show'])->name('show');
         Route::get('/{id}/edit', [EmployeeController::class, 'edit'])->middleware('can:master_edit')->name('edit');
         Route::put('/{id}', [EmployeeController::class, 'update'])->middleware('can:master_edit')->name('update');
         Route::delete('/{id}', [EmployeeController::class, 'destroy'])->middleware('can:master_delete')->name('destroy');
