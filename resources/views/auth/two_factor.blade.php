@@ -1,7 +1,7 @@
 <!doctype html>
 
 <html lang="en" class="light-style layout-wide customizer-hide" dir="ltr" data-theme="theme-default"
-    data-assets-path="{{ asset('assets') }}/" data-template="vertical-menu-template" data-style="light">
+    data-assets-path="{{ asset('assets') }}/" data-template="horizontal-menu-template-no-customizer" data-style="light">
 
 <head>
     <meta charset="utf-8" />
@@ -24,28 +24,26 @@
         rel="stylesheet" />
 
     <!-- Icons -->
-    <link rel="stylesheet" href="{{ asset('assets/vendor/fonts/remixicon/remixicon.css') }}" />
-    <link rel="stylesheet" href="{{ asset('assets/vendor/fonts/flag-icons.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/fonts/remixicon/remixicon.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/fonts/flag-icons.css') }}" />
 
     <!-- Menu waves for no-customizer fix -->
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/node-waves/node-waves.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/libs/node-waves/node-waves.css') }}" />
 
     <!-- Core CSS -->
-    <link rel="stylesheet" href="{{ asset('assets/vendor/css/rtl/core.css') }}" class="template-customizer-core-css" />
-    <link rel="stylesheet" href="{{ asset('assets/vendor/css/rtl/theme-default.css') }}"
-        class="template-customizer-theme-css" />
+    <link rel="stylesheet" href="{{ asset('assets/css/rtl/core.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/css/rtl/theme-default.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/css/demo.css') }}" />
 
     <!-- Vendors CSS -->
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css') }}" />
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/typeahead-js/typeahead.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/libs/perfect-scrollbar/perfect-scrollbar.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/libs/typeahead-js/typeahead.css') }}" />
 
     <!-- Page CSS -->
-    <link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/page-auth.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/css/pages/page-auth.css') }}" />
 
     <!-- Helpers -->
-    <script src="{{ asset('assets/vendor/js/helpers.js') }}"></script>
-    <script src="{{ asset('assets/vendor/js/template-customizer.js') }}"></script>
+    <script src="{{ asset('assets/js/helpers.js') }}"></script>
     <script src="{{ asset('assets/js/config.js') }}"></script>
 </head>
 
@@ -110,15 +108,15 @@
     <!-- / Content -->
 
     <!-- Core JS -->
-    <script src="{{ asset('assets/vendor/libs/jquery/jquery.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/popper/popper.js') }}"></script>
-    <script src="{{ asset('assets/vendor/js/bootstrap.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/node-waves/node-waves.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/hammer/hammer.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/i18n/i18n.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/typeahead-js/typeahead.js') }}"></script>
-    <script src="{{ asset('assets/vendor/js/menu.js') }}"></script>
+    <script src="{{ asset('assets/libs/jquery/jquery.js') }}"></script>
+    <script src="{{ asset('assets/libs/popper/popper.js') }}"></script>
+    <script src="{{ asset('assets/js/bootstrap.js') }}"></script>
+    <script src="{{ asset('assets/libs/node-waves/node-waves.js') }}"></script>
+    <script src="{{ asset('assets/libs/perfect-scrollbar/perfect-scrollbar.js') }}"></script>
+    <script src="{{ asset('assets/libs/hammer/hammer.js') }}"></script>
+    <script src="{{ asset('assets/libs/i18n/i18n.js') }}"></script>
+    <script src="{{ asset('assets/libs/typeahead-js/typeahead.js') }}"></script>
+    <script src="{{ asset('assets/js/menu.js') }}"></script>
     <script src="{{ asset('assets/js/main.js') }}"></script>
     <script src="{{ asset('assets/js/pages-auth.js') }}"></script>
 

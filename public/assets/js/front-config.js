@@ -25,8 +25,8 @@ window.rtlSupport = true; // set true for rtl support (rtl + ltr), false for ltr
 
 if (typeof TemplateCustomizer !== 'undefined') {
   window.templateCustomizer = new TemplateCustomizer({
-    cssPath: assetsPath + 'vendor/css' + (rtlSupport ? '/rtl' : '') + '/',
-    themesPath: assetsPath + 'vendor/css' + (rtlSupport ? '/rtl' : '') + '/',
+    cssPath: assetsPath + 'css' + (rtlSupport ? '/rtl' : '') + '/',
+    themesPath: assetsPath + 'css' + (rtlSupport ? '/rtl' : '') + '/',
     displayCustomizer: true,
     // defaultTextDir: 'rtl',
     // defaultStyle: 'dark',

@@ -26,32 +26,32 @@
         rel="stylesheet" />
 
     <!-- Icons -->
-    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/fonts/remixicon/remixicon.css" />
-    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/fonts/flag-icons.css" />
+    <link rel="stylesheet" href="{{ asset('assets') }}/fonts/remixicon/remixicon.css" />
+    <link rel="stylesheet" href="{{ asset('assets') }}/fonts/flag-icons.css" />
 
     <!-- Menu waves for no-customizer fix -->
-    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/node-waves/node-waves.css" />
+    <link rel="stylesheet" href="{{ asset('assets') }}/libs/node-waves/node-waves.css" />
 
     <!-- Core CSS -->
-    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/css/rtl/core.css" />
-    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/css/rtl/theme-default.css" />
+    <link rel="stylesheet" href="{{ asset('assets') }}/css/rtl/core.css" />
+    <link rel="stylesheet" href="{{ asset('assets') }}/css/rtl/theme-default.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/css/demo.css" />
     <link rel="stylesheet" href="{{ asset('app_local/css') }}/app-enhancements.css" />
 
     <!-- Vendors CSS -->
-    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
-    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/typeahead-js/typeahead.css" />
-    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/apex-charts/apex-charts.css" />
-    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
+    <link rel="stylesheet" href="{{ asset('assets') }}/libs/perfect-scrollbar/perfect-scrollbar.css" />
+    <link rel="stylesheet" href="{{ asset('assets') }}/libs/typeahead-js/typeahead.css" />
+    <link rel="stylesheet" href="{{ asset('assets') }}/libs/apex-charts/apex-charts.css" />
+    <link rel="stylesheet" href="{{ asset('assets') }}/libs/datatables-bs5/datatables.bootstrap5.css" />
     <link rel="stylesheet"
-        href="{{ asset('assets') }}/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
+        href="{{ asset('assets') }}/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
     <link rel="stylesheet"
-        href="{{ asset('assets') }}/vendor/libs/datatables-checkboxes-jquery/datatables.checkboxes.css" />
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/swiper/swiper.css') }}" />
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/bootstrap-datepicker/bootstrap-datepicker.css') }}" />
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/flatpickr/flatpickr.css') }}" />
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
+        href="{{ asset('assets') }}/libs/datatables-checkboxes-jquery/datatables.checkboxes.css" />
+    <link rel="stylesheet" href="{{ asset('assets/libs/swiper/swiper.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/libs/select2/select2.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/libs/bootstrap-datepicker/bootstrap-datepicker.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/libs/flatpickr/flatpickr.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/libs/sweetalert2/sweetalert2.css') }}" />
 
     {{-- Top bar POS: ringkas, tanpa navbar/menu template --}}
     <style>
@@ -119,13 +119,13 @@
     @yield('customcss')
 
     <!-- Helpers -->
-    <script src="{{ asset('assets') }}/vendor/js/helpers.js"></script>
-    <!--! Template customizer & Theme config files MUST be included after core stylesheets and helpers.js in the <head> section -->
-    <!--? Config:  Mandatory theme config file contain global vars & default theme options, Set your preferred theme option in this file.  -->
+    <script src="{{ asset('assets') }}/js/helpers.js"></script>
+    <!--! Theme config MUST be included after core stylesheets and helpers.js in the <head> section -->
+    <!--? Config: Mandatory theme config file contain global vars & default theme options, Set your preferred theme option in this file. -->
     <script src="{{ asset('assets') }}/js/config.js"></script>
-    <script src="{{ asset('assets') }}/vendor/libs/jquery/jquery.js"></script>
-    <script src="{{ asset('assets') }}/vendor/libs/popper/popper.js"></script>
-    <script src="{{ asset('assets') }}/vendor/js/bootstrap.js"></script>
+    <script src="{{ asset('assets') }}/libs/jquery/jquery.js"></script>
+    <script src="{{ asset('assets') }}/libs/popper/popper.js"></script>
+    <script src="{{ asset('assets') }}/js/bootstrap.js"></script>
 
     <script type="text/javascript">
         const _csrf_token = "{{ csrf_token() }}";
@@ -184,18 +184,18 @@
     @yield('appmodal')
 
     <!-- Core JS -->
-    <script src="{{ asset('assets') }}/vendor/libs/node-waves/node-waves.js"></script>
-    <script src="{{ asset('assets') }}/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
-    <script src="{{ asset('assets') }}/vendor/libs/i18n/i18n.js"></script>
+    <script src="{{ asset('assets') }}/libs/node-waves/node-waves.js"></script>
+    <script src="{{ asset('assets') }}/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
+    <script src="{{ asset('assets') }}/libs/i18n/i18n.js"></script>
 
     <!-- Vendors JS -->
-    <script src="{{ asset('assets') }}/vendor/libs/apex-charts/apexcharts.js"></script>
-    <script src="{{ asset('assets/vendor/libs/swiper/swiper.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/moment/moment.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/bootstrap-datepicker/bootstrap-datepicker.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/flatpickr/flatpickr.js') }}"></script>
+    <script src="{{ asset('assets') }}/libs/apex-charts/apexcharts.js"></script>
+    <script src="{{ asset('assets/libs/swiper/swiper.js') }}"></script>
+    <script src="{{ asset('assets/libs/select2/select2.js') }}"></script>
+    <script src="{{ asset('assets/libs/moment/moment.js') }}"></script>
+    <script src="{{ asset('assets/libs/bootstrap-datepicker/bootstrap-datepicker.js') }}"></script>
+    <script src="{{ asset('assets/libs/sweetalert2/sweetalert2.js') }}"></script>
+    <script src="{{ asset('assets/libs/flatpickr/flatpickr.js') }}"></script>
     <script src="{{ asset('app_local/js/settings.js') }}"></script>
     <script src="{{ asset('app_local/js/app-enhancements.js') }}"></script>
 

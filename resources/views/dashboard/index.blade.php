@@ -1,8 +1,8 @@
 @extends('layouts.header')
 
 @section('customcss')
-    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/leaflet/leaflet.css" />
-    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/fullcalendar/fullcalendar.css" />
+    <link rel="stylesheet" href="{{ asset('assets') }}/libs/leaflet/leaflet.css" />
+    <link rel="stylesheet" href="{{ asset('assets') }}/libs/fullcalendar/fullcalendar.css" />
     <style>
         #fleetMap { height: 340px; border-radius: .5rem; z-index: 0; }
         #rentalCalendar .fc { font-size: .8rem; }
@@ -191,8 +191,8 @@
 @endsection
 
 @section('customjs')
-    <script src="{{ asset('assets') }}/vendor/libs/leaflet/leaflet.js"></script>
-    <script src="{{ asset('assets') }}/vendor/libs/fullcalendar/fullcalendar.js"></script>
+    <script src="{{ asset('assets') }}/libs/leaflet/leaflet.js"></script>
+    <script src="{{ asset('assets') }}/libs/fullcalendar/fullcalendar.js"></script>
     <script>
         $(function() {
             const esc = (s) => $('<div>').text(s ?? '').html();
