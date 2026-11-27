@@ -6,7 +6,7 @@
         <input type="text" name="name" value="{{ $item->name }}" disabled
             class="{{ in_array('name', $errors->keys()) ? 'form-control is-invalid' : 'form-control' }}"
             placeholder="Role Name" />
-        <label for="name">Role Name</label>
+        <label for="name" class="form-label">Role Name</label>
     </div>
 </div>
 <div class="col-12">

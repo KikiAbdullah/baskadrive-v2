@@ -4,7 +4,7 @@
     <div class="form-floating form-floating-outline">
         <input type="text" id="name" name="name" class="form-control" placeholder="Enter a role name"
             tabindex="-1" />
-        <label for="name">Role Name</label>
+        <label for="name" class="form-label">Role Name</label>
     </div>
 </div>
 <div class="col-12">
