@@ -136,6 +136,7 @@
                     data: {
                         id: id,
                         buttons: buttons,
+                        toggle_label: rowData[0].is_active_raw ? 'Nonaktif' : 'Aktif',
                     },
                     success: function(response) {
                         if (response.status) {

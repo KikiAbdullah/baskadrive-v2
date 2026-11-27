@@ -44,6 +44,7 @@ class PromoController extends Controller
                     .'<span style="display:block;height:100%;width:'.$pct.'%;background:'.$bar.'"></span></span>'
                     .'<small>'.(int) ($p->usage_count ?? 0).'/'.(int) $max.'</small>';
             })
+            ->addColumn('is_active_raw', fn ($p) => (bool) $p->is_active)
             ->editColumn('is_active', fn ($p) => $p->is_active
                 ? '<span class="badge bg-success">Aktif</span>'
                 : '<span class="badge bg-secondary">Nonaktif</span>')

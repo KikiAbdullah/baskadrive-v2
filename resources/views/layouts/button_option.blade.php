@@ -78,7 +78,7 @@
         @method('PUT')
         <a href="#" class="action-link-icon-text text-warning" onclick="this.closest('form').submit(); return false;">
             <i class="ri-toggle-line"></i>
-            <span class="fw-semibold text-uppercase">TOGGLE AKTIF</span>
+            <span class="fw-semibold text-uppercase">{{ $toggle_label ?? 'TOGGLE AKTIF' }}</span>
         </a>
     </form>
 @endif
@@ -89,7 +89,7 @@
         @method('PUT')
         <a href="#" class="action-link-icon-text text-warning" onclick="this.closest('form').submit(); return false;">
             <i class="ri-toggle-line"></i>
-            <span class="fw-semibold text-uppercase">TOGGLE AKTIF</span>
+            <span class="fw-semibold text-uppercase">{{ $toggle_label ?? 'TOGGLE AKTIF' }}</span>
         </a>
     </form>
 @endif

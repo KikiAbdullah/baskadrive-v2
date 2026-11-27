@@ -12,7 +12,11 @@ class AjaxController extends Controller
 
         $view = [
             'status' => true,
-            'view' => view('layouts.button_option')->with(['id' => $data['id'], 'url' => $data['buttons']])->render(),
+            'view' => view('layouts.button_option')->with([
+                'id' => $data['id'],
+                'url' => $data['buttons'],
+                'toggle_label' => $data['toggle_label'] ?? null,
+            ])->render(),
         ];
 
         return response()->json($view);
