@@ -55,17 +55,7 @@
 
 @section('content')
     <div class="container-xxl flex-grow-1 container-p-y">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 row-gap-3">
-            <div>
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb mb-2">
-                        <li class="breadcrumb-item"><a href="{{ route('master.employee.index') }}">Karyawan</a></li>
-                        <li class="breadcrumb-item active">Detail</li>
-                    </ol>
-                </nav>
-                <h4 class="mb-1">Profil Karyawan</h4>
-                <p class="mb-0 text-muted">{{ $subtitle }}</p>
-            </div>
+        <div class="d-flex justify-content-end mb-4">
             <div class="d-flex flex-wrap gap-2" data-show-actions>
                 <a href="{{ route('master.employee.index') }}" class="btn btn-label-secondary">
                     <i class="ri-arrow-go-back-line me-1"></i> Kembali
@@ -116,7 +106,7 @@
         </div>
 
         <div class="row g-3">
-            <div class="col-lg-4">
+            <div class="col-lg-6">
                 <div class="card h-100">
                     <div class="card-body">
                         <div class="emp-section-title"><i class="ri-id-card-line me-1"></i> Identitas &amp; Kontak</div>
@@ -129,7 +119,7 @@
                 </div>
             </div>
 
-            <div class="col-lg-4">
+            <div class="col-lg-6">
                 <div class="card h-100">
                     <div class="card-body">
                         <div class="emp-section-title"><i class="ri-briefcase-line me-1"></i> Kepegawaian</div>
@@ -145,22 +135,6 @@
                 </div>
             </div>
 
-            <div class="col-lg-4">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <div class="emp-section-title"><i class="ri-shield-user-line me-1"></i> Akun Terkait</div>
-                        @php $linkedUser = $item->user; @endphp
-                        <div class="emp-info-row"><span class="lbl">Akun login</span><span class="val">{{ $linkedUser?->username ?? 'Belum ada' }}</span></div>
-                        <div class="emp-info-row"><span class="lbl">Role sistem</span><span class="val">{{ $linkedUser?->roles?->first()?->name ?? '-' }}</span></div>
-                        <div class="emp-info-row"><span class="lbl">Status akun</span><span class="val">{{ $linkedUser ? ($linkedUser->is_active ?? true ? 'Aktif' : 'Nonaktif') : '-' }}</span></div>
-                        <div class="emp-info-row"><span class="lbl">Dibuat</span><span class="val">{{ optional($item->created_at)->format('d M Y H:i') }}</span></div>
-                        <div class="mt-3 p-3 rounded-3" style="background:#f8f9ff;min-height:70px">
-                            <small class="text-muted d-block mb-1">Catatan</small>
-                            <span class="small">Data kepegawaian ini dipakai untuk penugasan sewa &amp; komisi sopir.</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 @endsection
