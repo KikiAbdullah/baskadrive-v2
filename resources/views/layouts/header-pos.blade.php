@@ -104,7 +104,11 @@
             color: #fff;
         }
 
-        /* Konten POS memakai lebar penuh tanpa padding container template */
+        /* Konten POS memakai lebar penuh tanpa sidebar/padding container template */
+        .layout-wrapper.pos-mode .layout-page {
+            padding-left: 0;
+        }
+
         .layout-wrapper.pos-mode .content-wrapper {
             margin-left: 0;
             min-height: calc(100vh - 60px);
