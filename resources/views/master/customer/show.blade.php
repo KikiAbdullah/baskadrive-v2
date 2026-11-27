@@ -18,6 +18,12 @@
             border-radius: 50%;
             background: rgba(255, 255, 255, .1);
         }
+        /* Badge di atas hero terang: paksa teks gelap agar tetap terbaca */
+        .cust-hero .badge { color: #1d1d33 !important; }
+        .cust-hero .badge.bg-label-success { color: #16794a !important; }
+        .cust-hero .badge.bg-label-warning { color: #a16207 !important; }
+        .cust-hero .badge.bg-label-danger { color: #c72e29 !important; }
+
         .cust-avatar {
             display: grid;
             place-items: center;

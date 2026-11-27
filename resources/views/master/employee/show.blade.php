@@ -18,6 +18,12 @@
             border-radius: 50%;
             background: rgba(255, 255, 255, .1);
         }
+        /* Badge di atas hero terang: paksa teks gelap agar tetap terbaca */
+        .emp-hero .badge { color: #1d1d33 !important; }
+        .emp-hero .badge.bg-label-success { color: #16794a !important; }
+        .emp-hero .badge.bg-label-warning { color: #a16207 !important; }
+        .emp-hero .badge.bg-label-danger { color: #c72e29 !important; }
+
         .emp-avatar {
             display: grid;
             place-items: center;

@@ -3,6 +3,12 @@
 @section('customcss')
     <style>
         .veh-hero { border: 0; overflow: hidden; }
+        /* Badge di atas kartu terang: paksa teks gelap agar tetap terbaca */
+        .veh-hero .badge { color: #1d1d33 !important; }
+        .veh-hero .badge.bg-label-success { color: #16794a !important; }
+        .veh-hero .badge.bg-label-warning { color: #a16207 !important; }
+        .veh-hero .badge.bg-label-danger { color: #c72e29 !important; }
+
         .veh-photo {
             display: grid;
             place-items: center;

@@ -1,5 +1,16 @@
 /* Peningkatan UI/UX global BaskaDrive (audit 4.x) */
 
+/* Label badge template memakai teks terang di atas latar terang —
+   gelapkan agar tetap terbaca di kartu, tabel, maupun hero. */
+.badge.bg-label-primary { color: #4f46e5 !important; }
+.badge.bg-label-success { color: #16794a !important; }
+.badge.bg-label-info { color: #0e7490 !important; }
+.badge.bg-label-warning { color: #a16207 !important; }
+.badge.bg-label-danger { color: #c72e29 !important; }
+.badge.bg-label-secondary { color: #5c6379 !important; }
+.badge.bg-label-dark { color: #1d1d33 !important; }
+.badge.bg-label-light { color: #1d1d33 !important; }
+
 /* Animasi putar untuk ikon loading */
 @keyframes app-icon-spin {
     from { transform: rotate(0deg); }
