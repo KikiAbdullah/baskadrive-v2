@@ -1,50 +1,88 @@
 <!doctype html>
-<html lang="id">
+
+<html lang="id" class="light-style layout-wide customizer-hide" dir="ltr" data-theme="theme-default"
+    data-assets-path="{{ asset('assets') }}/" data-template="horizontal-menu-template-no-customizer" data-style="light">
 
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Verifikasi Kwitansi — BaskaDrive</title>
-    <link rel="icon" type="image/png" sizes="256x256" href="{{ \App\Support\BrandAsset::faviconUrl() }}" />
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f5fa; color: #3b4055; display: flex; min-height: 100vh; align-items: center; justify-content: center; padding: 16px; }
-        .box { max-width: 420px; width: 100%; background: #fff; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.08); padding: 32px; text-align: center; }
-        .badge-ico { width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; font-size: 32px; }
-        .ok { background: #e6f7ee; color: #28c76f; }
-        .bad { background: #fdeaea; color: #ea5455; }
-        h1 { font-size: 20px; margin-bottom: 8px; }
-        p { color: #6b7280; font-size: 14px; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
-        td { padding: 8px 6px; border-bottom: 1px solid #eef0f4; }
-        td:first-child { color: #6b7280; width: 40%; }
-        td:last-child { font-weight: 600; }
-        .foot { margin-top: 20px; font-size: 11px; color: #a8aab4; }
-    </style>
+    <meta charset="utf-8" />
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+    <title>Verifikasi Kwitansi — {{ config('app.name') }}</title>
+
+    <link rel="icon" type="image/png" href="{{ \App\Support\BrandAsset::faviconUrl() }}" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&ampdisplay=swap"
+        rel="stylesheet" />
+
+    <link rel="stylesheet" href="{{ asset('assets/fonts/remixicon/remixicon.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/libs/node-waves/node-waves.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/css/rtl/core.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/css/rtl/theme-default.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/css/demo.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/libs/perfect-scrollbar/perfect-scrollbar.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/css/pages/page-auth.css') }}" />
+
+    <script src="{{ asset('assets/js/helpers.js') }}"></script>
+    <script src="{{ asset('assets/js/config.js') }}"></script>
 </head>
 
 <body>
-    <div class="box">
-        @if($record)
-            <div class="badge-ico ok">&#10003;</div>
-            <h1>Kwitansi Asli &amp; Terverifikasi</h1>
-            <p>Dokumen ini sah dan terdaftar pada sistem BaskaDrive.</p>
-            <table>
-                <tr><td>Nomor Kwitansi</td><td>PAY-{{ str_pad($record->payment_id, 5, '0', STR_PAD_LEFT) }}</td></tr>
-                @if($record->invoice)
-                    <tr><td>Invoice</td><td>{{ $record->invoice->invoice_number }}</td></tr>
-                @endif
-                <tr><td>Nominal</td><td>Rp {{ number_format($record->amount, 0, ',', '.') }}</td></tr>
-                <tr><td>Tanggal Bayar</td><td>{{ $record->payment_date?->format('d F Y H:i') ?? '-' }}</td></tr>
-                <tr><td>Status</td><td>{{ ucfirst($record->status ?? '-') }}</td></tr>
-            </table>
-        @else
-            <div class="badge-ico bad">&#10007;</div>
-            <h1>Kwitansi Tidak Dikenal</h1>
-            <p>Tautan/QR code yang Anda pindai tidak valid atau dokumen dengan ID #{{ $id }} tidak ditemukan. Hubungi kantor BaskaDrive terdekat jika Anda menerima dokumen ini.</p>
-        @endif
-        <div class="foot">Sistem Verifikasi Dokumen {{ config('app.name') }}</div>
+    <div class="authentication-wrapper authentication-basic container-p-y">
+        <div class="authentication-inner">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    @if ($record)
+                        <span class="badge rounded-pill bg-label-success p-3 d-inline-flex">
+                            <i class="ri-checkbox-circle-line ri-2x"></i>
+                        </span>
+                        <h4 class="mt-4 mb-2">Kwitansi Asli &amp; Terverifikasi</h4>
+                        <p class="text-muted mb-4">Dokumen ini sah dan terdaftar pada sistem {{ config('app.name') }}.</p>
+                        <table class="table table-borderless mb-0 text-start">
+                            <tr>
+                                <th class="text-muted fw-medium">Nomor Kwitansi</th>
+                                <td class="fw-semibold text-end">PAY-{{ str_pad($record->payment_id, 5, '0', STR_PAD_LEFT) }}</td>
+                            </tr>
+                            @if ($record->invoice)
+                                <tr>
+                                    <th class="text-muted fw-medium">Invoice</th>
+                                    <td class="fw-semibold text-end">{{ $record->invoice->invoice_number }}</td>
+                                </tr>
+                            @endif
+                            <tr>
+                                <th class="text-muted fw-medium">Nominal</th>
+                                <td class="fw-semibold text-end">Rp {{ number_format($record->amount, 0, ',', '.') }}</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted fw-medium">Tanggal Bayar</th>
+                                <td class="fw-semibold text-end">{{ $record->payment_date?->format('d F Y H:i') ?? '-' }}</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted fw-medium">Status</th>
+                                <td class="fw-semibold text-end">{{ ucfirst($record->status ?? '-') }}</td>
+                            </tr>
+                        </table>
+                    @else
+                        <span class="badge rounded-pill bg-label-danger p-3 d-inline-flex">
+                            <i class="ri-close-circle-line ri-2x"></i>
+                        </span>
+                        <h4 class="mt-4 mb-2">Kwitansi Tidak Dikenal</h4>
+                        <p class="text-muted mb-0">
+                            Tautan/QR code yang Anda pindai tidak valid atau dokumen dengan ID #{{ $id }} tidak ditemukan.
+                            Hubungi kantor {{ config('app.name') }} terdekat jika Anda menerima dokumen ini.
+                        </p>
+                    @endif
+                </div>
+            </div>
+            <p class="text-center text-muted mt-4 mb-0"><small>Sistem Verifikasi Dokumen {{ config('app.name') }}</small></p>
+        </div>
     </div>
+
+    <script src="{{ asset('assets/libs/jquery/jquery.js') }}"></script>
+    <script src="{{ asset('assets/libs/popper/popper.js') }}"></script>
+    <script src="{{ asset('assets/js/bootstrap.js') }}"></script>
+    <script src="{{ asset('assets/js/main.js') }}"></script>
 </body>
 
 </html>
