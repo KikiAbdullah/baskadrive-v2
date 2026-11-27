@@ -241,7 +241,13 @@
             var CalendarClass = (window.FullCalendar && window.FullCalendar.Calendar) || window.Calendar;
             var calendarEl = document.getElementById('rentalCalendar');
             if (CalendarClass && calendarEl) {
+                var calendarPlugins = [
+                    typeof dayGridPlugin !== 'undefined' ? dayGridPlugin : null,
+                    typeof timegridPlugin !== 'undefined' ? timegridPlugin : null,
+                    typeof interactionPlugin !== 'undefined' ? interactionPlugin : null
+                ].filter(Boolean);
                 var calendar = new CalendarClass(calendarEl, {
+                    plugins: calendarPlugins,
                     initialView: 'dayGridMonth',
                     height: 340,
                     headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
