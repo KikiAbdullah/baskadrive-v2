@@ -72,11 +72,19 @@
     </form>
 @endif
 
+@php
+    $toggleTone = match ($toggle_label ?? '') {
+        'Aktif' => 'success',
+        'Nonaktif' => 'danger',
+        default => 'warning',
+    };
+@endphp
+
 @if (array_key_exists('toggle', $url) && auth()->user()->can('master_edit'))
     <form method="POST" action="{{ route($url['toggle'], $id) }}" class="d-inline">
         @csrf
         @method('PUT')
-        <a href="#" class="action-link-icon-text text-warning" onclick="this.closest('form').submit(); return false;">
+        <a href="#" class="action-link-icon-text text-{{ $toggleTone }}" onclick="this.closest('form').submit(); return false;">
             <i class="ri-toggle-line"></i>
             <span class="fw-semibold text-uppercase">{{ $toggle_label ?? 'TOGGLE AKTIF' }}</span>
         </a>
@@ -87,7 +95,7 @@
     <form method="POST" action="{{ route($url['toggle_active'], $id) }}" class="d-inline">
         @csrf
         @method('PUT')
-        <a href="#" class="action-link-icon-text text-warning" onclick="this.closest('form').submit(); return false;">
+        <a href="#" class="action-link-icon-text text-{{ $toggleTone }}" onclick="this.closest('form').submit(); return false;">
             <i class="ri-toggle-line"></i>
             <span class="fw-semibold text-uppercase">{{ $toggle_label ?? 'TOGGLE AKTIF' }}</span>
         </a>
