@@ -9,10 +9,11 @@ class AjaxController extends Controller
     public function getButtonOption(Request $request)
     {
         $data = $request->all();
+        $menuView = $data['buttons']['menu'] ?? 'layouts.button_option';
 
         $view = [
             'status' => true,
-            'view' => view('layouts.button_option')->with([
+            'view' => view($menuView)->with([
                 'id' => $data['id'],
                 'url' => $data['buttons'],
                 'toggle_label' => $data['toggle_label'] ?? null,

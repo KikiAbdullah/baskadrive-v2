@@ -66,6 +66,7 @@
             window.detailTitleKey = 'full_name';
             window.detailIdKey = 'employee_id';
             window.detailUrlTemplate = '{{ route('master.employee.show', ['id' => '__ID__']) }}';
+            @php $btnList['menu'] = 'master.employee.menuoption'; @endphp
             const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();
         var button_temp =

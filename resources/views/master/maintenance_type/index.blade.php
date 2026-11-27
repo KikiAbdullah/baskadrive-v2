@@ -64,6 +64,7 @@
             window.detailTitleKey = 'type_name';
             window.detailIdKey = 'type_id';
             window.detailUrlTemplate = '{{ route('master.maintenance-type.show', ['id' => '__ID__']) }}';
+            @php $btnList['menu'] = 'master.maintenance_type.menuoption'; @endphp
             const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();
         var button_temp =

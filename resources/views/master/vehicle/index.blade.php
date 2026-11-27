@@ -68,6 +68,7 @@
             @endphp
             @php $btnList['show'] = 'master.vehicle.show'; @endphp
             window.detailTitleKey = 'license_plate';
+            @php $btnList['menu'] = 'master.vehicle.menuoption'; @endphp
             const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();
         var button_temp =

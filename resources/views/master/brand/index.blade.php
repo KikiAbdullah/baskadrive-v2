@@ -58,6 +58,7 @@
                 if (auth()->user()->can('master_edit')) { $btnList['vedit'] = $url['edit']; }
                 if (auth()->user()->can('master_delete')) { $btnList['destroy'] = $url['destroy']; }
             @endphp
+            @php $btnList['menu'] = 'master.brand.menuoption'; @endphp
             const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();
         var button_temp =

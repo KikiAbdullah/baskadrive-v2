@@ -72,6 +72,7 @@
             window.detailTitleKey = 'location_name';
             window.detailIdKey = 'location_id';
             window.detailUrlTemplate = '{{ route('master.location.show', ['id' => '__ID__']) }}';
+            @php $btnList['menu'] = 'master.location.menuoption'; @endphp
             const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();
         var button_temp =

@@ -66,6 +66,7 @@
             window.detailTitleKey = 'full_name';
             window.detailIdKey = 'driver_id';
             window.detailUrlTemplate = '{{ route('master.driver.show', ['id' => '__ID__']) }}';
+            @php $btnList['menu'] = 'master.driver.menuoption'; @endphp
             const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();
         var button_temp =

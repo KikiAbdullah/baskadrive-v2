@@ -65,6 +65,7 @@
                 if (auth()->user()->can('master_add')) $btnList['rental_now'] = 'master.customer.rental-now';
             @endphp
             window.detailTitleKey = 'full_name';
+            @php $btnList['menu'] = 'master.customer.menuoption'; @endphp
             const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();
         var button_temp =
