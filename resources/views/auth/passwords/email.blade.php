@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('title', 'Lupa Password — '.config('app.name'))
+
 @section('content')
 <div class="card shadow-sm">
     <div class="card-body">

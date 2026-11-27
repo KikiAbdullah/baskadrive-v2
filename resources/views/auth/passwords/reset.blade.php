@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('title', 'Atur Ulang Password — '.config('app.name'))
+
 @section('content')
 <div class="card shadow-sm">
     <div class="card-body">
