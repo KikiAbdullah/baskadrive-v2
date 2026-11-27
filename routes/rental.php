@@ -53,6 +53,7 @@ Route::group(['prefix' => 'master', 'as' => 'master.', 'middleware' => ['can:mas
         Route::get('/get-data', [VehicleModelController::class, 'ajaxData'])->name('data');
         Route::get('/create', [VehicleModelController::class, 'create'])->middleware('can:master_add')->name('create');
         Route::post('/store', [VehicleModelController::class, 'store'])->middleware('can:master_add')->name('store');
+        Route::get('/{id}', [VehicleModelController::class, 'show'])->name('show');
         Route::get('/{id}/edit', [VehicleModelController::class, 'edit'])->middleware('can:master_edit')->name('edit');
         Route::put('/{id}', [VehicleModelController::class, 'update'])->middleware('can:master_edit')->name('update');
         Route::delete('/{id}', [VehicleModelController::class, 'destroy'])->middleware('can:master_delete')->name('destroy');
@@ -106,6 +107,7 @@ Route::group(['prefix' => 'master', 'as' => 'master.', 'middleware' => ['can:mas
         Route::get('/get-data', [DriverController::class, 'ajaxData'])->name('data');
         Route::get('/create', [DriverController::class, 'create'])->middleware('can:master_add')->name('create');
         Route::post('/store', [DriverController::class, 'store'])->middleware('can:master_add')->name('store');
+        Route::get('/{id}', [DriverController::class, 'show'])->name('show');
         Route::get('/{id}/edit', [DriverController::class, 'edit'])->middleware('can:master_edit')->name('edit');
         Route::put('/{id}', [DriverController::class, 'update'])->middleware('can:master_edit')->name('update');
         Route::delete('/{id}', [DriverController::class, 'destroy'])->middleware('can:master_delete')->name('destroy');
@@ -117,6 +119,7 @@ Route::group(['prefix' => 'master', 'as' => 'master.', 'middleware' => ['can:mas
         Route::get('/', [LocationController::class, 'index'])->name('index');
         Route::get('/get-data', [LocationController::class, 'ajaxData'])->name('data');
         Route::post('/store', [LocationController::class, 'store'])->middleware('can:master_add')->name('store');
+        Route::get('/{id}', [LocationController::class, 'show'])->name('show');
         Route::get('/{id}/edit', [LocationController::class, 'edit'])->middleware('can:master_edit')->name('edit');
         Route::put('/{id}', [LocationController::class, 'update'])->middleware('can:master_edit')->name('update');
         Route::delete('/{id}', [LocationController::class, 'destroy'])->middleware('can:master_delete')->name('destroy');
@@ -127,6 +130,7 @@ Route::group(['prefix' => 'master', 'as' => 'master.', 'middleware' => ['can:mas
         Route::get('/', [WorkshopController::class, 'index'])->name('index');
         Route::get('/get-data', [WorkshopController::class, 'ajaxData'])->name('data');
         Route::post('/store', [WorkshopController::class, 'store'])->middleware('can:master_add')->name('store');
+        Route::get('/{id}', [WorkshopController::class, 'show'])->name('show');
         Route::get('/{id}/edit', [WorkshopController::class, 'edit'])->middleware('can:master_edit')->name('edit');
         Route::put('/{id}', [WorkshopController::class, 'update'])->middleware('can:master_edit')->name('update');
         Route::delete('/{id}', [WorkshopController::class, 'destroy'])->middleware('can:master_delete')->name('destroy');
@@ -137,6 +141,7 @@ Route::group(['prefix' => 'master', 'as' => 'master.', 'middleware' => ['can:mas
         Route::get('/', [MaintenanceTypeController::class, 'index'])->name('index');
         Route::get('/get-data', [MaintenanceTypeController::class, 'ajaxData'])->name('data');
         Route::post('/store', [MaintenanceTypeController::class, 'store'])->middleware('can:master_add')->name('store');
+        Route::get('/{id}', [MaintenanceTypeController::class, 'show'])->name('show');
         Route::get('/{id}/edit', [MaintenanceTypeController::class, 'edit'])->middleware('can:master_edit')->name('edit');
         Route::put('/{id}', [MaintenanceTypeController::class, 'update'])->middleware('can:master_edit')->name('update');
         Route::delete('/{id}', [MaintenanceTypeController::class, 'destroy'])->middleware('can:master_delete')->name('destroy');
@@ -148,6 +153,7 @@ Route::group(['prefix' => 'master', 'as' => 'master.', 'middleware' => ['can:mas
         Route::get('/get-data', [PromoController::class, 'ajaxData'])->name('data');
         Route::get('/create', [PromoController::class, 'create'])->middleware('can:master_add')->name('create');
         Route::post('/store', [PromoController::class, 'store'])->middleware('can:master_add')->name('store');
+        Route::get('/{id}', [PromoController::class, 'show'])->name('show');
         Route::get('/{id}/edit', [PromoController::class, 'edit'])->middleware('can:master_edit')->name('edit');
         Route::put('/{id}', [PromoController::class, 'update'])->middleware('can:master_edit')->name('update');
         Route::delete('/{id}', [PromoController::class, 'destroy'])->middleware('can:master_delete')->name('destroy');
@@ -161,6 +167,7 @@ Route::group(['prefix' => 'master', 'as' => 'master.', 'middleware' => ['can:mas
         Route::get('/get-data', [CoaController::class, 'ajaxData'])->name('data');
         Route::get('/create', [CoaController::class, 'create'])->middleware('can:master_add')->name('create');
         Route::post('/store', [CoaController::class, 'store'])->middleware('can:master_add')->name('store');
+        Route::get('/{id}', [CoaController::class, 'show'])->name('show');
         Route::get('/{id}/edit', [CoaController::class, 'edit'])->middleware('can:master_edit')->name('edit');
         Route::put('/{id}', [CoaController::class, 'update'])->middleware('can:master_edit')->name('update');
         Route::delete('/{id}', [CoaController::class, 'destroy'])->middleware('can:master_delete')->name('destroy');

@@ -64,6 +64,8 @@
             @endphp
             @php $btnList['show'] = true; @endphp
             window.detailTitleKey = 'full_name';
+            window.detailIdKey = 'driver_id';
+            window.detailUrlTemplate = '{{ route('master.driver.show', ['id' => '__ID__']) }}';
             const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();
         var button_temp =

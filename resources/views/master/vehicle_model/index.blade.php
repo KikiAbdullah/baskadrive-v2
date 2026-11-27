@@ -64,6 +64,8 @@
             @endphp
             @php $btnList['show'] = true; @endphp
             window.detailTitleKey = 'model_name';
+            window.detailIdKey = 'model_id';
+            window.detailUrlTemplate = '{{ route('master.vehicle-model.show', ['id' => '__ID__']) }}';
             const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();
         var button_temp =

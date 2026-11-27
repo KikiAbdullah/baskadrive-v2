@@ -60,6 +60,10 @@
                 if (auth()->user()->can('master_edit')) { $btnList['vedit'] = $url['edit']; }
                 if (auth()->user()->can('master_delete')) { $btnList['destroy'] = $url['destroy']; }
             @endphp
+            @php $btnList['show'] = true; @endphp
+            window.detailTitleKey = 'account_name';
+            window.detailIdKey = 'account_id';
+            window.detailUrlTemplate = '{{ route('master.coa.show', ['id' => '__ID__']) }}';
             const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();
         var button_temp =

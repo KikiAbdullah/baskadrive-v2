@@ -70,6 +70,8 @@
             @endphp
             @php $btnList['show'] = true; @endphp
             window.detailTitleKey = 'location_name';
+            window.detailIdKey = 'location_id';
+            window.detailUrlTemplate = '{{ route('master.location.show', ['id' => '__ID__']) }}';
             const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();
         var button_temp =

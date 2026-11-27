@@ -64,6 +64,8 @@
             @endphp
             @php $btnList['show'] = true; @endphp
             window.detailTitleKey = 'name';
+            window.detailIdKey = 'workshop_id';
+            window.detailUrlTemplate = '{{ route('master.workshop.show', ['id' => '__ID__']) }}';
             const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();
         var button_temp =

@@ -66,6 +66,8 @@
             @endphp
             @php $btnList['show'] = true; @endphp
             window.detailTitleKey = 'promo_code';
+            window.detailIdKey = 'promo_id';
+            window.detailUrlTemplate = '{{ route('master.promo.show', ['id' => '__ID__']) }}';
             const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();
         var button_temp =
