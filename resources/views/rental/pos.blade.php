@@ -241,6 +241,50 @@
     .pos-meta { font-size: .72rem; color: var(--pos-muted); }
     .pos-rate { color: var(--pos-brand); font-weight: 800; font-size: .8rem; }
 
+    .pos-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .4rem;
+        padding-bottom: .65rem;
+        border-bottom: 1px solid var(--pos-border);
+    }
+
+    .pos-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        padding: .35rem .7rem;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        background: #f4f5fa;
+        color: #6b7194;
+        font-size: .78rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background .15s, color .15s, box-shadow .15s;
+    }
+
+    .pos-tab:hover { background: #eceeff; color: var(--pos-brand); }
+
+    .pos-tab.active {
+        background: var(--pos-brand);
+        color: #fff;
+        box-shadow: 0 4px 10px rgba(102, 108, 255, .22);
+    }
+
+    .pos-tab-count {
+        display: inline-grid;
+        place-items: center;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 4px;
+        border-radius: 999px;
+        background: rgba(29, 29, 51, .08);
+        font-size: .68rem;
+    }
+
+    .pos-tab.active .pos-tab-count { background: rgba(255, 255, 255, .22); }
+
     .pos-empty {
         color: #9ca3b5;
         text-align: center;
@@ -459,6 +503,7 @@
                         <input type="text" id="pos-vehicle-q" class="form-control form-control-sm"
                             placeholder="Filter plat / model…">
                     </div>
+                    <div id="pos-vehicle-tabs" class="pos-tabs mb-3"></div>
                     <div id="pos-vehicle-grid" class="row g-2">
                         <div class="col-12 pos-empty">
                             <i class="ri-car-line"></i>
@@ -558,8 +603,9 @@
     'use strict';
 
     const $ = (id) => document.getElementById(id);
-    const state = { options: null, customer: null, vehicle: null, vehicles: [], quote: null, debounce: null };
+    const state = { options: null, customer: null, vehicle: null, vehicles: [], quote: null, debounce: null, category: 'all' };
     const rp = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID');
+    const catKey = (v) => (v.category && String(v.category).trim()) || 'Lainnya';
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     })[c]);
@@ -610,6 +656,17 @@
         $('pos-vehicle-q').addEventListener('input', () => {
             clearTimeout(state.debounce);
             state.debounce = setTimeout(reloadVehicles, 300);
+        });
+        $('pos-vehicle-tabs').addEventListener('click', (e) => {
+            const tab = e.target.closest('.pos-tab');
+            if (!tab) return;
+            state.category = tab.dataset.cat || 'all';
+            if (state.vehicle && state.category !== 'all' && catKey(state.vehicle) !== state.category) {
+                state.vehicle = null;
+                refreshQuote();
+            }
+            renderTabs();
+            renderVehicles();
         });
         $('pos-driver').addEventListener('change', refreshQuote);
         $('pos-promo').addEventListener('change', refreshQuote);
@@ -681,6 +738,8 @@
             $('pos-days').textContent = '— hari';
             state.vehicles = [];
             state.vehicle = null;
+            state.category = 'all';
+            renderTabs();
             renderVehicles();
             refreshQuote();
             return;
@@ -698,21 +757,59 @@
 
         state.vehicles = json.data.vehicles || [];
         state.vehicle = null;
+        if (state.category !== 'all' && !state.vehicles.some((v) => catKey(v) === state.category)) {
+            state.category = 'all';
+        }
+        renderTabs();
         renderVehicles();
         refreshQuote();
+    }
+
+    function renderTabs() {
+        const box = $('pos-vehicle-tabs');
+        box.innerHTML = '';
+        const counts = new Map();
+        state.vehicles.forEach((v) => {
+            const key = catKey(v);
+            counts.set(key, (counts.get(key) || 0) + 1);
+        });
+
+        const addTab = (key, label, count) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'pos-tab' + (state.category === key ? ' active' : '');
+            btn.dataset.cat = key;
+            const text = document.createElement('span');
+            text.textContent = label;
+            const badge = document.createElement('span');
+            badge.className = 'pos-tab-count';
+            badge.textContent = count;
+            btn.append(text, badge);
+            box.appendChild(btn);
+        };
+
+        addTab('all', 'Semua', state.vehicles.length);
+        [...counts.entries()]
+            .sort((a, b) => a[0].localeCompare(b[0], 'id'))
+            .forEach(([key, count]) => addTab(key, key, count));
     }
 
     function renderVehicles() {
         const grid = $('pos-vehicle-grid');
         grid.querySelectorAll('.pos-vehicle-card').forEach((el) => el.remove());
         const empty = grid.querySelector('.pos-empty');
-        if (!state.vehicles.length) {
-            empty.innerHTML = '<i class="ri-car-line"></i>Tidak ada unit bebas untuk rentang ini.';
+        const visible = state.category === 'all'
+            ? state.vehicles
+            : state.vehicles.filter((v) => catKey(v) === state.category);
+        if (!visible.length) {
+            empty.innerHTML = state.vehicles.length
+                ? `<i class="ri-car-line"></i>Tidak ada unit dalam kategori "${esc(state.category)}".`
+                : '<i class="ri-car-line"></i>Tidak ada unit bebas untuk rentang ini.';
             empty.classList.remove('d-none');
             return;
         }
         empty.classList.add('d-none');
-        state.vehicles.forEach((v) => {
+        visible.forEach((v) => {
             const meta = [v.color, v.year, v.location, v.category].filter(Boolean).map(esc).join(' · ');
             const col = document.createElement('div');
             col.className = 'col-md-6 col-lg-4 col-xxl-3';
