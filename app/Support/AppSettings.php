@@ -58,6 +58,12 @@ class AppSettings
 
             // Akuntansi (audit 2.6 - tutup buku)
             'accounting_closing_date' => null,
+
+            // Gateway WhatsApp internal — Baileys (utama) & whatsapp-web.js (cadangan),
+            // saklar on/off per provider diatur dari UI Sistem → WhatsApp Gateway.
+            'whatsapp_baileys_enabled' => true,
+            'whatsapp_wwebjs_enabled' => false,
+            'whatsapp_provider' => 'baileys',
         ];
     }
 

@@ -347,6 +347,15 @@ Setiap tab punya tombol **Export CSV** (`report.export/{type}` — `revenue|flee
 - Ditulis otomatis oleh helper `storeLog()` + aksi tertentu (mis. update settings).
 - DataTables + filter aksi.
 
+### 11.3 Gateway WhatsApp (`system.whatsapp`)
+- Gateway Node.js internal di folder `whatsapp-gateway/` — jalankan `npm install && node server.js` (default `http://127.0.0.1:3001`).
+- **Provider**: Baileys (https://baileys.wiki) sebagai **utama** (WebSocket, tanpa browser) dan whatsapp-web.js (https://wwebjs.dev) sebagai **cadangan** (Chrome headless via Puppeteer).
+- **Multi-device**: keduanya berjalan sebagai perangkat tertaut WhatsApp (linked device) — pairing via QR dari UI, auth state tersimpan di `whatsapp-gateway/sessions/` sehingga tidak perlu scan ulang.
+- **On/off per provider**: saklar independen Baileys & WhatsApp Web JS dari UI (tersimpan di `app_settings`: `whatsapp_baileys_enabled` / `whatsapp_wwebjs_enabled`); menyalakan provider otomatis memulai sesi, mematikan menghentikannya.
+- **Failover**: `kirimWA()` otomatis memakai provider utama yang menyala dan pindah ke cadangan bila utama tidak terhubung (`WHATSAPP_AUTO_FAILOVER=true`).
+- Keamanan: semua request ke gateway memakai header `X-Gateway-Token` (`WHATSAPP_GATEWAY_TOKEN`); endpoint admin dilindungi gate `settings_edit`.
+- Endpoint Laravel: `system.whatsapp` (halaman), `.status` (polling JSON), `.toggle`, `.test-send`, `.{provider}/start|stop|logout` (provider = `baileys|wwebjs`).
+
 ---
 
 ## 12. Setup User & Role

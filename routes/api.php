@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\V1\Field\BookingController;
 use App\Http\Controllers\Api\V1\Field\DamageController;
 use App\Http\Controllers\Api\V1\Field\DeviceController;
 use App\Http\Controllers\Api\V1\Field\HandoverController;
@@ -41,6 +42,12 @@ Route::prefix('v1/field')->middleware(['auth:api', 'throttle:120,1'])->group(fun
 
     // Referensi — meta boleh dipanggil sering (cache harian di mobile).
     Route::get('meta', [MetaController::class, 'index']);
+
+    // Booking oleh operator (F-01 — reservasi sewa dari lapangan)
+    Route::get('booking/options', [BookingController::class, 'options']);
+    Route::get('booking/vehicles', [BookingController::class, 'vehicles']);
+    Route::get('booking', [BookingController::class, 'index']);
+    Route::post('booking', [BookingController::class, 'store']);
 
     // Tugas (F-02)
     Route::get('tasks', [TaskController::class, 'index']);

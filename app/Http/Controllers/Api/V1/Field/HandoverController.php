@@ -45,6 +45,10 @@ class HandoverController extends ApiController
             'customer_name_signed' => 'nullable|string|max:100',
             'lat' => 'nullable|numeric|between:-90,90',
             'lng' => 'nullable|numeric|between:-180,180',
+            // Video inspeksi (praktik lapangan): rekam seluruh sisi + interior.
+            'videos' => ['nullable', 'array', 'max:'.(int) config('field.inspection_video_max_files', 3)],
+            'videos.*' => ['file', 'mimes:mp4,webm,mov,m4v', 'max:'.(int) config('field.inspection_video_max_kb', 51200)],
+            'video_total_seconds' => 'nullable|integer|min:0|max:7200',
         ]);
 
         return $this->idempotent($request, 'handover-out', function () use ($request, $rental) {
@@ -69,6 +73,8 @@ class HandoverController extends ApiController
                         ->mapWithKeys(fn ($item) => [(string) $item['key'] => (bool) $item['present']])
                         ->all(),
                     'notes' => $request->input('notes'),
+                    'videos' => $this->storeInspectionVideos($request),
+                    'video_total_seconds' => $request->input('video_total_seconds'),
                     'created_by' => $request->user()?->id,
                 ]);
 
@@ -190,6 +196,10 @@ class HandoverController extends ApiController
             'occurred_at' => 'nullable|date',
             'lat' => 'nullable|numeric|between:-90,90',
             'lng' => 'nullable|numeric|between:-180,180',
+            // Video inspeksi pengembalian — sama dengan serah terima awal.
+            'videos' => ['nullable', 'array', 'max:'.(int) config('field.inspection_video_max_files', 3)],
+            'videos.*' => ['file', 'mimes:mp4,webm,mov,m4v', 'max:'.(int) config('field.inspection_video_max_kb', 51200)],
+            'video_total_seconds' => 'nullable|integer|min:0|max:7200',
         ]);
 
         return $this->idempotent($request, 'return', function () use ($request, $rental) {
@@ -246,6 +256,8 @@ class HandoverController extends ApiController
                         'odometer' => $odometerEnd,
                         'fuel_level' => $request->input('fuel_level_end'),
                         'notes' => 'Inspeksi akhir via mobile.',
+                        'videos' => $this->storeInspectionVideos($request),
+                        'video_total_seconds' => $request->input('video_total_seconds'),
                         'created_by' => $request->user()?->id,
                     ],
                 );
@@ -335,8 +347,31 @@ class HandoverController extends ApiController
                     'extra_charge' => $extraCharge,
                     'damages_reported' => $newDamages->count(),
                     'return_id' => $return->return_id,
+                    'videos_stored' => count($request->file('videos') ?? []),
                 ];
             });
         });
+    }
+
+    /**
+     * Simpan video inspeksi ke disk public (folder inspection-videos/).
+     * Dipanggil di dalam transaksi; gagal storage menggagalkan submit agar
+     * bukti tidak hilang diam-diam (paritas kontrak foto kerusakan).
+     *
+     * @return array<int, string>|null path relatif di disk public
+     */
+    private function storeInspectionVideos(Request $request): ?array
+    {
+        $files = $request->file('videos');
+        if (empty($files)) {
+            return null;
+        }
+
+        $paths = [];
+        foreach ($files as $video) {
+            $paths[] = $video->store('inspection-videos', 'public');
+        }
+
+        return $paths;
     }
 }

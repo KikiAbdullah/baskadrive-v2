@@ -22,6 +22,10 @@ return [
     */
     'fuel_refill_rate' => env('FIELD_FUEL_REFILL_RATE', 150000),
 
+    // Inspeksi video (praktik lapangan: rekam seluruh sisi + interior).
+    'inspection_video_max_files' => env('FIELD_VIDEO_MAX_FILES', 3),
+    'inspection_video_max_kb' => env('FIELD_VIDEO_MAX_KB', 51200),
+
     /*
     | Tarif per barang checklist yang hilang saat pengembalian (konsep B.3).
     */

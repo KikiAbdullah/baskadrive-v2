@@ -22,3 +22,7 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# WhatsApp gateway internal
+/whatsapp-gateway/node_modules
+/whatsapp-gateway/sessions

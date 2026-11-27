@@ -10,6 +10,7 @@ use App\Http\Controllers\Master\MaintenanceTypeController;
 use App\Http\Controllers\Master\PromoController;
 use App\Http\Controllers\Master\VehicleController;
 use App\Http\Controllers\Master\VehicleModelController;
+use App\Http\Controllers\Rental\RentalPosController;
 use App\Http\Controllers\Master\WorkshopController;
 use App\Http\Controllers\Rental\AccountingController;
 use App\Http\Controllers\Rental\DashboardController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\Rental\FleetController;
 use App\Http\Controllers\Rental\RentalController;
 use App\Http\Controllers\Rental\ReportController;
 use App\Http\Controllers\Rental\SystemController;
+use App\Http\Controllers\Rental\WhatsAppGatewayController;
 use Illuminate\Support\Facades\Route;
 
 // ===========================================
@@ -187,6 +189,16 @@ Route::group(['prefix' => 'rental', 'as' => 'rental.', 'middleware' => ['can:ren
     Route::get('/create/search-promo', [RentalController::class, 'searchPromo'])->name('create.search-promo');
     Route::get('/create/available-vehicles', [RentalController::class, 'availableVehicles'])->name('create.available-vehicles');
     Route::post('/create/calculate-total', [RentalController::class, 'calculateTotal'])->name('create.calculate-total');
+
+    // POS Booking — kasir sewa satu layar (AUDIT_BOOKING.md §5)
+    Route::get('/pos', [RentalPosController::class, 'index'])->middleware('can:rental_add')->name('pos');
+    Route::get('/pos/options', [RentalPosController::class, 'options'])->name('pos.options');
+    Route::get('/pos/customers', [RentalPosController::class, 'customers'])->name('pos.customers');
+    // Walk-in pelanggan inline = bagian dari alur jual POS (bukan master terpisah).
+    Route::post('/pos/customers', [RentalPosController::class, 'storeCustomer'])->middleware('can:rental_add')->name('pos.customers.store');
+    Route::get('/pos/vehicles', [RentalPosController::class, 'vehicles'])->name('pos.vehicles');
+    Route::post('/pos/quote', [RentalPosController::class, 'quote'])->name('pos.quote');
+    Route::post('/pos/store', [RentalPosController::class, 'store'])->middleware('can:rental_add')->name('pos.store');
 
     // Aksi cepat
     Route::put('{id}/confirm', [RentalController::class, 'confirmPickup'])->middleware('can:rental_confirm')->name('confirm');
@@ -369,4 +381,15 @@ Route::group(['prefix' => 'system', 'as' => 'system.'], function () {
     Route::get('/activity-log', [SystemController::class, 'activityLog'])->middleware('can:logs_view')->name('activity-log');
     Route::get('/activity-log/get-data', [SystemController::class, 'activityLogData'])->middleware('can:logs_view')->name('activity-log.data');
     Route::post('/backup', [SystemController::class, 'backup'])->middleware(['can:settings_edit', 'throttle:3,1'])->name('backup');
+
+    // ===========================================
+    // GATEWAY WHATSAPP (Baileys + whatsapp-web.js)
+    // ===========================================
+    Route::get('/whatsapp', [WhatsAppGatewayController::class, 'index'])->name('whatsapp');
+    Route::get('/whatsapp/status', [WhatsAppGatewayController::class, 'status'])->name('whatsapp.status');
+    Route::post('/whatsapp/toggle', [WhatsAppGatewayController::class, 'toggle'])->name('whatsapp.toggle');
+    Route::post('/whatsapp/test-send', [WhatsAppGatewayController::class, 'testSend'])->middleware('throttle:6,1')->name('whatsapp.test-send');
+    Route::post('/whatsapp/{provider}/start', [WhatsAppGatewayController::class, 'start'])->where('provider', 'baileys|wwebjs')->name('whatsapp.start');
+    Route::post('/whatsapp/{provider}/stop', [WhatsAppGatewayController::class, 'stop'])->where('provider', 'baileys|wwebjs')->name('whatsapp.stop');
+    Route::post('/whatsapp/{provider}/logout', [WhatsAppGatewayController::class, 'logout'])->where('provider', 'baileys|wwebjs')->name('whatsapp.logout');
 });

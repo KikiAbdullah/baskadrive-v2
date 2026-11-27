@@ -123,6 +123,14 @@
                     <div data-i18n="Sewa">Sewa</div>
                 </a>
             </li>
+            @can('rental_add')
+            <li class="menu-item {{ $is('rental.pos') ? 'active' : '' }}">
+                <a href="{{ route('rental.pos') }}" class="menu-link">
+                    <i class="menu-icon tf-icons ri-store-2-line"></i>
+                    <div data-i18n="Booking POS">Booking POS</div>
+                </a>
+            </li>
+            @endcan
             @endcan
 
             <!-- ========================================
@@ -234,6 +242,14 @@
                         <a href="{{ route('system.settings') }}" class="menu-link">
                             <i class="menu-icon tf-icons ri-equalizer-line"></i>
                             <div data-i18n="Pengaturan Umum">Pengaturan Umum</div>
+                        </a>
+                    </li>
+                    @endcan
+                    @can('settings_edit')
+                    <li class="menu-item {{ $is('system.whatsapp') ? 'active' : '' }}">
+                        <a href="{{ route('system.whatsapp') }}" class="menu-link">
+                            <i class="menu-icon tf-icons ri-whatsapp-line"></i>
+                            <div data-i18n="WhatsApp Gateway">WhatsApp Gateway</div>
                         </a>
                     </li>
                     @endcan
