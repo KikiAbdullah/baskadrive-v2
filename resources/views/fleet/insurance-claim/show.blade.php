@@ -115,8 +115,7 @@
                             <div class="row">
                                 @foreach($item->damageReport->photos as $photo)
                                     <div class="col-md-4 mb-2">
-                                        <img src="{{ asset('storage/' . $photo->photo_url) }}" class="img-fluid rounded"
-                                            alt="{{ $photo->caption }}">
+                                        @include('fleet.photo-thumb', ['photo' => $photo])
                                     </div>
                                 @endforeach
                             </div>

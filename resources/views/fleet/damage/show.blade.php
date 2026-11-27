@@ -155,8 +155,7 @@
                         <div class="row" id="photoList">
                             @forelse($item->photos as $photo)
                                 <div class="col-md-4 mb-2 position-relative" id="photo-{{ $photo->photo_id }}">
-                                    <img src="{{ asset('storage/' . $photo->photo_url) }}" class="img-fluid rounded"
-                                        alt="{{ $photo->caption }}">
+                                    @include('fleet.photo-thumb', ['photo' => $photo])
                                     @can('fleet_damage_manage')
                                         <button type="button"
                                             class="btn btn-sm btn-outline-danger btn-del-photo position-absolute"
@@ -206,7 +205,7 @@
                 @endcan
 
                 @if($item->insuranceClaim)
-                    <div class="card {{ @can('fleet_damage_manage') ? 'mt-3' : '' }}">
+                    <div class="card {{ auth()->user()->can('fleet_damage_manage') ? 'mt-3' : '' }}">
                         <div class="card-header">
                             <h6 class="mb-0"><i class="ri-shield-check-line me-1"></i> Klaim Asuransi</h6>
                         </div>
