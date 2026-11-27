@@ -82,7 +82,7 @@
                     <form method="POST" action="{{ route('verifyTwoFactor') }}" class="login-form">
                         @csrf
 
-                        <div class="form-group">
+                        <div class="mb-3">
                             <div class="d-flex justify-content-center gap-2 mb-5" id="inputs">
                                 <input class="form-control text-center" style="width:50px;font-size:36px" type="text" inputmode="numeric" maxlength="1" autofocus />
                                 <input class="form-control text-center" style="width:50px;font-size:36px" type="text" inputmode="numeric" maxlength="1" />
