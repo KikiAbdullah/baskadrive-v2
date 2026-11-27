@@ -17,7 +17,7 @@
             <!-- ========================================
                  DASHBOARD & MONITORING
             ======================================== -->
-            <li class="menu-item {{ $is('dashboard', 'siteurl') ? 'active open' : '' }}">
+            <li class="menu-item {{ $is('dashboard', 'siteurl') ? 'active' : '' }}">
                 <a href="{{ route('siteurl') }}" class="menu-link">
                     <i class="menu-icon tf-icons ri-home-smile-line"></i>
                     <div data-i18n="Dashboard">Dashboard</div>

@@ -12,7 +12,7 @@
         <div class="p-3">
             <div class="d-flex align-items-start mb-3">
                 <a href="#" class="status-indicator-container me-3">
-                    <img src="{{ asset('assets/images/placeholder.jpg') }}" class="w-40px h-40px rounded-pill" alt="">
+                    <img src="{{ asset('assets/img/avatars/1.png') }}" class="w-40px h-40px rounded-pill" alt="">
                     <span class="status-indicator bg-success"></span>
                 </a>
                 <div class="flex-fill">
@@ -31,7 +31,7 @@
 
             <div class="d-flex align-items-start mb-3">
                 <a href="#" class="status-indicator-container me-3">
-                    <img src="{{ asset('assets/images/demo/users/face3.jpg') }}" class="w-40px h-40px rounded-pill" alt="">
+                    <img src="{{ asset('assets/img/avatars/3.png') }}" class="w-40px h-40px rounded-pill" alt="">
                     <span class="status-indicator bg-warning"></span>
                 </a>
                 <div class="flex-fill">
@@ -39,19 +39,19 @@
 
                     <div class="d-flex my-2">
                         <a href="#" class="status-indicator-container me-1">
-                            <img src="{{ asset('assets/images/demo/users/face10.jpg') }}" class="w-32px h-32px rounded-pill" alt="">
+                            <img src="{{ asset('assets/img/avatars/10.png') }}" class="w-32px h-32px rounded-pill" alt="">
                             <span class="status-indicator bg-danger"></span>
                         </a>
                         <a href="#" class="status-indicator-container me-1">
-                            <img src="{{ asset('assets/images/demo/users/face11.jpg') }}" class="w-32px h-32px rounded-pill" alt="">
+                            <img src="{{ asset('assets/img/avatars/11.png') }}" class="w-32px h-32px rounded-pill" alt="">
                             <span class="status-indicator bg-success"></span>
                         </a>
                         <a href="#" class="status-indicator-container me-1">
-                            <img src="{{ asset('assets/images/demo/users/face12.jpg') }}" class="w-32px h-32px rounded-pill" alt="">
+                            <img src="{{ asset('assets/img/avatars/12.png') }}" class="w-32px h-32px rounded-pill" alt="">
                             <span class="status-indicator bg-success"></span>
                         </a>
                         <a href="#" class="status-indicator-container me-1">
-                            <img src="{{ asset('assets/images/demo/users/face13.jpg') }}" class="w-32px h-32px rounded-pill" alt="">
+                            <img src="{{ asset('assets/img/avatars/13.png') }}" class="w-32px h-32px rounded-pill" alt="">
                             <span class="status-indicator bg-success"></span>
                         </a>
                         <button type="button" class="btn btn-light btn-icon d-inline-flex align-items-center justify-content-center w-32px h-32px rounded-pill p-0">
@@ -80,7 +80,7 @@
         <div class="p-3">
             <div class="d-flex align-items-start mb-3">
                 <a href="#" class="status-indicator-container me-3">
-                    <img src="{{ asset('assets/images/demo/users/face25.jpg') }}" class="w-40px h-40px rounded-pill" alt="">
+                    <img src="{{ asset('assets/img/avatars/5.png') }}" class="w-40px h-40px rounded-pill" alt="">
                     <span class="status-indicator bg-success"></span>
                 </a>
                 <div class="flex-fill">
@@ -102,7 +102,7 @@
 
             <div class="d-flex align-items-start mb-3">
                 <a href="#" class="status-indicator-container me-3">
-                    <img src="{{ asset('assets/images/demo/users/face24.jpg') }}" class="w-40px h-40px rounded-pill" alt="">
+                    <img src="{{ asset('assets/img/avatars/4.png') }}" class="w-40px h-40px rounded-pill" alt="">
                     <span class="status-indicator bg-grey"></span>
                 </a>
                 <div class="flex-fill">
@@ -111,7 +111,7 @@
                     <div class="bg-light rounded p-2 my-2">
                         <div class="d-flex align-items-center">
                             <div class="me-2">
-                                <img src="{{ asset('assets/images/icons/pdf.svg') }}" width="34" height="34" alt="">
+                                <img src="{{ asset('assets/img/icons/misc/pdf.png') }}" width="34" height="34" alt="">
                             </div>
                             <div class="flex-fill">
                                 new_contract.pdf
@@ -151,7 +151,7 @@
 
             <div class="d-flex align-items-start mb-3">
                 <a href="#" class="status-indicator-container me-3">
-                    <img src="{{ asset('assets/images/demo/users/face4.jpg') }}" class="w-40px h-40px rounded-pill" alt="">
+                    <img src="{{ asset('assets/img/avatars/4.png') }}" class="w-40px h-40px rounded-pill" alt="">
                     <span class="status-indicator bg-danger"></span>
                 </a>
                 <div class="flex-fill">

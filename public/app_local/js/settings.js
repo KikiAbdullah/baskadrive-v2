@@ -13,7 +13,9 @@ $(document).on('select2:open', () => {
 });
 
 $(function () {
-    $(".select").select2();
+    if ($.fn.select2) {
+        $(".select").select2();
+    }
 
     // $('.daterange-single').daterangepicker({
     //     singleDatePicker: true,
@@ -35,26 +37,30 @@ $(function () {
         });
     });
 
-    // Setting datatable defaults
-    $.extend($.fn.dataTable.defaults, {
-        autoWidth: false,
-        dom: '<"datatable-header"fl><"datatable-scroll"t><"datatable-footer"ip>',
-        language: {
-            search: '<span class="me-3">Filter:</span> <div class="form-control-feedback form-control-feedback-end flex-fill">_INPUT_<div class="form-control-feedback-icon"><i class="ph-magnifying-glass opacity-50"></i></div></div>',
-            searchPlaceholder: 'Type to filter...',
-            lengthMenu: '<span class="me-3">Show:</span> _MENU_',
-            paginate: { 'first': 'First', 'last': 'Last', 'next': document.dir == "rtl" ? '&larr;' : '&rarr;', 'previous': document.dir == "rtl" ? '&rarr;' : '&larr;' }
-        }
+    // Setting datatable defaults (hanya bila plugin termuat di halaman ini)
+    if ($.fn.dataTable) {
+        $.extend($.fn.dataTable.defaults, {
+            autoWidth: false,
+            dom: '<"datatable-header"fl><"datatable-scroll"t><"datatable-footer"ip>',
+            language: {
+                search: '<span class="me-3">Filter:</span> <div class="form-control-feedback form-control-feedback-end flex-fill">_INPUT_<div class="form-control-feedback-icon"><i class="ph-magnifying-glass opacity-50"></i></div></div>',
+                searchPlaceholder: 'Type to filter...',
+                lengthMenu: '<span class="me-3">Show:</span> _MENU_',
+                paginate: { 'first': 'First', 'last': 'Last', 'next': document.dir == "rtl" ? '&larr;' : '&rarr;', 'previous': document.dir == "rtl" ? '&rarr;' : '&larr;' }
+            }
 
-    });
-    // Datatable 'length' options
-    $('.datatable-show-all').DataTable({
-        lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]]
-    });
-    $('select[name="dtable_length"]').select2({
-        minimumResultsForSearch: Infinity,
-        width: 'auto'
-    });
+        });
+        // Datatable 'length' options
+        $('.datatable-show-all').DataTable({
+            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]]
+        });
+    }
+    if ($.fn.select2) {
+        $('select[name="dtable_length"]').select2({
+            minimumResultsForSearch: Infinity,
+            width: 'auto'
+        });
+    }
 
     //close alert after 5 sec
     setTimeout(function () {

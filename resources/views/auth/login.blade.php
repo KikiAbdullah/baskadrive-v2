@@ -1,157 +1,163 @@
 <!doctype html>
-<html lang="id">
+
+<html lang="en" class="light-style layout-wide customizer-hide" dir="ltr" data-theme="theme-default"
+    data-assets-path="{{ asset('assets') }}/" data-template="vertical-menu-template" data-style="light">
 
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
 
-    <title>Masuk — {{ config('app.name') }}</title>
+    <title>Login -{{ config('app.name') }}</title>
 
-    {{-- Favicon & logo = satu sumber dari BrandAsset --}}
-    <link rel="icon" type="image/png" href="{{ \App\Support\BrandAsset::faviconUrl() }}" />
+    <meta name="description" content="" />
+
+    <!-- Favicon -->
+    {{-- Favicon = logo.png (aset identitas bawaan, di-resize via BrandAsset) --}}
+    <link rel="icon" type="image/png" sizes="256x256" href="{{ \App\Support\BrandAsset::faviconUrl() }}" />
+    <link rel="icon" type="image/png" href="{{ \App\Support\BrandAsset::logoUrl() }}" />
     <link rel="apple-touch-icon" href="{{ \App\Support\BrandAsset::logoUrl() }}" />
 
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&ampdisplay=swap"
         rel="stylesheet" />
-    <link rel="stylesheet" href="{{ asset('assets/css/auth.css') }}" />
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="{{ asset('assets/vendor/fonts/remixicon/remixicon.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/fonts/flag-icons.css') }}" />
+
+    <!-- Menu waves for no-customizer fix -->
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/node-waves/node-waves.css') }}" />
+
+    <!-- Core CSS -->
+    <link rel="stylesheet" href="{{ asset('assets/vendor/css/rtl/core.css') }}" class="template-customizer-core-css" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/css/rtl/theme-default.css') }}"
+        class="template-customizer-theme-css" />
+    <link rel="stylesheet" href="{{ asset('assets/css/demo.css') }}" />
+
+    <!-- Vendors CSS -->
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/typeahead-js/typeahead.css') }}" />
+    <!-- Vendor -->
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/@form-validation/form-validation.css') }}" />
+
+    <!-- Page CSS -->
+    <!-- Page -->
+    <link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/page-auth.css') }}" />
+
+    <!-- Helpers -->
+    <script src="{{ asset('assets/vendor/js/helpers.js') }}"></script>
+    <!--! Template customizer & Theme config files MUST be included after core stylesheets and helpers.js in the <head> section -->
+    <!--? Template customizer: To hide customizer set displayCustomizer value false in config.js.  -->
+    <script src="{{ asset('assets/vendor/js/template-customizer.js') }}"></script>
+    <!--? Config:  Mandatory theme config file contain global vars & default theme options, Set your preferred theme option in this file.  -->
+    <script src="{{ asset('assets/js/config.js') }}"></script>
 </head>
 
 <body>
-    <main class="auth-shell">
-        {{-- Panel branding --}}
-        <section class="auth-brand">
-            <div class="auth-brand__top">
-                <span class="auth-brand__logo">
-                    <img src="{{ \App\Support\BrandAsset::logoUrl() }}" alt="{{ config('app.name') }}" />
-                </span>
-                <span class="auth-brand__name">{{ config('app.name') }}</span>
-            </div>
+    <!-- Content -->
 
-            <div class="auth-brand__body">
-                <span class="auth-brand__eyebrow">Sistem Sewa &amp; Armada</span>
-                <h1>Kelola sewa dan armada dalam satu tempat.</h1>
-                <p>Pantau unit, serah terima, pembayaran, dan laporan operasional — semuanya terhubung dalam satu
-                    sistem.</p>
+    <div class="authentication-wrapper authentication-cover">
+        <!-- Logo -->
+        <a href="index.html" class="auth-cover-brand d-flex align-items-center gap-2">
+            <span class="app-brand-logo demo">
+                {{-- Logo brand = app_local/img/logo.png --}}
+                <img src="{{ \App\Support\BrandAsset::logoUrl() }}" alt="{{ config('app.name') }}"
+                    style="height: 72px; width: auto; max-width: 260px; object-fit: contain;" />
+            </span>
+            <span class="app-brand-text demo text-heading fw-semibold">{{ config('app.name') }}</span>
+        </a>
+        <!-- /Logo -->
+        <div class="authentication-inner row m-0">
+            <!-- /Left Section -->
+            <div class="d-none d-lg-flex col-lg-7 col-xl-8 align-items-center justify-content-center p-12 pb-2">
                 <img src="{{ asset('assets/img/illustrations/auth-login-illustration-light.png') }}"
-                    class="auth-brand__art" alt="Ilustrasi layanan sewa" />
+                    class="auth-cover-illustration w-100" alt="auth-illustration"
+                    data-app-light-img="illustrations/auth-login-illustration-light.png"
+                    data-app-dark-img="illustrations/auth-login-illustration-dark.png" />
+                <img src="{{ asset('assets/img/illustrations/auth-cover-login-mask-light.png') }}"
+                    class="authentication-image" alt="mask"
+                    data-app-light-img="illustrations/auth-cover-login-mask-light.png"
+                    data-app-dark-img="illustrations/auth-cover-login-mask-dark.png" />
             </div>
+            <!-- /Left Section -->
 
-            <div class="auth-brand__footer">&copy; {{ date('Y') }} {{ config('app.name') }}. Seluruh hak dilindungi.</div>
-        </section>
-
-        {{-- Panel form --}}
-        <section class="auth-panel">
-            <div class="auth-card">
-                <div class="auth-card__mobile-logo">
-                    <img src="{{ \App\Support\BrandAsset::logoUrl() }}" alt="{{ config('app.name') }}" />
-                    <span>{{ config('app.name') }}</span>
-                </div>
-
-                <h2>Selamat datang kembali 👋</h2>
-                <p class="auth-card__subtitle">Masuk dengan akun ERP Anda untuk melanjutkan.</p>
-
-                @if ($errors->any())
-                    <div class="auth-alert" role="alert">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-                            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <circle cx="12" cy="12" r="9"></circle>
-                            <path d="M12 8v5"></path>
-                            <path d="M12 16h.01"></path>
-                        </svg>
-                        <div>
+            <!-- Login -->
+            <div
+                class="d-flex col-12 col-lg-5 col-xl-4 align-items-center authentication-bg position-relative py-sm-12 px-12 py-6">
+                <div class="w-px-400 mx-auto pt-5 pt-lg-0">
+                    <h4 class="mb-1">Welcome to {{ config('app.name') }}👋</h4>
+                    <p class="mb-5">Please sign-in to your account and start the adventure</p>
+                    @if (count($errors) > 0)
+                        <div class="alert alert-danger">
                             @foreach ($errors->all() as $error)
-                                <p>{{ $error }}</p>
+                                {!! $error . '<br/>' !!}
                             @endforeach
                         </div>
+                    @endif
+                    <form method="POST" action="{{ route('login') }}" class="login-form">
+                        @csrf
+                    <div class="form-floating form-floating-outline mb-5">
+                        <input type="text" name="username" value="{{ old('username') }}"
+                            class="form-control" placeholder="Username" autofocus
+                            onfocus="this.selectionStart = this.selectionEnd = this.value.length;" />
+                        <label for="email">Username</label>
                     </div>
-                @endif
-
-                <form method="POST" action="{{ route('login') }}" class="auth-form">
-                    @csrf
-
-                    <div class="field">
-                        <label for="username">Username</label>
-                        <div class="input-wrap">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-                                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <circle cx="12" cy="8" r="4"></circle>
-                                <path d="M4.5 20a7.5 7.5 0 0 1 15 0"></path>
-                            </svg>
-                            <input id="username" type="text" name="username" value="{{ old('username') }}"
-                                placeholder="Username akun ERP" autocomplete="username" autofocus required />
+                    <div class="mb-5">
+                        <div class="form-password-toggle">
+                            <div class="input-group input-group-merge">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="password" name="password" class="form-control"
+                                        placeholder="•••••••••••">
+                                    <label for="password">Password</label>
+                                </div>
+                                <span class="input-group-text cursor-pointer"><i class="ri-eye-off-line"></i></span>
+                            </div>
                         </div>
                     </div>
-
-                    <div class="field">
-                        <label for="password">Password</label>
-                        <div class="input-wrap has-action">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-                                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <rect x="4" y="10" width="16" height="11" rx="2"></rect>
-                                <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
-                            </svg>
-                            <input id="password" type="password" name="password" placeholder="••••••••"
-                                autocomplete="current-password" required />
-                            <button type="button" class="toggle-password" data-target="password"
-                                aria-label="Tampilkan password" title="Tampilkan password">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-                                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                    <path d="M3 3l18 18"></path>
-                                    <path d="M10.6 5.2A9.8 9.8 0 0 1 12 5c5 0 9 4.5 10 7a11 11 0 0 1-2.2 3.1M6.2 6.3A11 11 0 0 0 2 12c1 2.5 5 7 10 7a9.7 9.7 0 0 0 3.2-.5"></path>
-                                    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"></path>
-                                </svg>
-                            </button>
+                    <div class="mb-5 d-flex justify-content-between mt-5">
+                        <div class="form-check mt-2">
+                            <input type="checkbox" name="remember" class="form-check-input" checked>
+                            <label class="form-check-label" for="remember-me"> Remember Me </label>
                         </div>
                     </div>
+                    <button type="submit" class="btn btn-primary d-grid w-100">Sign in</button>
+                    </form>
 
-                    <div class="auth-form__options">
-                        <label class="checkbox">
-                            <input type="checkbox" name="remember" value="1" checked />
-                            <span>Ingat saya</span>
-                        </label>
-                        <a href="{{ route('password.request') }}">Lupa password?</a>
-                    </div>
-
-                    <button type="submit" class="btn-submit">
-                        <span>Masuk</span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
-                            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M5 12h14"></path>
-                            <path d="m13 6 6 6-6 6"></path>
-                        </svg>
-                    </button>
-                </form>
-
-                <p class="auth-card__hint">Akses hanya untuk pengguna yang telah terdaftar.<br />Hubungi administrator jika
-                    Anda belum memiliki akun.</p>
+                </div>
             </div>
-        </section>
-    </main>
+            <!-- /Login -->
+        </div>
+    </div>
 
-    <script>
-        document.querySelectorAll('.toggle-password').forEach(function (button) {
-            button.addEventListener('click', function () {
-                var input = document.getElementById(button.dataset.target);
-                var reveal = input.type === 'password';
-                input.type = reveal ? 'text' : 'password';
-                button.setAttribute('aria-label', reveal ? 'Sembunyikan password' : 'Tampilkan password');
-                button.setAttribute('title', reveal ? 'Sembunyikan password' : 'Tampilkan password');
-            });
-        });
+    <!-- / Content -->
 
-        document.querySelectorAll('.auth-form').forEach(function (form) {
-            form.addEventListener('submit', function () {
-                var button = form.querySelector('.btn-submit');
-                if (!button || button.disabled) {
-                    return;
-                }
-                button.disabled = true;
-                button.querySelector('span').textContent = 'Memproses…';
-            });
-        });
-    </script>
+    <!-- Core JS -->
+    <!-- build:js assets/vendor/js/core.js -->
+    <script src="{{ asset('assets/vendor/libs/jquery/jquery.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/popper/popper.js') }}"></script>
+    <script src="{{ asset('assets/vendor/js/bootstrap.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/node-waves/node-waves.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/hammer/hammer.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/i18n/i18n.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/typeahead-js/typeahead.js') }}"></script>
+    <script src="{{ asset('assets/vendor/js/menu.js') }}"></script>
+
+    <!-- endbuild -->
+
+    <!-- Vendors JS -->
+    <script src="{{ asset('assets/vendor/libs/@form-validation/popular.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/@form-validation/bootstrap5.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/@form-validation/auto-focus.js') }}"></script>
+
+    <!-- Main JS -->
+    <script src="{{ asset('assets/js/main.js') }}"></script>
+
+    <!-- Page JS -->
+    <script src="{{ asset('assets/js/pages-auth.js') }}"></script>
 </body>
 
 </html>
