@@ -1,35 +1,6 @@
 @extends('layouts.header')
 
 @section('customcss')
-    <style>
-        .fin-tabs {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .fin-tab {
-            padding: 0.375rem 0.875rem;
-            border-radius: 2rem;
-            border: 1px solid #d9dee3;
-            background: #fff;
-            color: #697a8d;
-            font-size: 0.8125rem;
-            text-decoration: none;
-            transition: all 0.15s;
-        }
-
-        .fin-tab:hover {
-            border-color: #666cff;
-            color: #666cff;
-        }
-
-        .fin-tab.active {
-            background: #666cff;
-            border-color: #666cff;
-            color: #fff;
-        }
-    </style>
 @endsection
 
 @section('content')
@@ -49,12 +20,14 @@
 
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div class="fin-tabs">
+                <ul class="nav nav-pills gap-2 flex-wrap">
                     @foreach($tabs as $key => $label)
-                        <a href="{{ route('finance.index', ['tab' => $key]) }}"
-                            class="fin-tab {{ $tab == $key ? 'active' : '' }}">{{ $label }}</a>
+                        <li class="nav-item">
+                            <a href="{{ route('finance.index', ['tab' => $key]) }}"
+                                class="nav-link {{ $tab == $key ? 'active' : '' }}">{{ $label }}</a>
+                        </li>
                     @endforeach
-                </div>
+                </ul>
 
                 @if($tab === 'invoice')
                     <select class="form-select form-select-sm w-auto" id="statusFilter">

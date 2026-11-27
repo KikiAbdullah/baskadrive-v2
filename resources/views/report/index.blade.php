@@ -2,39 +2,6 @@
 
 @section('customcss')
     <style>
-        /* ===== Tab pill ===== */
-        .rpt-tabs {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .rpt-tab {
-            display: flex;
-            align-items: center;
-            gap: 0.45rem;
-            padding: 0.5rem 1rem;
-            border-radius: 2rem;
-            border: 1px solid #d9dee3;
-            background: #fff;
-            color: #697a8d;
-            font-size: 0.8125rem;
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.15s;
-        }
-
-        .rpt-tab:hover {
-            border-color: #666cff;
-            color: #666cff;
-        }
-
-        .rpt-tab.active {
-            background: #666cff;
-            border-color: #666cff;
-            color: #fff;
-        }
-
         /* ===== Summary cards ===== */
         .rpt-stat {
             border: 1px solid #e5e5e8;
@@ -178,14 +145,16 @@
         @include('layouts.alert')
 
         {{-- ===== TABS ===== --}}
-        <div class="rpt-tabs mb-1">
+        <ul class="nav nav-pills gap-2 flex-wrap mb-1">
             @foreach($tabs as $key => $label)
-                <a href="{{ route('report.index', array_merge(['tab' => $key], $filters)) }}"
-                    class="rpt-tab {{ $tab == $key ? 'active' : '' }}">
-                    <i class="{{ $tabIcons[$key] }}"></i> {{ $label }}
-                </a>
+                <li class="nav-item">
+                    <a href="{{ route('report.index', array_merge(['tab' => $key], $filters)) }}"
+                        class="nav-link {{ $tab == $key ? 'active' : '' }}">
+                        <i class="{{ $tabIcons[$key] }}"></i> {{ $label }}
+                    </a>
+                </li>
             @endforeach
-        </div>
+        </ul>
 
         {{-- ===== FILTER BAR ===== --}}
         <div class="card mb-1">

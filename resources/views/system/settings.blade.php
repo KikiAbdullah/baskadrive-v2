@@ -9,41 +9,6 @@
             gap: 0.5rem;
         }
 
-        /* ===== Tabs ===== */
-        .settings-tabs {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            margin-bottom: 1.25rem;
-        }
-
-        .settings-tab {
-            display: flex;
-            align-items: center;
-            gap: 0.45rem;
-            padding: 0.5rem 1rem;
-            border-radius: 2rem;
-            border: 1px solid #d9dee3;
-            background: #fff;
-            color: #697a8d;
-            font-size: 0.8125rem;
-            font-weight: 600;
-            text-decoration: none;
-            cursor: pointer;
-            transition: all 0.15s;
-        }
-
-        .settings-tab:hover {
-            border-color: #666cff;
-            color: #666cff;
-        }
-
-        .settings-tab.active {
-            background: #666cff;
-            border-color: #666cff;
-            color: #fff;
-        }
-
         /* ===== Cards ===== */
         .setting-card {
             height: 100%;
@@ -172,23 +137,33 @@
         @include('layouts.alert')
 
         {{-- ===== TABS ===== --}}
-        <div class="settings-tabs">
-            <button type="button" class="settings-tab active" data-tab="profil">
-                <i class="ri-building-4-line"></i> Profil
-            </button>
-            <button type="button" class="settings-tab" data-tab="pajak">
-                <i class="ri-calculator-line"></i> PPN &amp; Deposit
-            </button>
-            <button type="button" class="settings-tab" data-tab="operasional">
-                <i class="ri-steering-2-line"></i> Operasional
-            </button>
-            <button type="button" class="settings-tab" data-tab="dokumen">
-                <i class="ri-file-text-line"></i> Dokumen
-            </button>
-            <button type="button" class="settings-tab" data-tab="aplikasi">
-                <i class="ri-global-line"></i> Aplikasi
-            </button>
-        </div>
+        <ul class="nav nav-pills gap-2 flex-wrap mb-4" id="settingsTabs">
+            <li class="nav-item">
+                <button type="button" class="nav-link active" data-tab="profil">
+                    <i class="ri-building-4-line me-1"></i> Profil
+                </button>
+            </li>
+            <li class="nav-item">
+                <button type="button" class="nav-link" data-tab="pajak">
+                    <i class="ri-calculator-line me-1"></i> PPN &amp; Deposit
+                </button>
+            </li>
+            <li class="nav-item">
+                <button type="button" class="nav-link" data-tab="operasional">
+                    <i class="ri-steering-2-line me-1"></i> Operasional
+                </button>
+            </li>
+            <li class="nav-item">
+                <button type="button" class="nav-link" data-tab="dokumen">
+                    <i class="ri-file-text-line me-1"></i> Dokumen
+                </button>
+            </li>
+            <li class="nav-item">
+                <button type="button" class="nav-link" data-tab="aplikasi">
+                    <i class="ri-global-line me-1"></i> Aplikasi
+                </button>
+            </li>
+        </ul>
 
         <form method="POST" action="{{ route('system.settings.update') }}" id="settingsForm"
             enctype="multipart/form-data">
@@ -516,8 +491,8 @@
 @section('customjs')
     <script>
         // ===== Tab switching =====
-        $('.settings-tab').on('click', function() {
-            $('.settings-tab').removeClass('active');
+        $('#settingsTabs .nav-link').on('click', function() {
+            $('#settingsTabs .nav-link').removeClass('active');
             $(this).addClass('active');
             const tab = $(this).data('tab');
             $('.tab-pane-block').addClass('d-none');
