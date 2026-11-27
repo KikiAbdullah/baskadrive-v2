@@ -65,6 +65,6 @@ class LocationController extends Controller
                 ? '<span class="badge bg-success">Aktif</span>'
                 : '<span class="badge bg-secondary">Nonaktif</span>')
             ->rawColumns(['is_active', 'coords'])
-            ->make(true);
+            ->addColumn('detail', fn ($m) => $m->toArray())->make(true);
     }
 }

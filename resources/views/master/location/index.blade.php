@@ -68,6 +68,8 @@
                 if (auth()->user()->can('master_edit')) { $btnList['vedit'] = $url['edit']; }
                 if (auth()->user()->can('master_delete')) { $btnList['destroy'] = $url['destroy']; }
             @endphp
+            @php $btnList['detail'] = true; @endphp
+            window.detailTitleKey = 'location_name';
             const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();
         var button_temp =
@@ -195,7 +197,7 @@
                     info: false
                 },
                 "serverSide": true,
-                "stateSave": true,
+                "stateSave": false,
                 "sServerMethod": "GET",
                 "deferRender": true,
                 "rowId": 'location_id',
@@ -230,7 +232,10 @@
                     "targets": [0],
                     "visible": false,
                     "searchable": false
-                }, ],
+                }, {
+                    "targets": [3, 5],
+                    "visible": false
+                }],
             });
             //set class for page length
             $("#dtable_length").addClass('d-none d-lg-block');

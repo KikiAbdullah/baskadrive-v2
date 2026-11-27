@@ -64,6 +64,8 @@
                 if (auth()->user()->can('master_edit')) $btnList['verify'] = 'master.customer.verify';
                 if (auth()->user()->can('master_add')) $btnList['rental_now'] = 'master.customer.rental-now';
             @endphp
+            @php $btnList['detail'] = true; @endphp
+            window.detailTitleKey = 'full_name';
             const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();
         var button_temp =
@@ -77,7 +79,7 @@
                     info: false
                 },
                 "serverSide": true,
-                "stateSave": true,
+                "stateSave": false,
                 "sServerMethod": "GET",
                 "deferRender": true,
                 "rowId": 'customer_id',
@@ -109,7 +111,10 @@
                     "targets": [0],
                     "visible": false,
                     "searchable": false
-                }, ],
+                }, {
+                    "targets": [4],
+                    "visible": false
+                }],
             });
             //set class for page length
             $("#dtable_length").addClass('d-none d-lg-block');

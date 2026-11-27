@@ -121,7 +121,7 @@ class VehicleController extends Controller
                 default => '<span class="badge bg-secondary">Retired</span>',
             })
             ->rawColumns(['status', 'location'])
-            ->make(true);
+            ->addColumn('detail', fn ($m) => $m->toArray())->make(true);
     }
 
     public function customStore($data, $model)

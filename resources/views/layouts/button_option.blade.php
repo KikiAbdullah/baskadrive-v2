@@ -101,3 +101,10 @@
         </a>
     </form>
 @endif
+
+@if (array_key_exists('detail', $url))
+    <a href="#" class="action-link-icon-text detailBtn">
+        <i class="ri-file-list-3-line"></i>
+        <span class="fw-semibold text-uppercase">DETAIL</span>
+    </a>
+@endif

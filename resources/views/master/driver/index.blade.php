@@ -62,6 +62,8 @@
                 if (auth()->user()->can('master_delete')) { $btnList['destroy'] = $url['destroy']; }
                 $btnList['history'] = 'master.driver.history';
             @endphp
+            @php $btnList['detail'] = true; @endphp
+            window.detailTitleKey = 'full_name';
             const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();
         var button_temp =
@@ -75,7 +77,7 @@
                     info: false
                 },
                 "serverSide": true,
-                "stateSave": true,
+                "stateSave": false,
                 "sServerMethod": "GET",
                 "deferRender": true,
                 "rowId": 'driver_id',
@@ -107,7 +109,10 @@
                     "targets": [0],
                     "visible": false,
                     "searchable": false
-                }, ],
+                }, {
+                    "targets": [3],
+                    "visible": false
+                }],
             });
             //set class for page length
             $("#dtable_length").addClass('d-none d-lg-block');

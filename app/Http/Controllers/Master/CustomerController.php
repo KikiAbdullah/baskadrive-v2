@@ -38,7 +38,7 @@ class CustomerController extends Controller
                 ? '<span class="badge bg-success">Verified</span>'
                 : '<span class="badge bg-warning">Pending</span>')
             ->rawColumns(['is_verified', 'full_name'])
-            ->make(true);
+            ->addColumn('detail', fn ($m) => $m->toArray())->make(true);
     }
 
     public function customRequest($request)

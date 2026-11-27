@@ -225,6 +225,8 @@
     <!--/ Layout wrapper -->
     @yield('appmodal')
 
+    @include('layouts.detail_modal')
+
     <!-- Core JS -->
     <!-- build:js assets/js/core.js -->
     <script src="{{ asset('assets') }}/libs/node-waves/node-waves.js"></script>

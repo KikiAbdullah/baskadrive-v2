@@ -48,7 +48,7 @@ class VehicleModelController extends Controller
                 ? '<span class="badge bg-success">Aktif</span>'
                 : '<span class="badge bg-secondary">Nonaktif</span>')
             ->rawColumns(['is_active', 'photo'])
-            ->make(true);
+            ->addColumn('detail', fn ($m) => $m->toArray())->make(true);
     }
 
     public function customRequest($request)

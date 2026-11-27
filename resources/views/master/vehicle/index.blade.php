@@ -66,6 +66,8 @@
                 $btnList['barcode_pdf'] = 'master.vehicle.barcode-pdf';
                 $btnList['history'] = 'master.vehicle.history';
             @endphp
+            @php $btnList['detail'] = true; @endphp
+            window.detailTitleKey = 'license_plate';
             const buttons = @json($btnList);
         var html_temp = $("#dynamic-form").html();
         var button_temp =
@@ -79,7 +81,7 @@
                     info: false
                 },
                 "serverSide": true,
-                "stateSave": true,
+                "stateSave": false,
                 "sServerMethod": "GET",
                 "deferRender": true,
                 "rowId": 'vehicle_id',
@@ -117,7 +119,10 @@
                     "targets": [0],
                     "visible": false,
                     "searchable": false
-                }, ],
+                }, {
+                    "targets": [4, 5, 6],
+                    "visible": false
+                }],
             });
             //set class for page length
             $("#dtable_length").addClass('d-none d-lg-block');

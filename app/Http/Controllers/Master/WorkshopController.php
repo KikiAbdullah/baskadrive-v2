@@ -59,6 +59,6 @@ class WorkshopController extends Controller
                 ? '<span class="badge bg-success">Aktif</span>'
                 : '<span class="badge bg-secondary">Nonaktif</span>')
             ->rawColumns(['is_active', 'rating_stars'])
-            ->make(true);
+            ->addColumn('detail', fn ($m) => $m->toArray())->make(true);
     }
 }
