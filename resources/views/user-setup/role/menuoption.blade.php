@@ -1,8 +1,3 @@
-<a href="{{ route('user-setup.role.show', $role->id) }}" class="action-link-icon-text btnShow">
-    <i class="ri-search-line"></i>
-    <span class="fw-semibold text-uppercase">Detail</span>
-</a>
-
 @if ($role->name !== 'SUPERADMIN')
     <a href="{{ route('user-setup.role.edit', $role->id) }}" onclick="editRole(this, event)" class="role-edit-modal">
         Edit Role

@@ -23,6 +23,11 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center mb-4">
                                 <p class="mb-0">Total {{ $role->users->count() }} users</p>
+                                <a href="{{ route('user-setup.role.show', $role->id) }}"
+                                    class="btn btn-sm btn-icon btn-label-primary" title="Detail Role"
+                                    aria-label="Detail Role">
+                                    <i class="ri-search-line"></i>
+                                </a>
                             </div>
                             <div class="d-flex justify-content-between align-items-center">
                                 <div class="role-heading">
