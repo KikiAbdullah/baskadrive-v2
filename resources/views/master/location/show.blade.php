@@ -1,6 +1,7 @@
 @extends('layouts.header')
 
 @section('customcss')
+    <link rel="stylesheet" href="{{ asset('assets/libs/leaflet/leaflet.css') }}" />
     <style data-detail-style>
         .emp-hero { background: linear-gradient(135deg, #575df0, #666cff 55%, #8a5cf6); color: #fff; border: 0; overflow: hidden; }
         .emp-hero::after { content: ""; position: absolute; width: 260px; height: 260px; right: -80px; top: -140px; border-radius: 50%; background: rgba(255,255,255,.1); }
@@ -14,6 +15,8 @@
         .emp-info-row .lbl { color: #7a8096; font-weight: 600; }
         .emp-info-row .val { font-weight: 700; color: #1d1d33; text-align: right; }
         .emp-section-title { font-size: .8rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #666cff; margin-bottom: .75rem; }
+        .location-show-map { height: 240px; width: 100%; border-radius: 10px; z-index: 0; margin-bottom: 1rem; }
+        .leaflet-container { font-family: inherit; }
     </style>
 @endsection
 
@@ -84,6 +87,8 @@
                 <div class="card h-100">
                     <div class="card-body">
                         <div class="emp-section-title"><i class="ri-compass-3-line me-1"></i> Peta &amp; Status</div>
+                        <div id="locationShowMap" class="location-show-map border"
+                            data-map-lat="{{ $item->latitude }}" data-map-lng="{{ $item->longitude }}"></div>
                         <div class="emp-info-row"><span class="lbl">Latitude</span><span class="val">{{ $item->latitude ?? '-' }}</span></div>
                         <div class="emp-info-row"><span class="lbl">Longitude</span><span class="val">{{ $item->longitude ?? '-' }}</span></div>
                         <div class="emp-info-row"><span class="lbl">Status</span><span class="val">{!! $item->is_active ? '<span class="badge bg-label-success">Aktif</span>' : '<span class="badge bg-label-danger">Nonaktif</span>' !!}</span></div>
@@ -99,4 +104,8 @@
             </div>
         </div>
     </div>
+@endsection
+
+@section('customjs')
+    <script src="{{ asset('assets/libs/leaflet/leaflet.js') }}"></script>
 @endsection

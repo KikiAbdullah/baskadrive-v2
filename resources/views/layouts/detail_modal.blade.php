@@ -37,6 +37,29 @@
         return String(value).replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
+    function initEmbeddedMaps(root) {
+        if (typeof L === 'undefined') return;
+        root.querySelectorAll('[data-map-lat]').forEach(function (el) {
+            if (el.dataset.mapReady) return;
+            const lat = parseFloat(el.dataset.mapLat);
+            const lng = parseFloat(el.dataset.mapLng);
+            if (isNaN(lat) || isNaN(lng)) return;
+
+            const map = L.map(el).setView([lat, lng], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+            L.marker([lat, lng]).addTo(map);
+            el.dataset.mapReady = '1';
+            setTimeout(function () { map.invalidateSize(); }, 250);
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        initEmbeddedMaps(document);
+    });
+
     function showModal(html, title) {
         document.getElementById('masterDetailBody').innerHTML = html;
         document.getElementById('masterDetailTitle').textContent = title ? 'Detail · ' + title : 'Detail';
@@ -89,6 +112,7 @@
                         .map(function (s) { return s.textContent; }).join('\n');
                     const html = (styles ? '<style>' + styles + '</style>' : '') + content.innerHTML;
                     showModal(html, title || doc.querySelector('h4')?.textContent || 'Detail');
+                    initEmbeddedMaps(document.getElementById('masterDetailBody'));
                 })
                 .catch(function () { renderFields(data, title); });
             return;
